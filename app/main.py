@@ -7,6 +7,7 @@ from app.db import models
 from app.db.base import Base
 from app.db.database import engine
 from app.services.glucose.importer import add_glucose_reading
+from app.services.glucose.importer import import_diabetes_m_csv
 from app.ui.main_window import MainWindow
 
 def init_db() -> None:
