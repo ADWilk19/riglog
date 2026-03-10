@@ -16,3 +16,6 @@ data/*.db
 
 # CSV files
 *.csv
+
+# Data
+data/imports/
