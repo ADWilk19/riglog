@@ -13,3 +13,6 @@ data/*.db
 
 # VSCode settings (optional)
 .vscode/
+
+# CSV files
+*.csv

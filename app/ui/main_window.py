@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
     QLabel,
 )
 
+from app.ui.tabs.glucose_tab import GlucoseTab
 
 class MainWindow(QMainWindow):
     def __init__(self) -> None:
@@ -17,7 +18,7 @@ class MainWindow(QMainWindow):
         self.tabs = QTabWidget()
 
         self.tabs.addTab(self._build_tab("Home"), "Home")
-        self.tabs.addTab(self._build_tab("Glucose"), "Glucose")
+        self.tabs.addTab(GlucoseTab(), "Glucose")
         self.tabs.addTab(self._build_tab("Activity"), "Activity")
         self.tabs.addTab(self._build_tab("Workouts"), "Workouts")
 
