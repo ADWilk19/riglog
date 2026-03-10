@@ -1,5 +1,6 @@
-from sqlalchemy import Column, Integer, Float, DateTime
+from sqlalchemy import Column, Integer, Float, DateTime, String
 from app.db.base import Base
+
 
 class GlucoseReading(Base):
     __tablename__ = "glucose_readings"
@@ -7,3 +8,5 @@ class GlucoseReading(Base):
     id = Column(Integer, primary_key=True, index=True)
     glucose_value = Column(Float, nullable=False)
     recorded_at = Column(DateTime, nullable=False)
+    source = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
