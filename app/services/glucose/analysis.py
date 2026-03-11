@@ -1,5 +1,18 @@
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
+from app.services.event_classifier import classify_meal_event
+
+
+MEAL_EVENT_LABELS = {
+    "pre_breakfast": "Pre-Breakfast",
+    "post_breakfast": "Post-Breakfast",
+    "pre_lunch": "Pre-Lunch",
+    "post_lunch": "Post-Lunch",
+    "pre_dinner": "Pre-Dinner",
+    "post_dinner": "Post-Dinner",
+    "before_bed": "Before Bed",
+    "night": "Night",
+}
 
 
 def get_all_glucose_readings():
@@ -13,6 +26,29 @@ def get_all_glucose_readings():
         )
     finally:
         session.close()
+
+
+def get_all_glucose_readings_with_meal_event():
+    readings = get_all_glucose_readings()
+
+    enriched_readings = []
+
+    for reading in readings:
+        meal_event_key = classify_meal_event(reading.recorded_at)
+
+        enriched_readings.append(
+            {
+                "id": reading.id,
+                "glucose_value": reading.glucose_value,
+                "recorded_at": reading.recorded_at,
+                "source": reading.source,
+                "notes": reading.notes,
+                "meal_event": meal_event_key,
+                "meal_event_label": MEAL_EVENT_LABELS[meal_event_key],
+            }
+        )
+
+    return enriched_readings
 
 
 def get_glucose_reading_by_id(reading_id: int) -> GlucoseReading | None:

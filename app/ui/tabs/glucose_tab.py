@@ -16,7 +16,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.services.glucose.analysis import (
-    get_all_glucose_readings,
+    get_all_glucose_readings_with_meal_event,
     get_glucose_summary,
     update_glucose_note,
 )
@@ -55,8 +55,8 @@ class GlucoseTab(QWidget):
 
     def _build_table(self) -> None:
         self.table = QTableWidget()
-        self.table.setColumnCount(4)
-        self.table.setHorizontalHeaderLabels(["ID", "Recorded At", "Glucose", "Notes"])
+        self.table.setColumnCount(5)
+        self.table.setHorizontalHeaderLabels(["ID", "Recorded At", "Glucose", "Meal Event", "Notes"])
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
@@ -67,7 +67,8 @@ class GlucoseTab(QWidget):
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.Stretch)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.Stretch)
 
         self.layout.addWidget(self.table)
 
@@ -117,27 +118,31 @@ class GlucoseTab(QWidget):
             self.min_label.setText(f"Lowest: {summary['min']:.1f} mmol/L")
             self.max_label.setText(f"Highest: {summary['max']:.1f} mmol/L")
 
-        readings = get_all_glucose_readings()
+        readings = get_all_glucose_readings_with_meal_event()
 
         self.table.setRowCount(len(readings))
 
         for row_index, reading in enumerate(readings):
-            id_item = QTableWidgetItem(str(reading.id))
+            id_item = QTableWidgetItem(str(reading["id"]))
             id_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             recorded_at_item = QTableWidgetItem(
-                reading.recorded_at.strftime("%Y-%m-%d %H:%M:%S")
+                reading["recorded_at"].strftime("%Y-%m-%d %H:%M")
             )
 
-            glucose_item = QTableWidgetItem(f"{reading.glucose_value:.1f}")
+            glucose_item = QTableWidgetItem(f"{reading['glucose_value']:.1f}")
             glucose_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
-            notes_item = QTableWidgetItem(reading.notes or "")
+            meal_event_item = QTableWidgetItem(reading["meal_event_label"])
+            meal_event_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            notes_item = QTableWidgetItem(reading["notes"] or "")
 
             self.table.setItem(row_index, 0, id_item)
             self.table.setItem(row_index, 1, recorded_at_item)
             self.table.setItem(row_index, 2, glucose_item)
-            self.table.setItem(row_index, 3, notes_item)
+            self.table.setItem(row_index, 3, meal_event_item)
+            self.table.setItem(row_index, 4, notes_item)
 
         self.selected_reading_id = None
         self.notes_editor.clear()
@@ -177,7 +182,7 @@ class GlucoseTab(QWidget):
         row = selected_items[0].row()
 
         reading_id_item = self.table.item(row, 0)
-        notes_item = self.table.item(row, 3)
+        notes_item = self.table.item(row, 4)
 
         if reading_id_item is None:
             self.selected_reading_id = None
