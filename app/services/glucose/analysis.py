@@ -1,6 +1,7 @@
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
 from app.services.event_classifier import classify_meal_event
+from collections import defaultdict
 
 
 MEAL_EVENT_LABELS = {
@@ -94,3 +95,24 @@ def get_glucose_summary():
         }
     finally:
         session.close()
+
+
+def get_daily_average_glucose(readings):
+    daily = defaultdict(list)
+
+    for r in readings:
+        day = r["recorded_at"].date()
+        daily[day].append(r["glucose_value"])
+
+    results = []
+
+    for day, values in sorted(daily.items()):
+        results.append(
+            {
+                "date": day,
+                "avg": sum(values) / len(values),
+                "count": len(values),
+            }
+        )
+
+    return results
