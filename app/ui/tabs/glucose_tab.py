@@ -141,6 +141,7 @@ class GlucoseTab(QWidget):
 
         self._build_toolbar()
         self._build_summary_panel()
+        self._build_legend()
         self._build_chart()
         self._build_table()
         self._build_notes_panel()
@@ -330,6 +331,25 @@ class GlucoseTab(QWidget):
         self.min_label.setText(f"Lowest\n{min(values):.1f} mmol/L")
         self.max_label.setText(f"Highest\n{max(values):.1f} mmol/L")
 
+    def _build_legend(self) -> None:
+        legend_layout = QHBoxLayout()
+
+        items = [
+            ("Hypo (<3.3)", "#dc5050"),
+            ("Low (3.3–4)", "#ffaa00"),
+            ("Target (4–10)", "#aaaaaa"),
+            ("High (10–15)", "#ffd250"),
+            ("Hyper (>15)", "#c88cff"),
+        ]
+
+        for label, color in items:
+            lbl = QLabel(label)
+            lbl.setStyleSheet(f"color: {color}; font-size: 12px;")
+            legend_layout.addWidget(lbl)
+
+        legend_layout.addStretch()
+        self.layout.addLayout(legend_layout)
+
     def load_readings(self) -> None:
         readings = self._get_filtered_readings()
         self._update_summary(readings)
@@ -352,18 +372,22 @@ class GlucoseTab(QWidget):
             glucose_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             if glucose_value < 3.3:
-                glucose_item.setBackground(QColor(220, 80, 80))
+                glucose_item.setForeground(QColor(220, 80, 80))
                 font = glucose_item.font()
                 font.setBold(True)
                 glucose_item.setFont(font)
+
             elif glucose_value < 4:
-                glucose_item.setBackground(QColor(255, 170, 120))
+                glucose_item.setForeground(QColor(255, 170, 0))
+
             elif glucose_value <= 10:
-                glucose_item.setBackground(QColor(170, 255, 170))
+                glucose_item.setForeground(QColor(220, 220, 220))
+
             elif glucose_value <= 15:
-                glucose_item.setBackground(QColor(255, 230, 140))
+                glucose_item.setForeground(QColor(255, 210, 80))
+
             else:
-                glucose_item.setBackground(QColor(200, 140, 255))
+                glucose_item.setForeground(QColor(200, 140, 255))
                 font = glucose_item.font()
                 font.setBold(True)
                 glucose_item.setFont(font)
