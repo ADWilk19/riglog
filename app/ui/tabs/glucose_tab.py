@@ -27,6 +27,7 @@ from app.services.glucose.analysis import (
     get_daily_average_glucose,
     get_time_of_day_profile,
     update_glucose_note,
+    get_time_in_range_metrics
 )
 from app.services.glucose.importer import import_diabetes_m_csv
 
@@ -230,12 +231,14 @@ class GlucoseTab(QWidget):
         self.avg_label = self._create_summary_card("Average: -")
         self.min_label = self._create_summary_card("Lowest: -")
         self.max_label = self._create_summary_card("Highest: -")
+        self.tir_label = self._create_summary_card("In Range: -")
 
         summary_layout.addStretch()
         summary_layout.addWidget(self.count_label)
         summary_layout.addWidget(self.avg_label)
         summary_layout.addWidget(self.min_label)
         summary_layout.addWidget(self.max_label)
+        summary_layout.addWidget(self.tir_label)
         summary_layout.addStretch()
 
         self.layout.addLayout(summary_layout)
@@ -328,14 +331,17 @@ class GlucoseTab(QWidget):
             self.avg_label.setText("Average\n-")
             self.min_label.setText("Lowest\n-")
             self.max_label.setText("Highest\n-")
+            self.tir_label.setText("In Range\n-")
             return
 
         values = [reading["glucose_value"] for reading in readings]
+        tir_metrics = get_time_in_range_metrics(readings)
 
         self.count_label.setText(f"Readings\n{len(values)}")
         self.avg_label.setText(f"Average\n{sum(values) / len(values):.1f} mmol/L")
         self.min_label.setText(f"Lowest\n{min(values):.1f} mmol/L")
         self.max_label.setText(f"Highest\n{max(values):.1f} mmol/L")
+        self.tir_label.setText(f"In Range\n{tir_metrics['target_pct']:.1f}%")
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()

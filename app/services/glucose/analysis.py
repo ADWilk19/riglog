@@ -119,6 +119,7 @@ def get_daily_average_glucose(readings):
 
     return results
 
+
 def get_time_of_day_profile(
     readings: list[dict],
     bucket_minutes: int = 30,
@@ -150,3 +151,46 @@ def get_time_of_day_profile(
         )
 
     return profile
+
+
+def get_time_in_range_metrics(readings: list[dict]) -> dict[str, float | int]:
+    total = len(readings)
+
+    metrics = {
+        "total": total,
+        "hypo_count": 0,
+        "low_count": 0,
+        "target_count": 0,
+        "high_count": 0,
+        "hyper_count": 0,
+        "hypo_pct": 0.0,
+        "low_pct": 0.0,
+        "target_pct": 0.0,
+        "high_pct": 0.0,
+        "hyper_pct": 0.0,
+    }
+
+    if total == 0:
+        return metrics
+
+    for reading in readings:
+        value = reading["glucose_value"]
+
+        if value < 3.3:
+            metrics["hypo_count"] += 1
+        elif value < 4:
+            metrics["low_count"] += 1
+        elif value <= 10:
+            metrics["target_count"] += 1
+        elif value <= 15:
+            metrics["high_count"] += 1
+        else:
+            metrics["hyper_count"] += 1
+
+    metrics["hypo_pct"] = metrics["hypo_count"] / total * 100
+    metrics["low_pct"] = metrics["low_count"] / total * 100
+    metrics["target_pct"] = metrics["target_count"] / total * 100
+    metrics["high_pct"] = metrics["high_count"] / total * 100
+    metrics["hyper_pct"] = metrics["hyper_count"] / total * 100
+
+    return metrics
