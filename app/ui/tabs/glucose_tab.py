@@ -25,6 +25,7 @@ from PySide6.QtWidgets import (
 from app.services.glucose.analysis import (
     get_all_glucose_readings_with_meal_event,
     get_daily_average_glucose,
+    get_time_of_day_profile,
     update_glucose_note,
 )
 from app.services.glucose.importer import import_diabetes_m_csv
@@ -143,6 +144,7 @@ class GlucoseTab(QWidget):
         self._build_summary_panel()
         self._build_legend()
         self._build_chart()
+        self._build_profile_chart()
         self._build_table()
         self._build_notes_panel()
 
@@ -241,6 +243,10 @@ class GlucoseTab(QWidget):
     def _build_chart(self) -> None:
         self.chart = GlucoseTrendChart()
         self.layout.addWidget(self.chart)
+
+    def _build_profile_chart(self) -> None:
+        self.profile_chart = GlucoseProfileChart()
+        self.layout.addWidget(self.profile_chart)
 
     def _build_table(self) -> None:
         self.table = QTableWidget()
@@ -357,6 +363,9 @@ class GlucoseTab(QWidget):
         daily_data = get_daily_average_glucose(readings)
         self.chart.plot_daily_average(daily_data)
 
+        profile_data = get_time_of_day_profile(readings)
+        self.profile_chart.plot_profile(profile_data)
+
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
 
@@ -376,16 +385,12 @@ class GlucoseTab(QWidget):
                 font = glucose_item.font()
                 font.setBold(True)
                 glucose_item.setFont(font)
-
             elif glucose_value < 4:
                 glucose_item.setForeground(QColor(255, 170, 0))
-
             elif glucose_value <= 10:
                 glucose_item.setForeground(QColor(220, 220, 220))
-
             elif glucose_value <= 15:
                 glucose_item.setForeground(QColor(255, 210, 80))
-
             else:
                 glucose_item.setForeground(QColor(200, 140, 255))
                 font = glucose_item.font()
@@ -408,6 +413,7 @@ class GlucoseTab(QWidget):
 
         self.selected_reading_id = None
         self.notes_editor.clear()
+
 
     def handle_import_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -469,3 +475,71 @@ class GlucoseTab(QWidget):
 
         QMessageBox.information(self, "Saved", "Note updated successfully.")
         self.load_readings()
+
+
+class GlucoseProfileChart(FigureCanvasQTAgg):
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 3))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_profile(self, profile_data: list[dict]) -> None:
+        self.ax.clear()
+
+        self.figure.patch.set_facecolor("#1e1e1e")
+        self.ax.set_facecolor("#1e1e1e")
+
+        self.ax.set_title("Daily Glucose Profile", color="#f0f0f0")
+        self.ax.set_ylabel("mmol/L", color="#f0f0f0")
+        self.ax.set_xlabel("Time of Day", color="#f0f0f0")
+
+        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=45)
+        self.ax.tick_params(axis="y", colors="#f0f0f0")
+
+        for spine in self.ax.spines.values():
+            spine.set_color("#888888")
+
+        self.ax.grid(True, color="#444444", alpha=0.5)
+
+        self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
+        self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
+        self.ax.axhspan(15, 25, color="#8e24aa", alpha=0.12)
+
+        self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
+        self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
+        self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
+        self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
+
+        self.ax.set_ylim(0, 20)
+
+        if not profile_data:
+            self.draw()
+            return
+
+        x = [row["bucket_minutes"] / 60 for row in profile_data]
+        y = [row["avg"] for row in profile_data]
+        labels = [row["time_label"] for row in profile_data]
+
+        self.ax.plot(
+            x,
+            y,
+            color="#ff4d4d",
+            marker="o",
+            markersize=4,
+            linewidth=2,
+            alpha=0.9,
+            label="Average by Time of Day",
+        )
+
+        tick_positions = x[::2]
+        tick_labels = labels[::2]
+        self.ax.set_xticks(tick_positions)
+        self.ax.set_xticklabels(tick_labels)
+
+        self.ax.legend(
+            facecolor="#1e1e1e",
+            edgecolor="#888888",
+            labelcolor="#f0f0f0",
+        )
+
+        self.draw()

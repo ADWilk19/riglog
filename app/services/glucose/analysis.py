@@ -1,3 +1,5 @@
+from datetime import time
+
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
 from app.services.event_classifier import classify_meal_event
@@ -116,3 +118,35 @@ def get_daily_average_glucose(readings):
         )
 
     return results
+
+def get_time_of_day_profile(
+    readings: list[dict],
+    bucket_minutes: int = 30,
+) -> list[dict]:
+    buckets: dict[int, list[float]] = {}
+
+    for reading in readings:
+        dt = reading["recorded_at"]
+        minutes_since_midnight = dt.hour * 60 + dt.minute
+
+        bucket_start = (minutes_since_midnight // bucket_minutes) * bucket_minutes
+        buckets.setdefault(bucket_start, []).append(reading["glucose_value"])
+
+    profile = []
+
+    for bucket_start in sorted(buckets.keys()):
+        values = buckets[bucket_start]
+        hour = bucket_start // 60
+        minute = bucket_start % 60
+
+        profile.append(
+            {
+                "bucket_minutes": bucket_start,
+                "time_label": f"{hour:02d}:{minute:02d}",
+                "avg": sum(values) / len(values),
+                "count": len(values),
+                "values": values,
+            }
+        )
+
+    return profile
