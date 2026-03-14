@@ -72,7 +72,7 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
         self.ax.set_title("Daily Average Glucose", color="#f0f0f0")
         self.ax.set_ylabel("mmol/L", color="#f0f0f0")
 
-        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=45)
+        self.ax.tick_params(axis="x", colors="#f0f0f0")
         self.ax.tick_params(axis="y", colors="#f0f0f0")
 
         for spine in self.ax.spines.values():
@@ -91,7 +91,8 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
         self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
         self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
 
-        self.ax.set_ylim(0, 20)
+        self.ax.set_ylim(0, 30)
+        self.ax.set_yticks(range(0, 31, 5))
 
         if not daily_data:
             self.draw()
@@ -132,6 +133,7 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
 
         self.ax.legend(facecolor="#1e1e1e", edgecolor="#888888", labelcolor="#f0f0f0")
         self.figure.autofmt_xdate()
+        self.figure.subplots_adjust(bottom=0.20)
         self.draw()
 
 
@@ -160,10 +162,10 @@ class GlucoseTab(QWidget):
 
         self._build_toolbar()
         self._build_summary_panel()
-        self._build_legend()
         self._build_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
+        self._build_legend()
         self._build_table()
         self._build_notes_panel()
 
@@ -315,7 +317,7 @@ class GlucoseTab(QWidget):
         self.layout.addLayout(notes_layout)
 
     def _get_filtered_readings(self) -> list[dict]:
-        readings = get_all_glucose_readings_with_meal_event()
+        readings = get_all_glucose_readings_with_meal_event(days=365)
 
         selected_meal_event = self.meal_event_filter.currentText()
         if selected_meal_event != "All":
@@ -370,6 +372,7 @@ class GlucoseTab(QWidget):
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()
+        legend_layout.setContentsMargins(0, 10, 0, 6)
 
         items = [
             ("Hypo (<3.3)", "#dc5050"),
@@ -524,10 +527,13 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
 
         self.ax.set_title("Daily Glucose Profile", color="#f0f0f0")
         self.ax.set_ylabel("mmol/L", color="#f0f0f0")
-        self.ax.set_xlabel("Time of Day", color="#f0f0f0")
+        self.ax.set_xlabel("Time of Day", color="#f0f0f0", labelpad=10)
 
-        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=25)
+        self.ax.tick_params(axis="x", colors="#f0f0f0")
         self.ax.tick_params(axis="y", colors="#f0f0f0")
+
+        self.ax.set_ylim(0, 30)
+        self.ax.set_yticks(range(0, 31, 5))
 
         for spine in self.ax.spines.values():
             spine.set_color("#888888")
@@ -536,14 +542,12 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
 
         self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
         self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
-        self.ax.axhspan(15, 25, color="#8e24aa", alpha=0.12)
+        self.ax.axhspan(15, 30, color="#8e24aa", alpha=0.12)
 
         self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
         self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
         self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
         self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
-
-        self.ax.set_ylim(0, 20)
 
         if not profile_data:
             self.draw()
@@ -583,6 +587,7 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
             labelcolor="#f0f0f0",
         )
 
+        self.figure.subplots_adjust(bottom=0.24)
         self.draw()
 
 
@@ -599,9 +604,10 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
         self.ax.set_facecolor("#1e1e1e")
 
         self.ax.set_title("Glucose Distribution by Meal Event", color="#f0f0f0")
+        self.ax.set_xlabel("Meal Event", color="#f0f0f0", labelpad=10)
         self.ax.set_ylabel("mmol/L", color="#f0f0f0")
 
-        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=20)
+        self.ax.tick_params(axis="x", colors="#f0f0f0", labelsize=9)
         self.ax.tick_params(axis="y", colors="#f0f0f0")
 
         for spine in self.ax.spines.values():
@@ -611,14 +617,15 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
 
         self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
         self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
-        self.ax.axhspan(15, 25, color="#8e24aa", alpha=0.12)
+        self.ax.axhspan(15, 30, color="#8e24aa", alpha=0.12)
 
         self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
         self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
         self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
         self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
 
-        self.ax.set_ylim(0, 20)
+        self.ax.set_ylim(0, 30)
+        self.ax.set_yticks(range(0, 31, 5))
 
         if not boxplot_data:
             self.draw()
@@ -655,4 +662,5 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
                 markersize=4,
             )
 
+        self.figure.subplots_adjust(bottom=0.24)
         self.draw()
