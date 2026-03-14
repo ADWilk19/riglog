@@ -20,11 +20,13 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QHBoxLayout,
     QWidget,
+    QScrollArea,
 )
 
 from app.services.glucose.analysis import (
     get_all_glucose_readings_with_meal_event,
     get_daily_average_glucose,
+    get_meal_event_boxplot_data,
     get_time_of_day_profile,
     update_glucose_note,
     get_time_in_range_metrics
@@ -139,13 +141,29 @@ class GlucoseTab(QWidget):
 
         self.selected_reading_id: int | None = None
 
-        self.layout = QVBoxLayout(self)
+        # Outer layout (holds the scroll area)
+        outer_layout = QVBoxLayout(self)
+
+        scroll = QScrollArea()
+        scroll.setWidgetResizable(True)
+
+        # Inner container
+        container = QWidget()
+        self.layout = QVBoxLayout(container)
+
+        scroll.setWidget(container)
+
+        outer_layout.addWidget(scroll)
+
+        self.layout.setSpacing(18)
+        self.layout.setContentsMargins(10, 10, 10, 20)
 
         self._build_toolbar()
         self._build_summary_panel()
         self._build_legend()
         self._build_chart()
         self._build_profile_chart()
+        self._build_meal_boxplot_chart()
         self._build_table()
         self._build_notes_panel()
 
@@ -252,6 +270,11 @@ class GlucoseTab(QWidget):
         self.profile_chart = GlucoseProfileChart()
         self.profile_chart.setMinimumHeight(320)
         self.layout.addWidget(self.profile_chart)
+
+    def _build_meal_boxplot_chart(self) -> None:
+        self.meal_boxplot_chart = MealEventBoxPlotChart()
+        self.meal_boxplot_chart.setMinimumHeight(340)
+        self.layout.addWidget(self.meal_boxplot_chart)
 
     def _build_table(self) -> None:
         self.table = QTableWidget()
@@ -374,6 +397,9 @@ class GlucoseTab(QWidget):
         profile_data = get_time_of_day_profile(readings)
         self.profile_chart.plot_profile(profile_data)
 
+        boxplot_data = get_meal_event_boxplot_data(readings)
+        self.meal_boxplot_chart.plot_boxplot(boxplot_data)
+
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
 
@@ -421,7 +447,6 @@ class GlucoseTab(QWidget):
 
         self.selected_reading_id = None
         self.notes_editor.clear()
-
 
     def handle_import_csv(self) -> None:
         file_path, _ = QFileDialog.getOpenFileName(
@@ -557,5 +582,77 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
             edgecolor="#888888",
             labelcolor="#f0f0f0",
         )
+
+        self.draw()
+
+
+class MealEventBoxPlotChart(FigureCanvasQTAgg):
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_boxplot(self, boxplot_data: list[dict]) -> None:
+        self.ax.clear()
+
+        self.figure.patch.set_facecolor("#1e1e1e")
+        self.ax.set_facecolor("#1e1e1e")
+
+        self.ax.set_title("Glucose Distribution by Meal Event", color="#f0f0f0")
+        self.ax.set_ylabel("mmol/L", color="#f0f0f0")
+
+        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=20)
+        self.ax.tick_params(axis="y", colors="#f0f0f0")
+
+        for spine in self.ax.spines.values():
+            spine.set_color("#888888")
+
+        self.ax.grid(True, axis="y", color="#444444", alpha=0.5)
+
+        self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
+        self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
+        self.ax.axhspan(15, 25, color="#8e24aa", alpha=0.12)
+
+        self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
+        self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
+        self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
+        self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
+
+        self.ax.set_ylim(0, 20)
+
+        if not boxplot_data:
+            self.draw()
+            return
+
+        labels = [row["meal_event"] for row in boxplot_data]
+        values = [row["values"] for row in boxplot_data]
+
+        box = self.ax.boxplot(
+            values,
+            labels=labels,
+            patch_artist=True,
+            widths=0.6,
+        )
+
+        for patch in box["boxes"]:
+            patch.set(facecolor="#ff4d4d", alpha=0.35, edgecolor="#f0f0f0")
+
+        for median in box["medians"]:
+            median.set(color="#ffffff", linewidth=2)
+
+        for whisker in box["whiskers"]:
+            whisker.set(color="#dddddd")
+
+        for cap in box["caps"]:
+            cap.set(color="#dddddd")
+
+        for flier in box["fliers"]:
+            flier.set(
+                marker="o",
+                markerfacecolor="#ff9999",
+                markeredgecolor="#ff9999",
+                alpha=0.4,
+                markersize=4,
+            )
 
         self.draw()
