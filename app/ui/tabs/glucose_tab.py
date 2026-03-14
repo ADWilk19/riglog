@@ -56,7 +56,7 @@ def rolling_average(values: list[float], window: int = 7) -> list[float]:
 
 class GlucoseTrendChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
-        self.figure = Figure(figsize=(6, 3))
+        self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
@@ -245,10 +245,12 @@ class GlucoseTab(QWidget):
 
     def _build_chart(self) -> None:
         self.chart = GlucoseTrendChart()
+        self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
 
     def _build_profile_chart(self) -> None:
         self.profile_chart = GlucoseProfileChart()
+        self.profile_chart.setMinimumHeight(320)
         self.layout.addWidget(self.profile_chart)
 
     def _build_table(self) -> None:
@@ -485,7 +487,7 @@ class GlucoseTab(QWidget):
 
 class GlucoseProfileChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
-        self.figure = Figure(figsize=(6, 3))
+        self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
@@ -499,7 +501,7 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
         self.ax.set_ylabel("mmol/L", color="#f0f0f0")
         self.ax.set_xlabel("Time of Day", color="#f0f0f0")
 
-        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=45)
+        self.ax.tick_params(axis="x", colors="#f0f0f0", rotation=25)
         self.ax.tick_params(axis="y", colors="#f0f0f0")
 
         for spine in self.ax.spines.values():
@@ -537,8 +539,16 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
             label="Average by Time of Day",
         )
 
-        tick_positions = x[::2]
-        tick_labels = labels[::2]
+        tick_positions = []
+        tick_labels = []
+
+        for row in profile_data:
+            minutes = row["bucket_minutes"]
+
+            if minutes % 120 == 0:  # every 2 hours
+                tick_positions.append(minutes / 60)
+                tick_labels.append(row["time_label"])
+
         self.ax.set_xticks(tick_positions)
         self.ax.set_xticklabels(tick_labels)
 
