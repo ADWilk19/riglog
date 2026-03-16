@@ -372,20 +372,35 @@ class GlucoseTab(QWidget):
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()
+        legend_layout.setSpacing(10)
         legend_layout.setContentsMargins(0, 10, 0, 6)
 
         items = [
-            ("Hypo (<3.3)", "#dc5050"),
-            ("Low (3.3–4)", "#ffaa00"),
-            ("Target (4–10)", "#aaaaaa"),
-            ("High (10–15)", "#ffd250"),
-            ("Hyper (>15)", "#c88cff"),
+            ("Hypo (<3.3)", "#dc5050", "#1e1e1e"),
+            ("Low (3.3–4)", "#ffaa00", "#1e1e1e"),
+            ("Target (4–10)", "#43a047", "#f0f0f0"),
+            ("High (10–15)", "#ffd250", "#1e1e1e"),
+            ("Hyper (>15)", "#c88cff", "#1e1e1e"),
         ]
 
-        for label, color in items:
-            lbl = QLabel(label)
-            lbl.setStyleSheet(f"color: {color}; font-size: 12px;")
-            legend_layout.addWidget(lbl)
+        legend_layout.addStretch()
+
+        for text, bg_color, text_color in items:
+            label = QLabel(text)
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setStyleSheet(
+                f"""
+                QLabel {{
+                    background-color: {bg_color};
+                    color: {text_color};
+                    border-radius: 10px;
+                    padding: 6px 12px;
+                    font-size: 12px;
+                    font-weight: bold;
+                }}
+                """
+            )
+            legend_layout.addWidget(label)
 
         legend_layout.addStretch()
         self.layout.addLayout(legend_layout)
@@ -425,7 +440,7 @@ class GlucoseTab(QWidget):
             elif glucose_value < 4:
                 glucose_item.setForeground(QColor(255, 170, 0))
             elif glucose_value <= 10:
-                glucose_item.setForeground(QColor(220, 220, 220))
+                glucose_item.setForeground(QColor(102, 204, 102))
             elif glucose_value <= 15:
                 glucose_item.setForeground(QColor(255, 210, 80))
             else:
