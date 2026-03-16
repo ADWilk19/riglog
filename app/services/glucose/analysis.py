@@ -1,4 +1,4 @@
-from datetime import time
+from datetime import datetime, timedelta
 
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
@@ -31,8 +31,19 @@ def get_all_glucose_readings():
         session.close()
 
 
-def get_all_glucose_readings_with_meal_event():
+from datetime import datetime, timedelta
+
+
+def get_all_glucose_readings_with_meal_event(days: int | None = None):
     readings = get_all_glucose_readings()
+
+    if days is not None:
+        cutoff = datetime.now() - timedelta(days=days)
+        readings = [
+            reading
+            for reading in readings
+            if reading.recorded_at >= cutoff
+        ]
 
     enriched_readings = []
 
@@ -151,6 +162,39 @@ def get_time_of_day_profile(
         )
 
     return profile
+
+
+def get_meal_event_boxplot_data(readings: list[dict]) -> list[dict]:
+    meal_order = [
+        "Pre-Breakfast",
+        "Post-Breakfast",
+        "Pre-Lunch",
+        "Post-Lunch",
+        "Pre-Dinner",
+        "Post-Dinner",
+    ]
+
+    grouped = {meal: [] for meal in meal_order}
+
+    for reading in readings:
+        meal_event = reading["meal_event_label"]
+
+        if meal_event in grouped:
+            grouped[meal_event].append(reading["glucose_value"])
+
+    results = []
+
+    for meal in meal_order:
+        values = grouped[meal]
+        if values:
+            results.append(
+                {
+                    "meal_event": meal,
+                    "values": values,
+                }
+            )
+
+    return results
 
 
 def get_time_in_range_metrics(readings: list[dict]) -> dict[str, float | int]:

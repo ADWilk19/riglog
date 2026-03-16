@@ -13,7 +13,7 @@ class MainWindow(QMainWindow):
         super().__init__()
 
         self.setWindowTitle("RigLog")
-        self.resize(1000, 700)
+        self.resize(1400, 900)
 
         self.tabs = QTabWidget()
 
