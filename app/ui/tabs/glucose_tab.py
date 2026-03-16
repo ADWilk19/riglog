@@ -281,15 +281,19 @@ class GlucoseTab(QWidget):
     def _build_table(self) -> None:
         self.table = QTableWidget()
         self.table.setColumnCount(5)
+        self.table.setMinimumHeight(350)
         self.table.setHorizontalHeaderLabels(
             ["ID", "Recorded At", "Glucose", "Meal Event", "Notes"]
         )
+        self.table.verticalHeader().setVisible(False)
+        self.table.setAlternatingRowColors(True)
         self.table.setEditTriggers(QTableWidget.NoEditTriggers)
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.itemSelectionChanged.connect(self.handle_row_selection)
         self.table.setColumnHidden(0, True)
         self.table.setSortingEnabled(True)
+        self.table.horizontalHeader().setSortIndicatorShown(True)
 
         header = self.table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
@@ -430,7 +434,9 @@ class GlucoseTab(QWidget):
 
             glucose_value = reading["glucose_value"]
             glucose_item = NumericTableWidgetItem(glucose_value)
-            glucose_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            glucose_item.setTextAlignment(
+                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+                )
 
             if glucose_value < 3.3:
                 glucose_item.setForeground(QColor(220, 80, 80))
