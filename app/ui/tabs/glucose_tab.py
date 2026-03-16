@@ -1,6 +1,7 @@
 from pathlib import Path
 from datetime import timedelta
 from statistics import mean
+import pandas as pd
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
@@ -24,12 +25,14 @@ from PySide6.QtWidgets import (
 )
 
 from app.services.glucose.analysis import (
+    calculate_agp,
     get_all_glucose_readings_with_meal_event,
+    calculate_time_in_range_breakdown,
     get_daily_average_glucose,
     get_meal_event_boxplot_data,
     get_time_of_day_profile,
     update_glucose_note,
-    get_time_in_range_metrics
+    get_time_in_range_metrics,
 )
 from app.services.glucose.importer import import_diabetes_m_csv
 
@@ -54,6 +57,62 @@ def rolling_average(values: list[float], window: int = 7) -> list[float]:
         result.append(mean(window_values))
 
     return result
+
+
+def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
+    fig.clear()
+    ax = fig.add_subplot(111)
+
+    fig.patch.set_facecolor("#1e1e1e")
+    ax.set_facecolor("#1e1e1e")
+
+    ax.set_title("Ambulatory Glucose Profile (AGP)", color="#f0f0f0")
+    ax.set_xlabel("Time of day", color="#f0f0f0")
+    ax.set_ylabel("Glucose (mmol/L)", color="#f0f0f0")
+
+    ax.tick_params(axis="x", colors="#f0f0f0")
+    ax.tick_params(axis="y", colors="#f0f0f0")
+
+    for spine in ax.spines.values():
+        spine.set_color("#888888")
+
+    ax.grid(True, color="#444444", alpha=0.5)
+
+    if agp_df.empty:
+        ax.text(0.5, 0.5, "No AGP data available", ha="center", va="center", color="#f0f0f0")
+        ax.set_axis_off()
+        fig.tight_layout()
+        return
+
+    x = agp_df["hour_decimal"].to_numpy()
+    p10 = agp_df["p10"].to_numpy()
+    p25 = agp_df["p25"].to_numpy()
+    p50 = agp_df["p50"].to_numpy()
+    p75 = agp_df["p75"].to_numpy()
+    p90 = agp_df["p90"].to_numpy()
+
+    ax.axhspan(4.0, 10.0, color="#43a047", alpha=0.18)
+
+    ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
+    ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
+    ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
+    ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
+
+    ax.fill_between(x, p10, p90, color="#ff4d4d", alpha=0.15, label="10–90%")
+    ax.fill_between(x, p25, p75, color="#ff4d4d", alpha=0.30, label="25–75%")
+    ax.plot(x, p50, color="#ffffff", linewidth=2.2, label="Median")
+
+    ax.set_xlim(0, 24)
+    ax.set_ylim(0, 30)
+    ax.set_yticks(range(0, 31, 5))
+    ax.set_xticks([0, 4, 8, 12, 16, 20, 24])
+    ax.set_xticklabels(["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"])
+
+    legend = ax.legend(facecolor="#1e1e1e", edgecolor="#888888")
+    for text in legend.get_texts():
+        text.set_color("#f0f0f0")
+
+    fig.tight_layout()
 
 
 class GlucoseTrendChart(FigureCanvasQTAgg):
@@ -162,6 +221,7 @@ class GlucoseTab(QWidget):
 
         self._build_toolbar()
         self._build_summary_panel()
+        self._build_agp_chart()
         self._build_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
@@ -252,6 +312,11 @@ class GlucoseTab(QWidget):
         self.min_label = self._create_summary_card("Lowest: -")
         self.max_label = self._create_summary_card("Highest: -")
         self.tir_label = self._create_summary_card("In Range: -")
+        self.hypo_label = self._create_summary_card("Hypo: -")
+        self.low_label = self._create_summary_card("Low: -")
+        self.target_label = self._create_summary_card("Target: -")
+        self.high_label = self._create_summary_card("High: -")
+        self.hyper_label = self._create_summary_card("Hyper: -")
 
         summary_layout.addStretch()
         summary_layout.addWidget(self.count_label)
@@ -259,6 +324,11 @@ class GlucoseTab(QWidget):
         summary_layout.addWidget(self.min_label)
         summary_layout.addWidget(self.max_label)
         summary_layout.addWidget(self.tir_label)
+        summary_layout.addWidget(self.hypo_label)
+        summary_layout.addWidget(self.low_label)
+        summary_layout.addWidget(self.target_label)
+        summary_layout.addWidget(self.high_label)
+        summary_layout.addWidget(self.hyper_label)
         summary_layout.addStretch()
 
         self.layout.addLayout(summary_layout)
@@ -267,6 +337,28 @@ class GlucoseTab(QWidget):
         self.chart = GlucoseTrendChart()
         self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
+
+    def _build_agp_chart(self) -> None:
+        title = QLabel("Ambulatory Glucose Profile")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet(
+            """
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #f0f0f0;
+                margin-top: 8px;
+                margin-bottom: 4px;
+            }
+            """
+        )
+
+        self.agp_figure = Figure(figsize=(8, 4))
+        self.agp_canvas = FigureCanvasQTAgg(self.agp_figure)
+        self.agp_canvas.setMinimumHeight(320)
+
+        self.layout.addWidget(title)
+        self.layout.addWidget(self.agp_canvas)
 
     def _build_profile_chart(self) -> None:
         self.profile_chart = GlucoseProfileChart()
@@ -363,16 +455,27 @@ class GlucoseTab(QWidget):
             self.min_label.setText("Lowest\n-")
             self.max_label.setText("Highest\n-")
             self.tir_label.setText("In Range\n-")
+            self.hypo_label.setText("Hypo\n-")
+            self.low_label.setText("Low\n-")
+            self.target_label.setText("Target\n-")
+            self.high_label.setText("High\n-")
+            self.hyper_label.setText("Hyper\n-")
             return
 
         values = [reading["glucose_value"] for reading in readings]
         tir_metrics = get_time_in_range_metrics(readings)
+        breakdown = calculate_time_in_range_breakdown(pd.DataFrame(readings))
 
         self.count_label.setText(f"Readings\n{len(values)}")
         self.avg_label.setText(f"Average\n{sum(values) / len(values):.1f} mmol/L")
         self.min_label.setText(f"Lowest\n{min(values):.1f} mmol/L")
         self.max_label.setText(f"Highest\n{max(values):.1f} mmol/L")
         self.tir_label.setText(f"In Range\n{tir_metrics['target_pct']:.1f}%")
+        self.hypo_label.setText(f"Hypo\n{breakdown['hypo']['pct']:.1f}%")
+        self.low_label.setText(f"Low\n{breakdown['low']['pct']:.1f}%")
+        self.target_label.setText(f"Target\n{breakdown['target']['pct']:.1f}%")
+        self.high_label.setText(f"High\n{breakdown['high']['pct']:.1f}%")
+        self.hyper_label.setText(f"Hyper\n{breakdown['hyper']['pct']:.1f}%")
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()
@@ -411,6 +514,10 @@ class GlucoseTab(QWidget):
 
     def load_readings(self) -> None:
         readings = self._get_filtered_readings()
+        agp_df = calculate_agp(pd.DataFrame(readings))
+        draw_agp_figure(self.agp_figure, agp_df)
+        self.agp_canvas.draw()
+
         self._update_summary(readings)
 
         daily_data = get_daily_average_glucose(readings)
