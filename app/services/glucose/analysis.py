@@ -61,9 +61,12 @@ def get_all_glucose_readings_with_meal_event(days: int | None = None):
                 "recorded_at": reading.recorded_at,
                 "source": reading.source,
                 "notes": reading.notes,
+                "carbs_g": reading.carbs_g,
+                "humalog_u": reading.humalog_u,
+                "tresiba_u": reading.tresiba_u,
                 "meal_event": meal_event_key,
                 "meal_event_label": MEAL_EVENT_LABELS[meal_event_key],
-            }
+                }
         )
 
     return enriched_readings
@@ -429,3 +432,19 @@ def get_time_in_range_metrics(readings: list[dict]) -> dict[str, float | int]:
     metrics["hyper_pct"] = metrics["hyper_count"] / total * 100
 
     return metrics
+
+
+def update_glucose_field(reading_id: int, field_name: str, value: float | None) -> None:
+    session = SessionLocal()
+
+    try:
+        reading = session.query(GlucoseReading).filter(GlucoseReading.id == reading_id).first()
+
+        if reading is None:
+            return
+
+        setattr(reading, field_name, value)
+
+        session.commit()
+    finally:
+        session.close()

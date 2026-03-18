@@ -26,6 +26,7 @@ from PySide6.QtWidgets import (
 
 from app.services.glucose.analysis import (
     calculate_agp,
+    calculate_glucose_variability_metrics,
     get_all_glucose_readings_with_meal_event,
     calculate_time_in_range_breakdown,
     get_daily_average_glucose,
@@ -317,6 +318,9 @@ class GlucoseTab(QWidget):
         self.target_label = self._create_summary_card("Target: -")
         self.high_label = self._create_summary_card("High: -")
         self.hyper_label = self._create_summary_card("Hyper: -")
+        self.sd_label = self._create_summary_card("SD: -")
+        self.cv_label = self._create_summary_card("CV: -")
+        self.gmi_label = self._create_summary_card("GMI: -")
 
         summary_layout.addStretch()
         summary_layout.addWidget(self.count_label)
@@ -329,6 +333,9 @@ class GlucoseTab(QWidget):
         summary_layout.addWidget(self.target_label)
         summary_layout.addWidget(self.high_label)
         summary_layout.addWidget(self.hyper_label)
+        summary_layout.addWidget(self.sd_label)
+        summary_layout.addWidget(self.cv_label)
+        summary_layout.addWidget(self.gmi_label)
         summary_layout.addStretch()
 
         self.layout.addLayout(summary_layout)
@@ -372,17 +379,29 @@ class GlucoseTab(QWidget):
 
     def _build_table(self) -> None:
         self.table = QTableWidget()
-        self.table.setColumnCount(5)
+        self.table.setColumnCount(8)
         self.table.setMinimumHeight(350)
         self.table.setHorizontalHeaderLabels(
-            ["ID", "Recorded At", "Glucose", "Meal Event", "Notes"]
+               [
+                    "ID",
+                    "Recorded At",
+                    "Glucose",
+                    "Meal Event",
+                    "Carbs (g)",
+                    "Humalog (u)",
+                    "Tresiba (u)",
+                    "Notes",
+                ]
         )
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
-        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setEditTriggers(
+            QTableWidget.DoubleClicked | QTableWidget.SelectedClicked
+        )
         self.table.setSelectionBehavior(QTableWidget.SelectRows)
         self.table.setSelectionMode(QTableWidget.SingleSelection)
         self.table.itemSelectionChanged.connect(self.handle_row_selection)
+        self.table.cellChanged.connect(self.handle_cell_edit)
         self.table.setColumnHidden(0, True)
         self.table.setSortingEnabled(True)
         self.table.horizontalHeader().setSortIndicatorShown(True)
@@ -392,7 +411,10 @@ class GlucoseTab(QWidget):
         header.setSectionResizeMode(1, QHeaderView.Stretch)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.Stretch)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.Stretch)
 
         self.layout.addWidget(self.table)
 
@@ -460,10 +482,14 @@ class GlucoseTab(QWidget):
             self.target_label.setText("Target\n-")
             self.high_label.setText("High\n-")
             self.hyper_label.setText("Hyper\n-")
+            self.sd_label.setText("SD\n-")
+            self.cv_label.setText("CV\n-")
+            self.gmi_label.setText("GMI\n-")
             return
 
         values = [reading["glucose_value"] for reading in readings]
         tir_metrics = get_time_in_range_metrics(readings)
+        variability = calculate_glucose_variability_metrics(pd.DataFrame(readings))
         breakdown = calculate_time_in_range_breakdown(pd.DataFrame(readings))
 
         self.count_label.setText(f"Readings\n{len(values)}")
@@ -476,6 +502,9 @@ class GlucoseTab(QWidget):
         self.target_label.setText(f"Target\n{breakdown['target']['pct']:.1f}%")
         self.high_label.setText(f"High\n{breakdown['high']['pct']:.1f}%")
         self.hyper_label.setText(f"Hyper\n{breakdown['hyper']['pct']:.1f}%")
+        self.sd_label.setText(f"SD\n{variability['sd']:.2f}")
+        self.cv_label.setText(f"CV\n{variability['cv_pct']:.1f}%")
+        self.gmi_label.setText(f"GMI\n{variability['gmi']:.1f}%")
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()
@@ -566,12 +595,18 @@ class GlucoseTab(QWidget):
             meal_event_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             notes_item = QTableWidgetItem(reading["notes"] or "")
+            carbs_item = QTableWidgetItem(str(reading.get("carbs_g") or ""))
+            humalog_item = QTableWidgetItem(str(reading.get("humalog_u") or ""))
+            tresiba_item = QTableWidgetItem(str(reading.get("tresiba_u") or ""))
 
             self.table.setItem(row_index, 0, id_item)
             self.table.setItem(row_index, 1, recorded_at_item)
             self.table.setItem(row_index, 2, glucose_item)
             self.table.setItem(row_index, 3, meal_event_item)
-            self.table.setItem(row_index, 4, notes_item)
+            self.table.setItem(row_index, 4, carbs_item)
+            self.table.setItem(row_index, 5, humalog_item)
+            self.table.setItem(row_index, 6, tresiba_item)
+            self.table.setItem(row_index, 7, notes_item)
 
         self.table.setSortingEnabled(True)
         self.table.sortItems(1, Qt.SortOrder.DescendingOrder)
@@ -614,7 +649,7 @@ class GlucoseTab(QWidget):
         row = selected_items[0].row()
 
         reading_id_item = self.table.item(row, 0)
-        notes_item = self.table.item(row, 4)
+        notes_item = self.table.item(row, 7)
 
         if reading_id_item is None:
             self.selected_reading_id = None
@@ -640,6 +675,34 @@ class GlucoseTab(QWidget):
         QMessageBox.information(self, "Saved", "Note updated successfully.")
         self.load_readings()
 
+    def handle_cell_edit(self, row: int, column: int) -> None:
+        if self.table.item(row, 0) is None:
+            return
+
+        reading_id = int(self.table.item(row, 0).text())
+
+        if column not in [4, 5, 6]:
+            return
+
+        item = self.table.item(row, column)
+        value_text = item.text().strip() if item else ""
+
+        try:
+            value = float(value_text) if value_text else None
+        except ValueError:
+            QMessageBox.warning(self, "Invalid input", "Please enter a valid number.")
+            return
+
+        field_map = {
+            4: "carbs_g",
+            5: "humalog_u",
+            6: "tresiba_u",
+        }
+
+        field_name = field_map[column]
+
+        from app.services.glucose.analysis import update_glucose_field
+        update_glucose_field(reading_id, field_name, value)
 
 class GlucoseProfileChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
