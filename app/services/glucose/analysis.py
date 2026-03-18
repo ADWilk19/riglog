@@ -24,6 +24,14 @@ MEAL_EVENT_LABELS = {
     "night": "Night",
 }
 
+STANDARD_RATIOS = {
+    "Pre-Breakfast": 9.0,
+    "Pre-Lunch": 10.0,
+    "Post-Lunch": 9.0,
+    "Pre-Dinner": 10.0,
+    "Before Bed": 10.0,
+}
+
 
 def get_all_glucose_readings():
     session = SessionLocal()
@@ -258,6 +266,46 @@ def calculate_glucose_variability_metrics(df: pd.DataFrame) -> Dict[str, float |
         "cv_pct": round(cv_pct, 1) if cv_pct is not None else None,
         "gmi": round(gmi, 2),
     }
+
+
+def calculate_insulin_effectiveness(readings: list[dict]) -> pd.DataFrame:
+    df = pd.DataFrame(readings)
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.sort_values("recorded_at").copy()
+
+    df["prev_carbs"] = df["carbs_g"].shift(1)
+    df["prev_humalog"] = df["humalog_u"].shift(1)
+    df["prev_event"] = df["meal_event_label"].shift(1)
+
+    df = df[
+        df["prev_carbs"].notna()
+        & df["prev_humalog"].notna()
+        & (df["prev_humalog"] > 0)
+    ].copy()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df["ratio_g_per_u"] = df["prev_carbs"] / df["prev_humalog"]
+
+    result = (
+        df.groupby("prev_event")
+        .agg(
+            avg_ratio_g_per_u=("ratio_g_per_u", "mean"),
+            ratio_sd=("ratio_g_per_u", "std"),
+            avg_outcome_glucose=("glucose_value", "mean"),
+            count=("id", "count"),
+        )
+        .reset_index()
+        .rename(columns={"prev_event": "meal_event_label"})
+    )
+
+    result["standard_ratio_g_per_u"] = result["meal_event_label"].map(STANDARD_RATIOS)
+
+    return result
 
 
 def calculate_glucose_dashboard_metrics(df: pd.DataFrame) -> Dict[str, Any]:

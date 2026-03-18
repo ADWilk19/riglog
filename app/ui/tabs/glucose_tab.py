@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from app.services.glucose.analysis import (
     calculate_agp,
     calculate_glucose_variability_metrics,
+    calculate_insulin_effectiveness,
     get_all_glucose_readings_with_meal_event,
     calculate_time_in_range_breakdown,
     get_daily_average_glucose,
@@ -226,6 +227,7 @@ class GlucoseTab(QWidget):
         self._build_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
+        self._build_insulin_effectiveness_table()
         self._build_legend()
         self._build_table()
         self._build_notes_panel()
@@ -346,25 +348,10 @@ class GlucoseTab(QWidget):
         self.layout.addWidget(self.chart)
 
     def _build_agp_chart(self) -> None:
-        title = QLabel("Ambulatory Glucose Profile")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet(
-            """
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-                margin-top: 8px;
-                margin-bottom: 4px;
-            }
-            """
-        )
-
         self.agp_figure = Figure(figsize=(8, 4))
         self.agp_canvas = FigureCanvasQTAgg(self.agp_figure)
         self.agp_canvas.setMinimumHeight(320)
 
-        self.layout.addWidget(title)
         self.layout.addWidget(self.agp_canvas)
 
     def _build_profile_chart(self) -> None:
@@ -503,8 +490,77 @@ class GlucoseTab(QWidget):
         self.high_label.setText(f"High\n{breakdown['high']['pct']:.1f}%")
         self.hyper_label.setText(f"Hyper\n{breakdown['hyper']['pct']:.1f}%")
         self.sd_label.setText(f"SD\n{variability['sd']:.2f}")
-        self.cv_label.setText(f"CV\n{variability['cv_pct']:.1f}%")
-        self.gmi_label.setText(f"GMI\n{variability['gmi']:.1f}%")
+        cv = variability["cv_pct"]
+        self.cv_label.setText(f"CV\n{cv:.1f}%")
+
+        if cv < 36:
+            color = "#43a047"   # green
+        elif cv < 50:
+            color = "#ffaa00"   # amber
+        else:
+            color = "#dc5050"   # red
+
+        self._set_card_colour(self.cv_label, color)
+        gmi = variability["gmi"]
+        self.gmi_label.setText(f"GMI\n{gmi:.1f}%")
+
+        if gmi < 7:
+            color = "#43a047"   # green
+        elif gmi < 8:
+            color = "#ffaa00"   # amber
+        else:
+            color = "#dc5050"   # red
+
+        self._set_card_colour(self.gmi_label, color)
+        self._set_card_colour(self.hypo_label, "#dc5050")   # red
+        self._set_card_colour(self.low_label, "#ffaa00")    # amber
+        self._set_card_colour(self.target_label, "#43a047") # green
+        self._set_card_colour(self.high_label, "#ffd54f")   # yellow
+        self._set_card_colour(self.hyper_label, "#b388ff")  # purple
+
+    def _build_insulin_effectiveness_table(self) -> None:
+        title = QLabel("Dose Effectiveness by Previous Meal Event")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet(
+            """
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #f0f0f0;
+                margin-top: 8px;
+                margin-bottom: 4px;
+            }
+            """
+        )
+
+        self.insulin_effectiveness_table = QTableWidget()
+        self.insulin_effectiveness_table.setColumnCount(6)
+        self.insulin_effectiveness_table.setHorizontalHeaderLabels(
+            [
+                "Meal Event",
+                "Standard Ratio (g/u)",
+                "Actual Ratio (g/u)",
+                "Avg Outcome Glucose",
+                "Status",
+                "Count",
+            ]
+        )
+        self.insulin_effectiveness_table.verticalHeader().setVisible(False)
+        self.insulin_effectiveness_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.insulin_effectiveness_table.setSelectionMode(QTableWidget.NoSelection)
+        self.insulin_effectiveness_table.setMinimumHeight(220)
+
+        header = self.insulin_effectiveness_table.horizontalHeader()
+        header = self.insulin_effectiveness_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(title)
+        self.layout.addWidget(self.insulin_effectiveness_table)
 
     def _build_legend(self) -> None:
         legend_layout = QHBoxLayout()
@@ -557,6 +613,72 @@ class GlucoseTab(QWidget):
 
         boxplot_data = get_meal_event_boxplot_data(readings)
         self.meal_boxplot_chart.plot_boxplot(boxplot_data)
+
+        effectiveness_df = calculate_insulin_effectiveness(readings)
+
+        if effectiveness_df.empty:
+            self.insulin_effectiveness_table.setRowCount(0)
+        else:
+            self.insulin_effectiveness_table.setRowCount(len(effectiveness_df))
+
+        for row_index, (_, row) in enumerate(effectiveness_df.iterrows()):
+            meal_event_item = QTableWidgetItem(str(row["meal_event_label"]))
+            standard_ratio_item = QTableWidgetItem(f"{row['standard_ratio_g_per_u']:.1f}")
+            actual_ratio_item = QTableWidgetItem(f"{row['avg_ratio_g_per_u']:.1f}")
+            count_item = QTableWidgetItem(str(int(row["count"])))
+            outcome_value = row["avg_outcome_glucose"]
+            outcome_item = QTableWidgetItem(f"{outcome_value:.1f}")
+            outcome_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            if outcome_value < 4:
+                outcome_item.setForeground(QColor(220, 80, 80))  # hypo red
+            elif outcome_value <= 10:
+                outcome_item.setForeground(QColor(102, 204, 102))  # green
+            elif outcome_value <= 15:
+                outcome_item.setForeground(QColor(255, 210, 80))  # amber
+            else:
+                outcome_item.setForeground(QColor(200, 140, 255))  # purple
+
+            if outcome_value < 4:
+                status_text = "Running low"
+            elif outcome_value <= 10:
+                status_text = "In range"
+            elif outcome_value <= 15:
+                status_text = "Running high"
+            else:
+                status_text = "Very high"
+
+            status_item = QTableWidgetItem(status_text)
+            status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if outcome_value < 4:
+                status_item.setForeground(QColor(220, 80, 80))
+            elif outcome_value <= 10:
+                status_item.setForeground(QColor(102, 204, 102))
+            elif outcome_value <= 15:
+                status_item.setForeground(QColor(255, 210, 80))
+            else:
+                status_item.setForeground(QColor(200, 140, 255))
+
+            meal_event_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            standard_ratio_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            actual_ratio_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            count_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            standard = row["standard_ratio_g_per_u"]
+            actual = row["avg_ratio_g_per_u"]
+
+            if abs(actual - standard) >= 1:
+                font = actual_ratio_item.font()
+                font.setBold(True)
+                actual_ratio_item.setFont(font)
+                actual_ratio_item.setForeground(QColor(255, 170, 0))  # amber
+
+            self.insulin_effectiveness_table.setItem(row_index, 0, meal_event_item)
+            self.insulin_effectiveness_table.setItem(row_index, 1, standard_ratio_item)
+            self.insulin_effectiveness_table.setItem(row_index, 2, actual_ratio_item)
+            self.insulin_effectiveness_table.setItem(row_index, 3, outcome_item)
+            self.insulin_effectiveness_table.setItem(row_index, 4, status_item)
+            self.insulin_effectiveness_table.setItem(row_index, 5, count_item)
 
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
@@ -703,6 +825,19 @@ class GlucoseTab(QWidget):
 
         from app.services.glucose.analysis import update_glucose_field
         update_glucose_field(reading_id, field_name, value)
+
+    def _set_card_colour(self, label: QLabel, color: str) -> None:
+        label.setStyleSheet(f"""
+            QLabel {{
+                font-size: 16px;
+                font-weight: bold;
+                padding: 10px 16px;
+                border: 1px solid #555555;
+                border-radius: 8px;
+                background-color: {color};
+                color: #1e1e1e;
+            }}
+        """)
 
 class GlucoseProfileChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
