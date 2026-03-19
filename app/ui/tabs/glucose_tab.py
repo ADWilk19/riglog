@@ -228,6 +228,7 @@ class GlucoseTab(QWidget):
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
         self._build_insulin_effectiveness_table()
+        self._build_dose_effectiveness_chart()
         self._build_legend()
         self._build_table()
         self._build_notes_panel()
@@ -363,6 +364,11 @@ class GlucoseTab(QWidget):
         self.meal_boxplot_chart = MealEventBoxPlotChart()
         self.meal_boxplot_chart.setMinimumHeight(340)
         self.layout.addWidget(self.meal_boxplot_chart)
+
+    def _build_dose_effectiveness_chart(self) -> None:
+        self.dose_effectiveness_chart = FigureCanvasQTAgg(Figure(figsize=(6, 4.5)))
+        self.dose_effectiveness_chart.setMinimumHeight(320)
+        self.layout.addWidget(self.dose_effectiveness_chart)
 
     def _build_table(self) -> None:
         self.table = QTableWidget()
@@ -534,7 +540,7 @@ class GlucoseTab(QWidget):
         )
 
         self.insulin_effectiveness_table = QTableWidget()
-        self.insulin_effectiveness_table.setColumnCount(6)
+        self.insulin_effectiveness_table.setColumnCount(7)
         self.insulin_effectiveness_table.setHorizontalHeaderLabels(
             [
                 "Meal Event",
@@ -542,6 +548,7 @@ class GlucoseTab(QWidget):
                 "Actual Ratio (g/u)",
                 "Avg Outcome Glucose",
                 "Status",
+                "Suggestion",
                 "Count",
             ]
         )
@@ -558,6 +565,7 @@ class GlucoseTab(QWidget):
         header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
 
         self.layout.addWidget(title)
         self.layout.addWidget(self.insulin_effectiveness_table)
@@ -659,6 +667,22 @@ class GlucoseTab(QWidget):
             else:
                 status_item.setForeground(QColor(200, 140, 255))
 
+            if outcome_value < 4:
+                suggestion_text = "Consider weaker ratio"
+            elif outcome_value <= 10:
+                suggestion_text = "Keep current ratio"
+            else:
+                suggestion_text = "Consider stronger ratio"
+
+            suggestion_item = QTableWidgetItem(suggestion_text)
+            suggestion_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            if outcome_value < 4:
+                suggestion_item.setForeground(QColor(220, 80, 80))
+            elif outcome_value <= 10:
+                suggestion_item.setForeground(QColor(102, 204, 102))
+            else:
+                suggestion_item.setForeground(QColor(255, 210, 80))
+
             meal_event_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             standard_ratio_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
             actual_ratio_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -678,7 +702,68 @@ class GlucoseTab(QWidget):
             self.insulin_effectiveness_table.setItem(row_index, 2, actual_ratio_item)
             self.insulin_effectiveness_table.setItem(row_index, 3, outcome_item)
             self.insulin_effectiveness_table.setItem(row_index, 4, status_item)
-            self.insulin_effectiveness_table.setItem(row_index, 5, count_item)
+            self.insulin_effectiveness_table.setItem(row_index, 5, suggestion_item)
+            self.insulin_effectiveness_table.setItem(row_index, 6, count_item)
+
+        effectiveness_df = calculate_insulin_effectiveness(readings)
+
+        fig = self.dose_effectiveness_chart.figure
+        fig.clear()
+        ax = fig.add_subplot(111)
+
+        # Dark theme
+        fig.patch.set_facecolor("#1e1e1e")
+        ax.set_facecolor("#1e1e1e")
+
+        if effectiveness_df.empty:
+            ax.text(0.5, 0.5, "No effectiveness data", ha="center", va="center", color="#f0f0f0")
+            ax.set_axis_off()
+        else:
+            events = effectiveness_df["meal_event_label"]
+            glucose = effectiveness_df["avg_outcome_glucose"]
+
+            bars = ax.bar(events, glucose)
+            max_val = max(glucose)
+            ax.set_ylim(0, max_val + 2)
+            ax.axhspan(4, 10, color="#43a047", alpha=0.12)
+            ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
+            ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
+
+            # Colour bars based on glucose
+            for bar, value in zip(bars, glucose):
+                if value < 4:
+                    bar.set_color("#dc5050")
+                elif value <= 10:
+                    bar.set_color("#43a047")
+                elif value <= 15:
+                    bar.set_color("#ffd54f")
+                else:
+                    bar.set_color("#b388ff")
+
+
+            for bar, value in zip(bars, glucose):
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    value + 0.3,
+                    f"{value:.1f}",
+                    ha="center",
+                    va="bottom",
+                    color="#f0f0f0",
+                    fontsize=9,
+                )
+
+            ax.set_title("Dose Effectiveness (Outcome Glucose)", color="#f0f0f0")
+            ax.set_ylabel("Glucose (mmol/L)", color="#f0f0f0")
+
+            ax.tick_params(axis="x", colors="#f0f0f0")
+            ax.tick_params(axis="y", colors="#f0f0f0")
+
+            for spine in ax.spines.values():
+                spine.set_color("#888888")
+
+            ax.grid(True, color="#444444", alpha=0.3)
+
+        self.dose_effectiveness_chart.draw()
 
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
