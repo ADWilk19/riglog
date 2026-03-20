@@ -27,6 +27,7 @@ from PySide6.QtWidgets import (
 from app.services.glucose.analysis import (
     calculate_agp,
     calculate_glucose_variability_metrics,
+    calculate_time_based_effectiveness,
     calculate_insulin_effectiveness,
     get_all_glucose_readings_with_meal_event,
     calculate_time_in_range_breakdown,
@@ -229,6 +230,7 @@ class GlucoseTab(QWidget):
         self._build_meal_boxplot_chart()
         self._build_insulin_effectiveness_table()
         self._build_dose_effectiveness_chart()
+        self._build_time_effectiveness_table()
         self._build_legend()
         self._build_table()
         self._build_notes_panel()
@@ -765,6 +767,30 @@ class GlucoseTab(QWidget):
 
         self.dose_effectiveness_chart.draw()
 
+        time_df = calculate_time_based_effectiveness(readings, days=7)
+
+        if time_df.empty:
+            self.time_effectiveness_table.setRowCount(0)
+        else:
+            self.time_effectiveness_table.setRowCount(len(time_df))
+
+            for row_index, (_, row) in enumerate(time_df.iterrows()):
+                meal_event_item = QTableWidgetItem(str(row["meal_event_label"]))
+                older_item = QTableWidgetItem(f"{row['older_avg']:.1f}")
+                recent_item = QTableWidgetItem(f"{row['recent_avg']:.1f}")
+                change_item = QTableWidgetItem(f"{row['change']:+.1f}")
+
+                meal_event_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                older_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                recent_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+                change_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                self.time_effectiveness_table.setItem(row_index, 0, meal_event_item)
+                self.time_effectiveness_table.setItem(row_index, 1, older_item)
+                self.time_effectiveness_table.setItem(row_index, 2, recent_item)
+                self.time_effectiveness_table.setItem(row_index, 3, change_item)
+
+
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
 
@@ -923,6 +949,41 @@ class GlucoseTab(QWidget):
                 color: #1e1e1e;
             }}
         """)
+
+    def _build_time_effectiveness_table(self) -> None:
+        title = QLabel("7-Day Improvement by Previous Meal Event")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        title.setStyleSheet(
+            """
+            QLabel {
+                font-size: 18px;
+                font-weight: bold;
+                color: #f0f0f0;
+                margin-top: 8px;
+                margin-bottom: 4px;
+            }
+            """
+        )
+
+        self.time_effectiveness_table = QTableWidget()
+        self.time_effectiveness_table.setColumnCount(4)
+        self.time_effectiveness_table.setHorizontalHeaderLabels(
+            ["Meal Event", "Older Avg", "Recent Avg", "Change"]
+        )
+        self.time_effectiveness_table.verticalHeader().setVisible(False)
+        self.time_effectiveness_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.time_effectiveness_table.setSelectionMode(QTableWidget.NoSelection)
+        self.time_effectiveness_table.setMinimumHeight(220)
+
+        header = self.time_effectiveness_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(title)
+        self.layout.addWidget(self.time_effectiveness_table)
+
 
 class GlucoseProfileChart(FigureCanvasQTAgg):
     def __init__(self) -> None:

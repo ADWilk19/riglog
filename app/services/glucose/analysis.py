@@ -496,3 +496,56 @@ def update_glucose_field(reading_id: int, field_name: str, value: float | None) 
         session.commit()
     finally:
         session.close()
+
+
+def calculate_time_based_effectiveness(
+    readings: list[dict], days: int = 7
+) -> pd.DataFrame:
+    df = pd.DataFrame(readings)
+
+    if df.empty:
+        return pd.DataFrame()
+
+    df = df.sort_values("recorded_at").copy()
+
+    # Shift previous dose info
+    df["prev_carbs"] = df["carbs_g"].shift(1)
+    df["prev_humalog"] = df["humalog_u"].shift(1)
+    df["prev_event"] = df["meal_event_label"].shift(1)
+
+    df = df[
+        df["prev_carbs"].notna()
+        & df["prev_humalog"].notna()
+        & (df["prev_humalog"] > 0)
+    ].copy()
+
+    if df.empty:
+        return pd.DataFrame()
+
+    cutoff = datetime.now() - timedelta(days=days)
+
+    recent = df[df["recorded_at"] >= cutoff]
+    older = df[df["recorded_at"] < cutoff]
+
+    if recent.empty or older.empty:
+        return pd.DataFrame()
+
+    recent_grouped = (
+        recent.groupby("prev_event")["glucose_value"]
+        .mean()
+        .rename("recent_avg")
+    )
+
+    older_grouped = (
+        older.groupby("prev_event")["glucose_value"]
+        .mean()
+        .rename("older_avg")
+    )
+
+    result = pd.concat([older_grouped, recent_grouped], axis=1).dropna()
+
+    result["change"] = result["recent_avg"] - result["older_avg"]
+
+    result = result.reset_index().rename(columns={"prev_event": "meal_event_label"})
+
+    return result
