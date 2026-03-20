@@ -11,6 +11,15 @@ def add_glucose_reading(
     source: str | None = None,
     notes: str | None = None,
 ) -> None:
+    """
+    Create and persist a single glucose reading.
+
+    Args:
+        glucose_value: Glucose value in mmol/L.
+        recorded_at: Timestamp of the reading.
+        source: Optional source identifier for the reading.
+        notes: Optional free-text note to store with the reading.
+    """
     session = SessionLocal()
 
     try:
@@ -27,6 +36,18 @@ def add_glucose_reading(
 
 
 def import_diabetes_m_csv(file_path: str) -> int:
+    """
+    Import glucose readings from a Diabetes:M CSV export.
+
+    The importer skips duplicate Diabetes:M rows by checking for an
+    existing reading with the same timestamp, glucose value, and source.
+
+    Args:
+        file_path: Path to the Diabetes:M CSV export.
+
+    Returns:
+        Number of newly inserted readings.
+    """
     session = SessionLocal()
     imported_count = 0
 

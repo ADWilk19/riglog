@@ -47,17 +47,29 @@ from app.services.glucose.importer import import_diabetes_m_csv
 
 
 class NumericTableWidgetItem(QTableWidgetItem):
+    """
+    Table item that preserves numeric ordering for glucose values.
+    """
     def __init__(self, value: float) -> None:
+        """
+        Initialise the item with a formatted numeric display value.
+        """
         super().__init__(f"{value:.1f}")
         self.numeric_value = value
 
     def __lt__(self, other: object) -> bool:
+        """
+        Compare items by numeric value so table sorting stays correct.
+        """
         if isinstance(other, NumericTableWidgetItem):
             return self.numeric_value < other.numeric_value
         return super().__lt__(other)
 
 
 def rolling_average(values: list[float], window: int = 7) -> list[float]:
+    """
+    Return a simple trailing rolling average for a list of values.
+    """
     result = []
 
     for i in range(len(values)):
@@ -69,6 +81,13 @@ def rolling_average(values: list[float], window: int = 7) -> list[float]:
 
 
 def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
+    """Draw the AGP chart onto an existing matplotlib figure.
+
+    Args:
+        fig: Figure instance to clear and redraw.
+        agp_df: DataFrame returned by ``calculate_agp`` containing percentile bands
+            by time of day.
+    """
     fig.clear()
     ax = fig.add_subplot(111)
 
@@ -125,12 +144,16 @@ def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
 
 
 class GlucoseTrendChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for the daily average glucose chart."""
+
     def __init__(self) -> None:
+        """Initialise the chart canvas and axes."""
         self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
     def plot_daily_average(self, daily_data: list[dict]) -> None:
+        """Plot daily average glucose values and a 7-day rolling trend."""
         self.ax.clear()
 
         # dark theme
@@ -206,7 +229,10 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
 
 
 class GlucoseTab(QWidget):
+    """Main glucose analytics tab for import, review, analysis, and export."""
+
     def __init__(self) -> None:
+        """Build the glucose tab UI and load the current readings."""
         super().__init__()
 
         self.selected_reading_id: int | None = None
@@ -244,6 +270,7 @@ class GlucoseTab(QWidget):
         self.load_readings()
 
     def _create_summary_card(self, text: str) -> QLabel:
+        """Create a consistently styled summary metric card."""
         label = QLabel(text)
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         label.setMinimumHeight(60)
@@ -263,6 +290,7 @@ class GlucoseTab(QWidget):
         return label
 
     def _build_toolbar(self) -> None:
+        """Create the top toolbar with import, refresh, export, and filters."""
         toolbar = QHBoxLayout()
         toolbar.setSpacing(12)
 
@@ -319,6 +347,7 @@ class GlucoseTab(QWidget):
         self.layout.addLayout(toolbar)
 
     def _build_summary_panel(self) -> None:
+        """Create the summary cards row shown at the top of the tab."""
         summary_layout = QHBoxLayout()
         summary_layout.setSpacing(12)
         summary_layout.setContentsMargins(0, 10, 0, 10)
@@ -356,11 +385,13 @@ class GlucoseTab(QWidget):
         self.layout.addLayout(summary_layout)
 
     def _build_chart(self) -> None:
+        """Create and add the daily average glucose chart widget."""
         self.chart = GlucoseTrendChart()
         self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
 
     def _build_agp_chart(self) -> None:
+        """Create and add the AGP chart canvas."""
         self.agp_figure = Figure(figsize=(8, 4))
         self.agp_canvas = FigureCanvasQTAgg(self.agp_figure)
         self.agp_canvas.setMinimumHeight(320)
@@ -368,21 +399,25 @@ class GlucoseTab(QWidget):
         self.layout.addWidget(self.agp_canvas)
 
     def _build_profile_chart(self) -> None:
+        """Create and add the time-of-day glucose profile chart."""
         self.profile_chart = GlucoseProfileChart()
         self.profile_chart.setMinimumHeight(320)
         self.layout.addWidget(self.profile_chart)
 
     def _build_meal_boxplot_chart(self) -> None:
+        """Create and add the meal-event boxplot chart."""
         self.meal_boxplot_chart = MealEventBoxPlotChart()
         self.meal_boxplot_chart.setMinimumHeight(340)
         self.layout.addWidget(self.meal_boxplot_chart)
 
     def _build_dose_effectiveness_chart(self) -> None:
+        """Create and add the dose-effectiveness outcome chart."""
         self.dose_effectiveness_chart = FigureCanvasQTAgg(Figure(figsize=(6, 4.5)))
         self.dose_effectiveness_chart.setMinimumHeight(320)
         self.layout.addWidget(self.dose_effectiveness_chart)
 
     def _build_table(self) -> None:
+        """Create the editable readings table for glucose and dosing data."""
         self.table = QTableWidget()
         self.table.setColumnCount(8)
         self.table.setMinimumHeight(350)
@@ -424,6 +459,7 @@ class GlucoseTab(QWidget):
         self.layout.addWidget(self.table)
 
     def _build_notes_panel(self) -> None:
+        """Create the notes editor shown beneath the readings table."""
         notes_layout = QVBoxLayout()
 
         self.notes_label = QLabel("Notes for selected reading:")
@@ -440,6 +476,7 @@ class GlucoseTab(QWidget):
         self.layout.addLayout(notes_layout)
 
     def _get_filtered_readings(self) -> list[dict]:
+        """Return readings filtered by the selected meal event and time range."""
         readings = get_all_glucose_readings_with_meal_event(days=365)
 
         selected_meal_event = self.meal_event_filter.currentText()
@@ -476,6 +513,7 @@ class GlucoseTab(QWidget):
         return readings
 
     def _update_summary(self, readings: list[dict]) -> None:
+        """Update the summary cards using the currently filtered readings."""
         if not readings:
             self.count_label.setText("Readings\n0")
             self.avg_label.setText("Average\n-")
@@ -537,6 +575,7 @@ class GlucoseTab(QWidget):
         self._set_card_colour(self.hyper_label, "#b388ff")  # purple
 
     def _build_insulin_effectiveness_table(self) -> None:
+        """Create the table showing previous-dose effectiveness by meal event."""
         title = QLabel("Dose Effectiveness by Previous Meal Event")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(
@@ -570,7 +609,6 @@ class GlucoseTab(QWidget):
         self.insulin_effectiveness_table.setMinimumHeight(220)
 
         header = self.insulin_effectiveness_table.horizontalHeader()
-        header = self.insulin_effectiveness_table.horizontalHeader()
         header.setSectionResizeMode(0, QHeaderView.Stretch)
         header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
         header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
@@ -583,6 +621,7 @@ class GlucoseTab(QWidget):
         self.layout.addWidget(self.insulin_effectiveness_table)
 
     def _build_legend(self) -> None:
+        """Create the colour legend used throughout the glucose views."""
         legend_layout = QHBoxLayout()
         legend_layout.setSpacing(10)
         legend_layout.setContentsMargins(0, 10, 0, 6)
@@ -618,6 +657,7 @@ class GlucoseTab(QWidget):
         self.layout.addLayout(legend_layout)
 
     def load_readings(self) -> None:
+        """Refresh all charts, tables, and summary cards from filtered readings."""
         readings = self._get_filtered_readings()
         agp_df = calculate_agp(pd.DataFrame(readings))
         draw_agp_figure(self.agp_figure, agp_df)
@@ -858,6 +898,7 @@ class GlucoseTab(QWidget):
         self.notes_editor.clear()
 
     def handle_import_csv(self) -> None:
+        """Import a Diabetes:M CSV file and refresh the tab on success."""
         file_path, _ = QFileDialog.getOpenFileName(
             self,
             "Select Diabetes:M CSV",
@@ -882,6 +923,7 @@ class GlucoseTab(QWidget):
         self.load_readings()
 
     def handle_export_pdf(self) -> None:
+        """Export a PDF report containing summary metrics and key charts."""
         file_path, _ = QFileDialog.getSaveFileName(
             self,
             "Save PDF",
@@ -945,6 +987,7 @@ class GlucoseTab(QWidget):
         QMessageBox.information(self, "Export PDF", "PDF exported successfully.")
 
     def handle_row_selection(self) -> None:
+        """Load notes for the currently selected reading into the editor."""
         selected_items = self.table.selectedItems()
 
         if not selected_items:
@@ -966,6 +1009,7 @@ class GlucoseTab(QWidget):
         self.notes_editor.setPlainText(notes_item.text() if notes_item else "")
 
     def handle_save_note(self) -> None:
+        """Persist the edited note for the selected glucose reading."""
         if self.selected_reading_id is None:
             QMessageBox.warning(self, "No selection", "Please select a reading first.")
             return
@@ -982,6 +1026,7 @@ class GlucoseTab(QWidget):
         self.load_readings()
 
     def handle_cell_edit(self, row: int, column: int) -> None:
+        """Persist inline edits for carbs and insulin fields back to the database."""
         if self.table.item(row, 0) is None:
             return
 
@@ -1011,6 +1056,7 @@ class GlucoseTab(QWidget):
         update_glucose_field(reading_id, field_name, value)
 
     def _set_card_colour(self, label: QLabel, color: str) -> None:
+        """Apply a coloured background style to a summary card label."""
         label.setStyleSheet(f"""
             QLabel {{
                 font-size: 16px;
@@ -1024,6 +1070,7 @@ class GlucoseTab(QWidget):
         """)
 
     def _build_time_effectiveness_table(self) -> None:
+        """Create the table comparing recent and older outcome glucose by meal event."""
         title = QLabel("7-Day Improvement by Previous Meal Event")
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet(
@@ -1059,12 +1106,16 @@ class GlucoseTab(QWidget):
 
 
 class GlucoseProfileChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for the daily glucose profile chart."""
+
     def __init__(self) -> None:
+        """Initialise the chart canvas and axes."""
         self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
     def plot_profile(self, profile_data: list[dict]) -> None:
+        """Plot mean glucose by time-of-day bucket."""
         self.ax.clear()
 
         self.figure.patch.set_facecolor("#1e1e1e")
@@ -1137,12 +1188,16 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
 
 
 class MealEventBoxPlotChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for glucose distribution by meal event."""
+
     def __init__(self) -> None:
+        """Initialise the chart canvas and axes."""
         self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
     def plot_boxplot(self, boxplot_data: list[dict]) -> None:
+        """Plot glucose distributions for each meal event as a boxplot."""
         self.ax.clear()
 
         self.figure.patch.set_facecolor("#1e1e1e")

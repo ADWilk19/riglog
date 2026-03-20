@@ -34,6 +34,9 @@ STANDARD_RATIOS = {
 
 
 def get_all_glucose_readings():
+    """
+    Return all stored glucose readings ordered newest first.
+    """
     session = SessionLocal()
 
     try:
@@ -47,6 +50,17 @@ def get_all_glucose_readings():
 
 
 def get_all_glucose_readings_with_meal_event(days: int | None = None):
+    """
+    Return glucose readings enriched with meal-event metadata.
+
+    Args:
+        days: Optional lookback window. When provided, only readings on or
+            after ``now - days`` are included.
+
+    Returns:
+        A list of dictionaries containing the raw reading fields plus
+        ``meal_event`` and ``meal_event_label`` for UI and analysis use.
+    """
     readings = get_all_glucose_readings()
 
     if days is not None:
@@ -81,6 +95,15 @@ def get_all_glucose_readings_with_meal_event(days: int | None = None):
 
 
 def get_glucose_reading_by_id(reading_id: int) -> GlucoseReading | None:
+    """
+    Fetch a single glucose reading by primary key.
+
+    Args:
+        reading_id: Database ID of the glucose reading.
+
+    Returns:
+        The matching ``GlucoseReading`` instance, or ``None`` if not found.
+    """
     session = SessionLocal()
 
     try:
@@ -269,6 +292,23 @@ def calculate_glucose_variability_metrics(df: pd.DataFrame) -> Dict[str, float |
 
 
 def calculate_insulin_effectiveness(readings: list[dict]) -> pd.DataFrame:
+    """
+    Summarise dose effectiveness by previous meal event.
+
+    The function shifts carbs and Humalog values to the next reading so the
+    current glucose value is treated as the outcome of the previous dose.
+
+    Args:
+        readings: Enriched glucose reading dictionaries. Each row must
+            include ``carbs_g``, ``humalog_u``, ``recorded_at``, and
+            ``meal_event_label``.
+
+    Returns:
+        A DataFrame with one row per previous meal event containing:
+        ``meal_event_label``, ``avg_ratio_g_per_u``, ``ratio_sd``,
+        ``avg_outcome_glucose``, ``count``, and
+        ``standard_ratio_g_per_u``.
+    """
     df = pd.DataFrame(readings)
 
     if df.empty:
@@ -309,6 +349,13 @@ def calculate_insulin_effectiveness(readings: list[dict]) -> pd.DataFrame:
 
 
 def calculate_glucose_dashboard_metrics(df: pd.DataFrame) -> Dict[str, Any]:
+    """
+    Bundle core dashboard analytics for a prepared glucose DataFrame.
+
+    Returns:
+        Dictionary containing time-in-range breakdown, variability metrics,
+        and AGP data.
+    """
     return {
         "range_breakdown": calculate_time_in_range_breakdown(df),
         "variability": calculate_glucose_variability_metrics(df),
@@ -317,6 +364,13 @@ def calculate_glucose_dashboard_metrics(df: pd.DataFrame) -> Dict[str, Any]:
 
 
 def update_glucose_note(reading_id: int, notes: str | None) -> None:
+    """
+    Update the note attached to a glucose reading.
+
+    Args:
+        reading_id: Database ID of the glucose reading.
+        notes: New note text. ``None`` clears the stored note.
+    """
     session = SessionLocal()
 
     try:
@@ -332,6 +386,13 @@ def update_glucose_note(reading_id: int, notes: str | None) -> None:
 
 
 def get_glucose_summary():
+    """
+    Return simple aggregate summary statistics for all glucose readings.
+
+    Returns:
+        Dictionary containing ``count``, ``avg``, ``min``, and ``max``,
+        or ``None`` when no readings are stored.
+    """
     session = SessionLocal()
 
     try:
@@ -353,6 +414,16 @@ def get_glucose_summary():
 
 
 def get_daily_average_glucose(readings):
+    """
+    Aggregate readings into daily averages for charting.
+
+    Args:
+        readings: Glucose reading dictionaries with ``recorded_at`` and
+            ``glucose_value``.
+
+    Returns:
+        List of dictionaries containing ``date``, ``avg``, and ``count``.
+    """
     daily = defaultdict(list)
 
     for r in readings:
@@ -377,6 +448,17 @@ def get_time_of_day_profile(
     readings: list[dict],
     bucket_minutes: int = 30,
 ) -> list[dict]:
+    """
+    Aggregate readings into time-of-day buckets.
+
+    Args:
+        readings: Glucose reading dictionaries with timestamps and values.
+        bucket_minutes: Size of each time bucket in minutes.
+
+    Returns:
+        List of dictionaries containing the bucket label, average glucose,
+        count, and raw values for each bucket.
+    """
     buckets: dict[int, list[float]] = {}
 
     for reading in readings:
@@ -407,6 +489,16 @@ def get_time_of_day_profile(
 
 
 def get_meal_event_boxplot_data(readings: list[dict]) -> list[dict]:
+    """
+    Prepare glucose values grouped by meal event for boxplot rendering.
+
+    Args:
+        readings: Enriched glucose reading dictionaries.
+
+    Returns:
+        Ordered list of dictionaries containing ``meal_event`` and
+        ``values`` for meal events that have at least one reading.
+    """
     meal_order = [
         "Pre-Breakfast",
         "Post-Breakfast",
@@ -440,6 +532,16 @@ def get_meal_event_boxplot_data(readings: list[dict]) -> list[dict]:
 
 
 def get_time_in_range_metrics(readings: list[dict]) -> dict[str, float | int]:
+    """
+    Calculate time-in-range counts and percentages from reading dictionaries.
+
+    Args:
+        readings: Glucose reading dictionaries containing ``glucose_value``.
+
+    Returns:
+        Dictionary with counts and percentages for hypo, low, target, high,
+        and hyper glucose bands.
+    """
     total = len(readings)
 
     metrics = {
@@ -483,6 +585,15 @@ def get_time_in_range_metrics(readings: list[dict]) -> dict[str, float | int]:
 
 
 def update_glucose_field(reading_id: int, field_name: str, value: float | None) -> None:
+    """
+    Update a numeric field on a glucose reading.
+
+    Args:
+        reading_id: Database ID of the glucose reading.
+        field_name: Model attribute to update, such as ``carbs_g`` or
+            ``humalog_u``.
+        value: New numeric value. ``None`` clears the field.
+    """
     session = SessionLocal()
 
     try:
@@ -501,6 +612,21 @@ def update_glucose_field(reading_id: int, field_name: str, value: float | None) 
 def calculate_time_based_effectiveness(
     readings: list[dict], days: int = 7
 ) -> pd.DataFrame:
+    """
+    Compare recent versus historical dose outcomes by meal event.
+
+    The function shifts carbs and Humalog values to the next reading so the
+    current glucose value is analysed as the outcome of the previous dose.
+
+    Args:
+        readings: Enriched glucose reading dictionaries.
+        days: Number of recent days to compare against earlier data.
+
+    Returns:
+        DataFrame with ``meal_event_label``, ``older_avg``, ``recent_avg``,
+        and ``change`` (recent minus older). Returns an empty DataFrame when
+        there is insufficient data on either side of the cutoff.
+    """
     df = pd.DataFrame(readings)
 
     if df.empty:
