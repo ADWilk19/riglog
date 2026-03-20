@@ -327,3 +327,4 @@ xyzservices==2024.6.0
 yapf==0.32.0
 ydata-profiling==4.1.2
 zipp==3.10.0
+reportlab==4.4.10

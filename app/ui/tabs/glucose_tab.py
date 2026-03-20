@@ -2,9 +2,15 @@ from pathlib import Path
 from datetime import timedelta
 from statistics import mean
 import pandas as pd
+import tempfile
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
+
+from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet
+from reportlab.platypus import Image
+from reportlab.platypus import KeepTogether
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -266,6 +272,9 @@ class GlucoseTab(QWidget):
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.clicked.connect(self.load_readings)
 
+        self.export_pdf_button = QPushButton("Export PDF")
+        self.export_pdf_button.clicked.connect(self.handle_export_pdf)
+
         self.meal_event_filter = QComboBox()
         self.meal_event_filter.addItems(
             [
@@ -299,6 +308,7 @@ class GlucoseTab(QWidget):
         toolbar.addStretch()
         toolbar.addWidget(self.import_button)
         toolbar.addWidget(self.refresh_button)
+        toolbar.addWidget(self.export_pdf_button)
         toolbar.addSpacing(12)
         toolbar.addWidget(QLabel("Meal Event:"))
         toolbar.addWidget(self.meal_event_filter)
@@ -870,6 +880,69 @@ class GlucoseTab(QWidget):
             f"Imported {imported_count} new readings.",
         )
         self.load_readings()
+
+    def handle_export_pdf(self) -> None:
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save PDF",
+            "riglog_glucose_report.pdf",
+            "PDF Files (*.pdf)",
+        )
+
+        if not file_path:
+            return
+
+        doc = SimpleDocTemplate(
+            file_path,
+            title="RigLog Report",
+            author="RigLog",
+        )
+        styles = getSampleStyleSheet()
+
+        content = []
+
+        content.append(Paragraph("RigLog Glucose Report", styles["Title"]))
+        content.append(Paragraph("Personal Glucose Analysis Report", styles["Italic"]))
+        content.append(Spacer(1, 12))
+
+        readings = self._get_filtered_readings()
+
+        content.append(Paragraph("Summary Stats", styles["Heading2"]))
+        content.append(Paragraph(f"Total readings: {len(readings)}", styles["Normal"]))
+
+        metrics = calculate_glucose_variability_metrics(pd.DataFrame(readings))
+
+        if metrics["mean_glucose"] is not None:
+            content.append(Paragraph(f"Average glucose: {metrics['mean_glucose']} mmol/L", styles["Normal"]))
+            content.append(Paragraph(f"SD: {metrics['sd']}", styles["Normal"]))
+            content.append(Paragraph(f"CV: {metrics['cv_pct']}%", styles["Normal"]))
+            content.append(Paragraph(f"GMI: {metrics['gmi']}%", styles["Normal"]))
+
+        # --- AGP Chart ---
+        agp_df = calculate_agp(pd.DataFrame(readings))
+
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+            draw_agp_figure(self.agp_figure, agp_df)
+            self.agp_figure.savefig(tmpfile.name)
+            content.append(Spacer(1, 13))
+            content.append(Paragraph("AGP", styles["Heading2"]))
+            content.append(Image(tmpfile.name, width=500, height=210))
+
+        # --- Dose Effectiveness Chart ---
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
+            self.dose_effectiveness_chart.figure.savefig(tmpfile.name)
+            content.append(Spacer(1, 12))
+            content.append(
+                KeepTogether([
+                    Paragraph("Dose Effectiveness", styles["Heading2"]),
+                    Spacer(1, 8),
+                    Image(tmpfile.name, width=500, height=210),
+                ])
+            )
+
+        doc.build(content)
+
+        QMessageBox.information(self, "Export PDF", "PDF exported successfully.")
 
     def handle_row_selection(self) -> None:
         selected_items = self.table.selectedItems()
