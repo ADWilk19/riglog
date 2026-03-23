@@ -1,0 +1,8 @@
+{
+  "access_token": "eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIyMzhGTEIiLCJzdWIiOiI2UlRSSEciLCJpc3MiOiJGaXRiaXQiLCJ0eXAiOiJhY2Nlc3NfdG9rZW4iLCJzY29wZXMiOiJyYWN0IHJwcm8iLCJleHAiOjE3NzQzMDkyMTcsImlhdCI6MTc3NDI4MDQxN30.HYZQ9mT0YBqfeyPbefZnsUIEeljCV2ygVo99DUeH9Bw",
+  "expires_in": 28800,
+  "refresh_token": "9eadac94798ef1a3a70e87ef0961f87e1dba0515b53fd5e173f1909848a675b1",
+  "scope": "profile activity",
+  "token_type": "Bearer",
+  "user_id": "6RTRHG"
+}
