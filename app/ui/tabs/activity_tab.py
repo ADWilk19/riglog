@@ -14,6 +14,7 @@ from PySide6.QtWidgets import (
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from datetime import timedelta
+from statistics import mean
 
 from app.services.activity.analysis import get_daily_activity
 
@@ -35,6 +36,17 @@ def apply_chart_theme(fig: Figure, ax) -> None:
         spine.set_color(CHART_SPINE)
 
     ax.grid(True, color=CHART_GRID, alpha=0.5)
+
+
+def rolling_average(values: list[float], window: int = 7) -> list[float]:
+    result = []
+
+    for i in range(len(values)):
+        start = max(0, i - window + 1)
+        window_values = values[start : i + 1]
+        result.append(mean(window_values))
+
+    return result
 
 
 class ActivityTrendChart(FigureCanvasQTAgg):
@@ -66,17 +78,50 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         dates = [row["activity_date"] for row in activity_rows]
         steps = [row["steps"] for row in activity_rows]
 
+        rolling_avg = rolling_average(steps, window=7)
+
+        # --- main line ---
+        colors = [
+            ACCENT_GREEN if value >= 10000 else "#BBBBBB"
+            for value in steps
+        ]
+
+        # subtle baseline line
         self.ax.plot(
             dates,
             steps,
-            color=LINE_COLOUR,
-            marker="o",
-            markersize=4,
-            linewidth=2,
-            label="Steps",
+            color="#888888",
+            alpha=0.4,
+            linewidth=1,
         )
 
-        self.ax.axhline(10000, color=ACCENT_GREEN, linestyle="--", linewidth=1.2, label="10k target")
+        # coloured points
+        self.ax.scatter(
+            dates,
+            steps,
+            c=colors,
+            s=30,
+            label="Daily Steps",
+        )
+
+        # --- rolling average ---
+        self.ax.plot(
+            dates,
+            rolling_avg,
+            color="#FFFFFF",
+            linewidth=2.5,
+            alpha=0.95,
+            label="7-Day Average",
+        )
+
+        # --- 10k goal line ---
+        self.ax.axhline(
+            10000,
+            color=ACCENT_GREEN,
+            linestyle="--",
+            linewidth=1.2,
+            label="10k Target",
+        )
 
         legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
         for text in legend.get_texts():
@@ -85,7 +130,6 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.figure.autofmt_xdate()
         self.figure.subplots_adjust(bottom=0.20)
         self.draw()
-
 
 class ActivityTab(QWidget):
     def __init__(self) -> None:
