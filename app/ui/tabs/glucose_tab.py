@@ -1,16 +1,19 @@
 from pathlib import Path
 from datetime import timedelta
 from statistics import mean
-import pandas as pd
 import tempfile
 
+import pandas as pd
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-
-from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
 from reportlab.lib.styles import getSampleStyleSheet
-from reportlab.platypus import Image
-from reportlab.platypus import KeepTogether
+from reportlab.platypus import (
+    Image,
+    KeepTogether,
+    Paragraph,
+    SimpleDocTemplate,
+    Spacer,
+)
 
 from PySide6.QtCore import Qt
 from PySide6.QtGui import QColor
@@ -18,96 +21,106 @@ from PySide6.QtWidgets import (
     QFileDialog,
     QComboBox,
     QHeaderView,
+    QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QScrollArea,
     QTableWidget,
     QTableWidgetItem,
     QTextEdit,
     QVBoxLayout,
-    QHBoxLayout,
     QWidget,
-    QScrollArea,
 )
 
 from app.services.glucose.analysis import (
     calculate_agp,
     calculate_glucose_variability_metrics,
-    calculate_time_based_effectiveness,
     calculate_insulin_effectiveness,
-    get_all_glucose_readings_with_meal_event,
+    calculate_time_based_effectiveness,
     calculate_time_in_range_breakdown,
+    get_all_glucose_readings_with_meal_event,
     get_daily_average_glucose,
     get_meal_event_boxplot_data,
-    get_time_of_day_profile,
-    update_glucose_note,
     get_time_in_range_metrics,
+    get_time_of_day_profile,
+    update_glucose_field,
+    update_glucose_note,
 )
 from app.services.glucose.importer import import_diabetes_m_csv
 
 
+CHART_BG = "#1E1E1E"
+CHART_TEXT = "#F0F0F0"
+CHART_GRID = "#444444"
+CHART_SPINE = "#888888"
+HYPO_RED = "#DC5050"
+LOW_AMBER = "#FFAA00"
+TARGET_GREEN = "#43A047"
+HIGH_YELLOW = "#FFD54F"
+HYPER_PURPLE = "#B388FF"
+LINE_RED = "#FF4D4D"
+WHITE = "#FFFFFF"
+
+
+def apply_chart_theme(fig: Figure, ax) -> None:
+    """Apply the shared dark chart theme."""
+    fig.patch.set_facecolor(CHART_BG)
+    ax.set_facecolor(CHART_BG)
+    ax.tick_params(axis="x", colors=CHART_TEXT)
+    ax.tick_params(axis="y", colors=CHART_TEXT)
+
+    for spine in ax.spines.values():
+        spine.set_color(CHART_SPINE)
+
+    ax.grid(True, color=CHART_GRID, alpha=0.5)
+
+
 class NumericTableWidgetItem(QTableWidgetItem):
-    """
-    Table item that preserves numeric ordering for glucose values.
-    """
+    """Table item that preserves numeric ordering for glucose values."""
+
     def __init__(self, value: float) -> None:
-        """
-        Initialise the item with a formatted numeric display value.
-        """
         super().__init__(f"{value:.1f}")
         self.numeric_value = value
 
     def __lt__(self, other: object) -> bool:
-        """
-        Compare items by numeric value so table sorting stays correct.
-        """
         if isinstance(other, NumericTableWidgetItem):
             return self.numeric_value < other.numeric_value
         return super().__lt__(other)
 
 
 def rolling_average(values: list[float], window: int = 7) -> list[float]:
-    """
-    Return a simple trailing rolling average for a list of values.
-    """
+    """Return a simple trailing rolling average for a list of values."""
     result = []
 
     for i in range(len(values)):
         start = max(0, i - window + 1)
-        window_values = values[start:i + 1]
+        window_values = values[start : i + 1]
         result.append(mean(window_values))
 
     return result
 
 
 def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
-    """Draw the AGP chart onto an existing matplotlib figure.
-
-    Args:
-        fig: Figure instance to clear and redraw.
-        agp_df: DataFrame returned by ``calculate_agp`` containing percentile bands
-            by time of day.
-    """
+    """Draw the AGP chart onto an existing matplotlib figure."""
     fig.clear()
     ax = fig.add_subplot(111)
 
-    fig.patch.set_facecolor("#1e1e1e")
-    ax.set_facecolor("#1e1e1e")
+    apply_chart_theme(fig, ax)
 
-    ax.set_title("Ambulatory Glucose Profile (AGP)", color="#f0f0f0")
-    ax.set_xlabel("Time of day", color="#f0f0f0")
-    ax.set_ylabel("Glucose (mmol/L)", color="#f0f0f0")
-
-    ax.tick_params(axis="x", colors="#f0f0f0")
-    ax.tick_params(axis="y", colors="#f0f0f0")
-
-    for spine in ax.spines.values():
-        spine.set_color("#888888")
-
-    ax.grid(True, color="#444444", alpha=0.5)
+    ax.set_title("Ambulatory Glucose Profile (AGP)", color=CHART_TEXT)
+    ax.set_xlabel("Time of day", color=CHART_TEXT)
+    ax.set_ylabel("Glucose (mmol/L)", color=CHART_TEXT)
 
     if agp_df.empty:
-        ax.text(0.5, 0.5, "No AGP data available", ha="center", va="center", color="#f0f0f0")
+        ax.text(
+            0.5,
+            0.5,
+            "No AGP data available",
+            ha="center",
+            va="center",
+            color=CHART_TEXT,
+        )
         ax.set_axis_off()
         fig.tight_layout()
         return
@@ -119,26 +132,27 @@ def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
     p75 = agp_df["p75"].to_numpy()
     p90 = agp_df["p90"].to_numpy()
 
-    ax.axhspan(4.0, 10.0, color="#43a047", alpha=0.18)
+    ax.axhspan(4.0, 10.0, color=TARGET_GREEN, alpha=0.18)
+    ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
+    ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
+    ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
+    ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
 
-    ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
-    ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
-    ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
-    ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
-
-    ax.fill_between(x, p10, p90, color="#ff4d4d", alpha=0.15, label="10–90%")
-    ax.fill_between(x, p25, p75, color="#ff4d4d", alpha=0.30, label="25–75%")
-    ax.plot(x, p50, color="#ffffff", linewidth=2.2, label="Median")
+    ax.fill_between(x, p10, p90, color=LINE_RED, alpha=0.15, label="10–90%")
+    ax.fill_between(x, p25, p75, color=LINE_RED, alpha=0.30, label="25–75%")
+    ax.plot(x, p50, color=WHITE, linewidth=2.2, label="Median")
 
     ax.set_xlim(0, 24)
     ax.set_ylim(0, 30)
     ax.set_yticks(range(0, 31, 5))
     ax.set_xticks([0, 4, 8, 12, 16, 20, 24])
-    ax.set_xticklabels(["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"])
+    ax.set_xticklabels(
+        ["00:00", "04:00", "08:00", "12:00", "16:00", "20:00", "24:00"]
+    )
 
-    legend = ax.legend(facecolor="#1e1e1e", edgecolor="#888888")
+    legend = ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
     for text in legend.get_texts():
-        text.set_color("#f0f0f0")
+        text.set_color(CHART_TEXT)
 
     fig.tight_layout()
 
@@ -147,7 +161,6 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
     """Matplotlib canvas for the daily average glucose chart."""
 
     def __init__(self) -> None:
-        """Initialise the chart canvas and axes."""
         self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
@@ -155,32 +168,19 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
     def plot_daily_average(self, daily_data: list[dict]) -> None:
         """Plot daily average glucose values and a 7-day rolling trend."""
         self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
 
-        # dark theme
-        self.figure.patch.set_facecolor("#1e1e1e")
-        self.ax.set_facecolor("#1e1e1e")
+        self.ax.set_title("Daily Average Glucose", color=CHART_TEXT)
+        self.ax.set_ylabel("mmol/L", color=CHART_TEXT)
 
-        self.ax.set_title("Daily Average Glucose", color="#f0f0f0")
-        self.ax.set_ylabel("mmol/L", color="#f0f0f0")
+        self.ax.axhspan(0, 3.3, color="#D32F2F", alpha=0.12)
+        self.ax.axhspan(4, 10, color=TARGET_GREEN, alpha=0.35)
+        self.ax.axhspan(15, 25, color="#8E24AA", alpha=0.12)
 
-        self.ax.tick_params(axis="x", colors="#f0f0f0")
-        self.ax.tick_params(axis="y", colors="#f0f0f0")
-
-        for spine in self.ax.spines.values():
-            spine.set_color("#888888")
-
-        self.ax.grid(True, color="#444444", alpha=0.5)
-
-        # shaded zones
-        self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
-        self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
-        self.ax.axhspan(15, 25, color="#8e24aa", alpha=0.12)
-
-        # threshold lines
-        self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
-        self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
+        self.ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
+        self.ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
+        self.ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
+        self.ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
 
         self.ax.set_ylim(0, 30)
         self.ax.set_yticks(range(0, 31, 5))
@@ -193,18 +193,19 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
         averages = [row["avg"] for row in daily_data]
         rolling_avg = rolling_average(averages, window=7)
 
-        # force x-axis to match the filtered date range
         if len(dates) == 1:
-            self.ax.set_xlim(dates[0] - timedelta(days=1), dates[0] + timedelta(days=1))
+            self.ax.set_xlim(
+                dates[0] - timedelta(days=1),
+                dates[0] + timedelta(days=1),
+            )
         else:
             self.ax.set_xlim(min(dates), max(dates))
             self.ax.margins(x=0.02)
 
-        # daily averages
         self.ax.plot(
             dates,
             averages,
-            color="#ff4d4d",
+            color=LINE_RED,
             marker="o",
             markersize=5,
             linewidth=1.8,
@@ -212,47 +213,182 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
             label="Daily Average",
         )
 
-        # 7-day rolling average
         self.ax.plot(
             dates,
             rolling_avg,
-            color="#ffffff",
+            color=WHITE,
             linewidth=2.5,
             alpha=0.9,
             label="7-Day Trend",
         )
 
-        self.ax.legend(facecolor="#1e1e1e", edgecolor="#888888", labelcolor="#f0f0f0")
+        self.ax.legend(
+            facecolor=CHART_BG,
+            edgecolor=CHART_SPINE,
+            labelcolor=CHART_TEXT,
+        )
         self.figure.autofmt_xdate()
         self.figure.subplots_adjust(bottom=0.20)
+        self.draw()
+
+
+class GlucoseProfileChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for the time-of-day glucose profile chart."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_profile(self, profile_data: list[dict]) -> None:
+        """Plot average glucose by time-of-day bucket."""
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+
+        self.ax.set_title("Average Glucose by Time of Day", color=CHART_TEXT)
+        self.ax.set_xlabel("Time of day", color=CHART_TEXT, labelpad=10)
+        self.ax.set_ylabel("mmol/L", color=CHART_TEXT)
+
+        self.ax.axhspan(0, 3.3, color="#D32F2F", alpha=0.12)
+        self.ax.axhspan(4, 10, color=TARGET_GREEN, alpha=0.35)
+        self.ax.axhspan(15, 30, color="#8E24AA", alpha=0.12)
+
+        self.ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
+        self.ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
+        self.ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
+        self.ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
+
+        if not profile_data:
+            self.draw()
+            return
+
+        x = [row["bucket_minutes"] / 60 for row in profile_data]
+        y = [row["avg"] for row in profile_data]
+
+        self.ax.plot(
+            x,
+            y,
+            color=LINE_RED,
+            marker="o",
+            markersize=4,
+            linewidth=2,
+            alpha=0.9,
+            label="Average by Time of Day",
+        )
+
+        tick_positions = []
+        tick_labels = []
+
+        for row in profile_data:
+            minutes = row["bucket_minutes"]
+            if minutes % 120 == 0:
+                tick_positions.append(minutes / 60)
+                tick_labels.append(row["time_label"])
+
+        self.ax.set_xticks(tick_positions)
+        self.ax.set_xticklabels(tick_labels)
+
+        self.ax.legend(
+            facecolor=CHART_BG,
+            edgecolor=CHART_SPINE,
+            labelcolor=CHART_TEXT,
+        )
+
+        self.figure.subplots_adjust(bottom=0.24)
+        self.draw()
+
+
+class MealEventBoxPlotChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for glucose distribution by meal event."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_boxplot(self, boxplot_data: list[dict]) -> None:
+        """Plot glucose distributions for each meal event as a boxplot."""
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+
+        self.ax.set_title("Glucose Distribution by Meal Event", color=CHART_TEXT)
+        self.ax.set_xlabel("Meal Event", color=CHART_TEXT, labelpad=10)
+        self.ax.set_ylabel("mmol/L", color=CHART_TEXT)
+
+        self.ax.tick_params(axis="x", colors=CHART_TEXT, labelsize=9)
+
+        self.ax.axhspan(0, 3.3, color="#D32F2F", alpha=0.12)
+        self.ax.axhspan(4, 10, color=TARGET_GREEN, alpha=0.35)
+        self.ax.axhspan(15, 30, color="#8E24AA", alpha=0.12)
+
+        if not boxplot_data:
+            self.draw()
+            return
+
+        labels = [
+            row.get("meal_event_label") or row.get("label", "")
+            for row in boxplot_data
+            ]
+        series = [
+            row.get("values", [])
+            for row in boxplot_data
+            if row.get("values")
+        ]
+
+        if not series:
+            self.draw()
+            return
+
+        bp = self.ax.boxplot(series, patch_artist=True, labels=labels)
+
+        for box in bp["boxes"]:
+            box.set(facecolor="#303030", edgecolor=WHITE)
+
+        for whisker in bp["whiskers"]:
+            whisker.set(color=WHITE)
+
+        for cap in bp["caps"]:
+            cap.set(color=WHITE)
+
+        for median in bp["medians"]:
+            median.set(color=LINE_RED, linewidth=2)
+
+        self.figure.subplots_adjust(bottom=0.24)
         self.draw()
 
 
 class GlucoseTab(QWidget):
     """Main glucose analytics tab for import, review, analysis, and export."""
 
+    CARD_BASE_STYLE = """
+        font-size: 15px;
+        font-weight: 700;
+        padding: 10px 16px;
+        border: 1px solid #2A2A2A;
+        border-radius: 10px;
+    """
+
     def __init__(self) -> None:
-        """Build the glucose tab UI and load the current readings."""
         super().__init__()
 
         self.selected_reading_id: int | None = None
 
-        # Outer layout (holds the scroll area)
         outer_layout = QVBoxLayout(self)
+        outer_layout.setContentsMargins(0, 0, 0, 0)
 
         scroll = QScrollArea()
+        scroll.setObjectName("glucoseScrollArea")
         scroll.setWidgetResizable(True)
 
-        # Inner container
         container = QWidget()
+        container.setObjectName("glucoseContainer")
+
         self.layout = QVBoxLayout(container)
+        self.layout.setSpacing(20)
+        self.layout.setContentsMargins(16, 16, 16, 24)
 
         scroll.setWidget(container)
-
         outer_layout.addWidget(scroll)
-
-        self.layout.setSpacing(18)
-        self.layout.setContentsMargins(10, 10, 10, 20)
 
         self._build_toolbar()
         self._build_summary_panel()
@@ -269,38 +405,54 @@ class GlucoseTab(QWidget):
 
         self.load_readings()
 
-    def _create_summary_card(self, text: str) -> QLabel:
-        """Create a consistently styled summary metric card."""
+    def _create_section_title(self, text: str) -> QLabel:
         label = QLabel(text)
+        label.setObjectName("sectionTitle")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setMinimumHeight(60)
-        label.setStyleSheet(
-            """
-            QLabel {
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px 16px;
-                border: 1px solid #555555;
-                border-radius: 8px;
-                background-color: #2f2f2f;
-                color: #f0f0f0;
-            }
-            """
-        )
         return label
 
+    def _create_toolbar_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("fieldLabel")
+        return label
+
+    def _create_summary_card(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("summaryCardNeutral")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setMinimumHeight(64)
+        return label
+
+    def _create_analysis_table(
+        self,
+        column_count: int,
+        headers: list[str],
+    ) -> QTableWidget:
+        table = QTableWidget()
+        table.setObjectName("analysisTable")
+        table.setColumnCount(column_count)
+        table.setHorizontalHeaderLabels(headers)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionMode(QTableWidget.NoSelection)
+        table.setAlternatingRowColors(True)
+        table.setMinimumHeight(220)
+        return table
+
     def _build_toolbar(self) -> None:
-        """Create the top toolbar with import, refresh, export, and filters."""
         toolbar = QHBoxLayout()
         toolbar.setSpacing(12)
 
         self.import_button = QPushButton("Import Diabetes:M CSV")
+        self.import_button.setObjectName("primaryAction")
         self.import_button.clicked.connect(self.handle_import_csv)
 
         self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.setObjectName("secondaryAction")
         self.refresh_button.clicked.connect(self.load_readings)
 
         self.export_pdf_button = QPushButton("Export PDF")
+        self.export_pdf_button.setObjectName("secondaryAction")
         self.export_pdf_button.clicked.connect(self.handle_export_pdf)
 
         self.meal_event_filter = QComboBox()
@@ -338,100 +490,172 @@ class GlucoseTab(QWidget):
         toolbar.addWidget(self.refresh_button)
         toolbar.addWidget(self.export_pdf_button)
         toolbar.addSpacing(12)
-        toolbar.addWidget(QLabel("Meal Event:"))
+        toolbar.addWidget(self._create_toolbar_label("Meal Event"))
         toolbar.addWidget(self.meal_event_filter)
-        toolbar.addWidget(QLabel("Time Range:"))
+        toolbar.addWidget(self._create_toolbar_label("Time Range"))
         toolbar.addWidget(self.time_filter)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
 
     def _build_summary_panel(self) -> None:
-        """Create the summary cards row shown at the top of the tab."""
         summary_layout = QHBoxLayout()
         summary_layout.setSpacing(12)
-        summary_layout.setContentsMargins(0, 10, 0, 10)
+        summary_layout.setContentsMargins(0, 8, 0, 8)
 
-        self.count_label = self._create_summary_card("Readings: -")
-        self.avg_label = self._create_summary_card("Average: -")
-        self.min_label = self._create_summary_card("Lowest: -")
-        self.max_label = self._create_summary_card("Highest: -")
-        self.tir_label = self._create_summary_card("In Range: -")
-        self.hypo_label = self._create_summary_card("Hypo: -")
-        self.low_label = self._create_summary_card("Low: -")
-        self.target_label = self._create_summary_card("Target: -")
-        self.high_label = self._create_summary_card("High: -")
-        self.hyper_label = self._create_summary_card("Hyper: -")
-        self.sd_label = self._create_summary_card("SD: -")
-        self.cv_label = self._create_summary_card("CV: -")
-        self.gmi_label = self._create_summary_card("GMI: -")
+        self.count_label = self._create_summary_card("Readings\n-")
+        self.avg_label = self._create_summary_card("Average\n-")
+        self.min_label = self._create_summary_card("Lowest\n-")
+        self.max_label = self._create_summary_card("Highest\n-")
+        self.tir_label = self._create_summary_card("In Range\n-")
+        self.hypo_label = self._create_summary_card("Hypo\n-")
+        self.low_label = self._create_summary_card("Low\n-")
+        self.target_label = self._create_summary_card("Target\n-")
+        self.high_label = self._create_summary_card("High\n-")
+        self.hyper_label = self._create_summary_card("Hyper\n-")
+        self.sd_label = self._create_summary_card("SD\n-")
+        self.cv_label = self._create_summary_card("CV\n-")
+        self.gmi_label = self._create_summary_card("GMI\n-")
+
+        cards = [
+            self.count_label,
+            self.avg_label,
+            self.min_label,
+            self.max_label,
+            self.tir_label,
+            self.hypo_label,
+            self.low_label,
+            self.target_label,
+            self.high_label,
+            self.hyper_label,
+            self.sd_label,
+            self.cv_label,
+            self.gmi_label,
+        ]
 
         summary_layout.addStretch()
-        summary_layout.addWidget(self.count_label)
-        summary_layout.addWidget(self.avg_label)
-        summary_layout.addWidget(self.min_label)
-        summary_layout.addWidget(self.max_label)
-        summary_layout.addWidget(self.tir_label)
-        summary_layout.addWidget(self.hypo_label)
-        summary_layout.addWidget(self.low_label)
-        summary_layout.addWidget(self.target_label)
-        summary_layout.addWidget(self.high_label)
-        summary_layout.addWidget(self.hyper_label)
-        summary_layout.addWidget(self.sd_label)
-        summary_layout.addWidget(self.cv_label)
-        summary_layout.addWidget(self.gmi_label)
+        for card in cards:
+            summary_layout.addWidget(card)
         summary_layout.addStretch()
 
         self.layout.addLayout(summary_layout)
 
     def _build_chart(self) -> None:
-        """Create and add the daily average glucose chart widget."""
         self.chart = GlucoseTrendChart()
         self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
 
     def _build_agp_chart(self) -> None:
-        """Create and add the AGP chart canvas."""
         self.agp_figure = Figure(figsize=(8, 4))
         self.agp_canvas = FigureCanvasQTAgg(self.agp_figure)
         self.agp_canvas.setMinimumHeight(320)
-
         self.layout.addWidget(self.agp_canvas)
 
     def _build_profile_chart(self) -> None:
-        """Create and add the time-of-day glucose profile chart."""
         self.profile_chart = GlucoseProfileChart()
         self.profile_chart.setMinimumHeight(320)
         self.layout.addWidget(self.profile_chart)
 
     def _build_meal_boxplot_chart(self) -> None:
-        """Create and add the meal-event boxplot chart."""
         self.meal_boxplot_chart = MealEventBoxPlotChart()
         self.meal_boxplot_chart.setMinimumHeight(340)
         self.layout.addWidget(self.meal_boxplot_chart)
 
+    def _build_insulin_effectiveness_table(self) -> None:
+        self.layout.addWidget(
+            self._create_section_title("Dose Effectiveness by Previous Meal Event")
+        )
+
+        self.insulin_effectiveness_table = self._create_analysis_table(
+            7,
+            [
+                "Meal Event",
+                "Standard Ratio (g/u)",
+                "Actual Ratio (g/u)",
+                "Avg Outcome Glucose",
+                "Status",
+                "Suggestion",
+                "Count",
+            ],
+        )
+
+        header = self.insulin_effectiveness_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.insulin_effectiveness_table)
+
     def _build_dose_effectiveness_chart(self) -> None:
-        """Create and add the dose-effectiveness outcome chart."""
         self.dose_effectiveness_chart = FigureCanvasQTAgg(Figure(figsize=(6, 4.5)))
         self.dose_effectiveness_chart.setMinimumHeight(320)
         self.layout.addWidget(self.dose_effectiveness_chart)
 
+    def _build_time_effectiveness_table(self) -> None:
+        self.layout.addWidget(
+            self._create_section_title("7-Day Improvement by Previous Meal Event")
+        )
+
+        self.time_effectiveness_table = self._create_analysis_table(
+            4,
+            ["Meal Event", "Older Avg", "Recent Avg", "Change"],
+        )
+
+        header = self.time_effectiveness_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.time_effectiveness_table)
+
+    def _build_legend(self) -> None:
+        legend_layout = QHBoxLayout()
+        legend_layout.setSpacing(10)
+        legend_layout.setContentsMargins(0, 6, 0, 6)
+
+        items = [
+            ("Hypo (<3.3)", HYPO_RED, "#121212"),
+            ("Low (3.3–4)", LOW_AMBER, "#121212"),
+            ("Target (4–10)", TARGET_GREEN, "#F5F5F5"),
+            ("High (10–15)", "#FFD250", "#121212"),
+            ("Hyper (>15)", "#C88CFF", "#121212"),
+        ]
+
+        legend_layout.addStretch()
+
+        for text, bg_color, text_color in items:
+            label = QLabel(text)
+            label.setObjectName("legendChip")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            label.setStyleSheet(
+                f"background-color: {bg_color}; color: {text_color};"
+            )
+            legend_layout.addWidget(label)
+
+        legend_layout.addStretch()
+        self.layout.addLayout(legend_layout)
+
     def _build_table(self) -> None:
-        """Create the editable readings table for glucose and dosing data."""
         self.table = QTableWidget()
+        self.table.setObjectName("glucoseTable")
         self.table.setColumnCount(8)
         self.table.setMinimumHeight(350)
         self.table.setHorizontalHeaderLabels(
-               [
-                    "ID",
-                    "Recorded At",
-                    "Glucose",
-                    "Meal Event",
-                    "Carbs (g)",
-                    "Humalog (u)",
-                    "Tresiba (u)",
-                    "Notes",
-                ]
+            [
+                "ID",
+                "Recorded At",
+                "Glucose",
+                "Meal Event",
+                "Carbs (g)",
+                "Humalog (u)",
+                "Tresiba (u)",
+                "Notes",
+            ]
         )
         self.table.verticalHeader().setVisible(False)
         self.table.setAlternatingRowColors(True)
@@ -459,21 +683,53 @@ class GlucoseTab(QWidget):
         self.layout.addWidget(self.table)
 
     def _build_notes_panel(self) -> None:
-        """Create the notes editor shown beneath the readings table."""
-        notes_layout = QVBoxLayout()
+        self.notes_label = self._create_section_title("Notes for selected reading")
+        self.layout.addWidget(self.notes_label)
 
-        self.notes_label = QLabel("Notes for selected reading:")
         self.notes_editor = QTextEdit()
+        self.notes_editor.setObjectName("notesEditor")
         self.notes_editor.setPlaceholderText("Add contextual notes here...")
+        self.notes_editor.setMinimumHeight(120)
+        self.layout.addWidget(self.notes_editor)
 
         self.save_note_button = QPushButton("Save Note")
+        self.save_note_button.setObjectName("primaryAction")
         self.save_note_button.clicked.connect(self.handle_save_note)
+        self.layout.addWidget(
+            self.save_note_button,
+            alignment=Qt.AlignmentFlag.AlignRight,
+        )
 
-        notes_layout.addWidget(self.notes_label)
-        notes_layout.addWidget(self.notes_editor)
-        notes_layout.addWidget(self.save_note_button)
+    def _set_card_colour(
+        self,
+        label: QLabel,
+        color: str,
+        text_color: str = "#121212",
+    ) -> None:
+        label.setStyleSheet(
+            self.CARD_BASE_STYLE
+            + f"background-color: {color}; color: {text_color};"
+        )
 
-        self.layout.addLayout(notes_layout)
+    def _reset_summary_card_styles(self) -> None:
+        cards = [
+            self.count_label,
+            self.avg_label,
+            self.min_label,
+            self.max_label,
+            self.tir_label,
+            self.hypo_label,
+            self.low_label,
+            self.target_label,
+            self.high_label,
+            self.hyper_label,
+            self.sd_label,
+            self.cv_label,
+            self.gmi_label,
+        ]
+
+        for label in cards:
+            label.setStyleSheet("")
 
     def _get_filtered_readings(self) -> list[dict]:
         """Return readings filtered by the selected meal event and time range."""
@@ -514,6 +770,8 @@ class GlucoseTab(QWidget):
 
     def _update_summary(self, readings: list[dict]) -> None:
         """Update the summary cards using the currently filtered readings."""
+        self._reset_summary_card_styles()
+
         if not readings:
             self.count_label.setText("Readings\n0")
             self.avg_label.setText("Average\n-")
@@ -546,119 +804,40 @@ class GlucoseTab(QWidget):
         self.high_label.setText(f"High\n{breakdown['high']['pct']:.1f}%")
         self.hyper_label.setText(f"Hyper\n{breakdown['hyper']['pct']:.1f}%")
         self.sd_label.setText(f"SD\n{variability['sd']:.2f}")
+
         cv = variability["cv_pct"]
         self.cv_label.setText(f"CV\n{cv:.1f}%")
 
         if cv < 36:
-            color = "#43a047"   # green
+            color = TARGET_GREEN
         elif cv < 50:
-            color = "#ffaa00"   # amber
+            color = LOW_AMBER
         else:
-            color = "#dc5050"   # red
+            color = HYPO_RED
 
         self._set_card_colour(self.cv_label, color)
+
         gmi = variability["gmi"]
         self.gmi_label.setText(f"GMI\n{gmi:.1f}%")
 
         if gmi < 7:
-            color = "#43a047"   # green
+            color = TARGET_GREEN
         elif gmi < 8:
-            color = "#ffaa00"   # amber
+            color = LOW_AMBER
         else:
-            color = "#dc5050"   # red
+            color = HYPO_RED
 
         self._set_card_colour(self.gmi_label, color)
-        self._set_card_colour(self.hypo_label, "#dc5050")   # red
-        self._set_card_colour(self.low_label, "#ffaa00")    # amber
-        self._set_card_colour(self.target_label, "#43a047") # green
-        self._set_card_colour(self.high_label, "#ffd54f")   # yellow
-        self._set_card_colour(self.hyper_label, "#b388ff")  # purple
-
-    def _build_insulin_effectiveness_table(self) -> None:
-        """Create the table showing previous-dose effectiveness by meal event."""
-        title = QLabel("Dose Effectiveness by Previous Meal Event")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet(
-            """
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-                margin-top: 8px;
-                margin-bottom: 4px;
-            }
-            """
-        )
-
-        self.insulin_effectiveness_table = QTableWidget()
-        self.insulin_effectiveness_table.setColumnCount(7)
-        self.insulin_effectiveness_table.setHorizontalHeaderLabels(
-            [
-                "Meal Event",
-                "Standard Ratio (g/u)",
-                "Actual Ratio (g/u)",
-                "Avg Outcome Glucose",
-                "Status",
-                "Suggestion",
-                "Count",
-            ]
-        )
-        self.insulin_effectiveness_table.verticalHeader().setVisible(False)
-        self.insulin_effectiveness_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.insulin_effectiveness_table.setSelectionMode(QTableWidget.NoSelection)
-        self.insulin_effectiveness_table.setMinimumHeight(220)
-
-        header = self.insulin_effectiveness_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
-
-        self.layout.addWidget(title)
-        self.layout.addWidget(self.insulin_effectiveness_table)
-
-    def _build_legend(self) -> None:
-        """Create the colour legend used throughout the glucose views."""
-        legend_layout = QHBoxLayout()
-        legend_layout.setSpacing(10)
-        legend_layout.setContentsMargins(0, 10, 0, 6)
-
-        items = [
-            ("Hypo (<3.3)", "#dc5050", "#1e1e1e"),
-            ("Low (3.3–4)", "#ffaa00", "#1e1e1e"),
-            ("Target (4–10)", "#43a047", "#f0f0f0"),
-            ("High (10–15)", "#ffd250", "#1e1e1e"),
-            ("Hyper (>15)", "#c88cff", "#1e1e1e"),
-        ]
-
-        legend_layout.addStretch()
-
-        for text, bg_color, text_color in items:
-            label = QLabel(text)
-            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-            label.setStyleSheet(
-                f"""
-                QLabel {{
-                    background-color: {bg_color};
-                    color: {text_color};
-                    border-radius: 10px;
-                    padding: 6px 12px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }}
-                """
-            )
-            legend_layout.addWidget(label)
-
-        legend_layout.addStretch()
-        self.layout.addLayout(legend_layout)
+        self._set_card_colour(self.hypo_label, HYPO_RED)
+        self._set_card_colour(self.low_label, LOW_AMBER)
+        self._set_card_colour(self.target_label, TARGET_GREEN, "#F5F5F5")
+        self._set_card_colour(self.high_label, HIGH_YELLOW)
+        self._set_card_colour(self.hyper_label, HYPER_PURPLE)
 
     def load_readings(self) -> None:
         """Refresh all charts, tables, and summary cards from filtered readings."""
         readings = self._get_filtered_readings()
+
         agp_df = calculate_agp(pd.DataFrame(readings))
         draw_agp_figure(self.agp_figure, agp_df)
         self.agp_canvas.draw()
@@ -683,21 +862,24 @@ class GlucoseTab(QWidget):
 
         for row_index, (_, row) in enumerate(effectiveness_df.iterrows()):
             meal_event_item = QTableWidgetItem(str(row["meal_event_label"]))
-            standard_ratio_item = QTableWidgetItem(f"{row['standard_ratio_g_per_u']:.1f}")
+            standard_ratio_item = QTableWidgetItem(
+                f"{row['standard_ratio_g_per_u']:.1f}"
+            )
             actual_ratio_item = QTableWidgetItem(f"{row['avg_ratio_g_per_u']:.1f}")
             count_item = QTableWidgetItem(str(int(row["count"])))
+
             outcome_value = row["avg_outcome_glucose"]
             outcome_item = QTableWidgetItem(f"{outcome_value:.1f}")
             outcome_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
 
             if outcome_value < 4:
-                outcome_item.setForeground(QColor(220, 80, 80))  # hypo red
+                outcome_item.setForeground(QColor(220, 80, 80))
             elif outcome_value <= 10:
-                outcome_item.setForeground(QColor(102, 204, 102))  # green
+                outcome_item.setForeground(QColor(102, 204, 102))
             elif outcome_value <= 15:
-                outcome_item.setForeground(QColor(255, 210, 80))  # amber
+                outcome_item.setForeground(QColor(255, 210, 80))
             else:
-                outcome_item.setForeground(QColor(200, 140, 255))  # purple
+                outcome_item.setForeground(QColor(200, 140, 255))
 
             if outcome_value < 4:
                 status_text = "Running low"
@@ -710,6 +892,7 @@ class GlucoseTab(QWidget):
 
             status_item = QTableWidgetItem(status_text)
             status_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
             if outcome_value < 4:
                 status_item.setForeground(QColor(220, 80, 80))
             elif outcome_value <= 10:
@@ -728,6 +911,7 @@ class GlucoseTab(QWidget):
 
             suggestion_item = QTableWidgetItem(suggestion_text)
             suggestion_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
             if outcome_value < 4:
                 suggestion_item.setForeground(QColor(220, 80, 80))
             elif outcome_value <= 10:
@@ -747,28 +931,32 @@ class GlucoseTab(QWidget):
                 font = actual_ratio_item.font()
                 font.setBold(True)
                 actual_ratio_item.setFont(font)
-                actual_ratio_item.setForeground(QColor(255, 170, 0))  # amber
+                actual_ratio_item.setForeground(QColor(255, 170, 0))
 
             self.insulin_effectiveness_table.setItem(row_index, 0, meal_event_item)
-            self.insulin_effectiveness_table.setItem(row_index, 1, standard_ratio_item)
+            self.insulin_effectiveness_table.setItem(
+                row_index, 1, standard_ratio_item
+            )
             self.insulin_effectiveness_table.setItem(row_index, 2, actual_ratio_item)
             self.insulin_effectiveness_table.setItem(row_index, 3, outcome_item)
             self.insulin_effectiveness_table.setItem(row_index, 4, status_item)
             self.insulin_effectiveness_table.setItem(row_index, 5, suggestion_item)
             self.insulin_effectiveness_table.setItem(row_index, 6, count_item)
 
-        effectiveness_df = calculate_insulin_effectiveness(readings)
-
         fig = self.dose_effectiveness_chart.figure
         fig.clear()
         ax = fig.add_subplot(111)
-
-        # Dark theme
-        fig.patch.set_facecolor("#1e1e1e")
-        ax.set_facecolor("#1e1e1e")
+        apply_chart_theme(fig, ax)
 
         if effectiveness_df.empty:
-            ax.text(0.5, 0.5, "No effectiveness data", ha="center", va="center", color="#f0f0f0")
+            ax.text(
+                0.5,
+                0.5,
+                "No effectiveness data",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+            )
             ax.set_axis_off()
         else:
             events = effectiveness_df["meal_event_label"]
@@ -777,21 +965,19 @@ class GlucoseTab(QWidget):
             bars = ax.bar(events, glucose)
             max_val = max(glucose)
             ax.set_ylim(0, max_val + 2)
-            ax.axhspan(4, 10, color="#43a047", alpha=0.12)
-            ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
-            ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
+            ax.axhspan(4, 10, color=TARGET_GREEN, alpha=0.12)
+            ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
+            ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
 
-            # Colour bars based on glucose
             for bar, value in zip(bars, glucose):
                 if value < 4:
-                    bar.set_color("#dc5050")
+                    bar.set_color(HYPO_RED)
                 elif value <= 10:
-                    bar.set_color("#43a047")
+                    bar.set_color(TARGET_GREEN)
                 elif value <= 15:
-                    bar.set_color("#ffd54f")
+                    bar.set_color(HIGH_YELLOW)
                 else:
-                    bar.set_color("#b388ff")
-
+                    bar.set_color(HYPER_PURPLE)
 
             for bar, value in zip(bars, glucose):
                 ax.text(
@@ -800,20 +986,13 @@ class GlucoseTab(QWidget):
                     f"{value:.1f}",
                     ha="center",
                     va="bottom",
-                    color="#f0f0f0",
+                    color=CHART_TEXT,
                     fontsize=9,
                 )
 
-            ax.set_title("Dose Effectiveness (Outcome Glucose)", color="#f0f0f0")
-            ax.set_ylabel("Glucose (mmol/L)", color="#f0f0f0")
-
-            ax.tick_params(axis="x", colors="#f0f0f0")
-            ax.tick_params(axis="y", colors="#f0f0f0")
-
-            for spine in ax.spines.values():
-                spine.set_color("#888888")
-
-            ax.grid(True, color="#444444", alpha=0.3)
+            ax.set_title("Dose Effectiveness (Outcome Glucose)", color=CHART_TEXT)
+            ax.set_ylabel("Glucose (mmol/L)", color=CHART_TEXT)
+            ax.grid(True, color=CHART_GRID, alpha=0.3)
 
         self.dose_effectiveness_chart.draw()
 
@@ -840,7 +1019,7 @@ class GlucoseTab(QWidget):
                 self.time_effectiveness_table.setItem(row_index, 2, recent_item)
                 self.time_effectiveness_table.setItem(row_index, 3, change_item)
 
-
+        self.table.blockSignals(True)
         self.table.setSortingEnabled(False)
         self.table.setRowCount(len(readings))
 
@@ -854,8 +1033,8 @@ class GlucoseTab(QWidget):
             glucose_value = reading["glucose_value"]
             glucose_item = NumericTableWidgetItem(glucose_value)
             glucose_item.setTextAlignment(
-                    Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
-                )
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
 
             if glucose_value < 3.3:
                 glucose_item.setForeground(QColor(220, 80, 80))
@@ -893,6 +1072,7 @@ class GlucoseTab(QWidget):
 
         self.table.setSortingEnabled(True)
         self.table.sortItems(1, Qt.SortOrder.DescendingOrder)
+        self.table.blockSignals(False)
 
         self.selected_reading_id = None
         self.notes_editor.clear()
@@ -942,7 +1122,6 @@ class GlucoseTab(QWidget):
         styles = getSampleStyleSheet()
 
         content = []
-
         content.append(Paragraph("RigLog Glucose Report", styles["Title"]))
         content.append(Paragraph("Personal Glucose Analysis Report", styles["Italic"]))
         content.append(Spacer(1, 12))
@@ -955,12 +1134,16 @@ class GlucoseTab(QWidget):
         metrics = calculate_glucose_variability_metrics(pd.DataFrame(readings))
 
         if metrics["mean_glucose"] is not None:
-            content.append(Paragraph(f"Average glucose: {metrics['mean_glucose']} mmol/L", styles["Normal"]))
+            content.append(
+                Paragraph(
+                    f"Average glucose: {metrics['mean_glucose']} mmol/L",
+                    styles["Normal"],
+                )
+            )
             content.append(Paragraph(f"SD: {metrics['sd']}", styles["Normal"]))
             content.append(Paragraph(f"CV: {metrics['cv_pct']}%", styles["Normal"]))
             content.append(Paragraph(f"GMI: {metrics['gmi']}%", styles["Normal"]))
 
-        # --- AGP Chart ---
         agp_df = calculate_agp(pd.DataFrame(readings))
 
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
@@ -970,20 +1153,20 @@ class GlucoseTab(QWidget):
             content.append(Paragraph("AGP", styles["Heading2"]))
             content.append(Image(tmpfile.name, width=500, height=210))
 
-        # --- Dose Effectiveness Chart ---
         with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as tmpfile:
             self.dose_effectiveness_chart.figure.savefig(tmpfile.name)
             content.append(Spacer(1, 12))
             content.append(
-                KeepTogether([
-                    Paragraph("Dose Effectiveness", styles["Heading2"]),
-                    Spacer(1, 8),
-                    Image(tmpfile.name, width=500, height=210),
-                ])
+                KeepTogether(
+                    [
+                        Paragraph("Dose Effectiveness", styles["Heading2"]),
+                        Spacer(1, 8),
+                        Image(tmpfile.name, width=500, height=210),
+                    ]
+                )
             )
 
         doc.build(content)
-
         QMessageBox.information(self, "Export PDF", "PDF exported successfully.")
 
     def handle_row_selection(self) -> None:
@@ -1030,11 +1213,10 @@ class GlucoseTab(QWidget):
         if self.table.item(row, 0) is None:
             return
 
-        reading_id = int(self.table.item(row, 0).text())
-
         if column not in [4, 5, 6]:
             return
 
+        reading_id = int(self.table.item(row, 0).text())
         item = self.table.item(row, column)
         value_text = item.text().strip() if item else ""
 
@@ -1042,6 +1224,7 @@ class GlucoseTab(QWidget):
             value = float(value_text) if value_text else None
         except ValueError:
             QMessageBox.warning(self, "Invalid input", "Please enter a valid number.")
+            self.load_readings()
             return
 
         field_map = {
@@ -1052,215 +1235,8 @@ class GlucoseTab(QWidget):
 
         field_name = field_map[column]
 
-        from app.services.glucose.analysis import update_glucose_field
-        update_glucose_field(reading_id, field_name, value)
-
-    def _set_card_colour(self, label: QLabel, color: str) -> None:
-        """Apply a coloured background style to a summary card label."""
-        label.setStyleSheet(f"""
-            QLabel {{
-                font-size: 16px;
-                font-weight: bold;
-                padding: 10px 16px;
-                border: 1px solid #555555;
-                border-radius: 8px;
-                background-color: {color};
-                color: #1e1e1e;
-            }}
-        """)
-
-    def _build_time_effectiveness_table(self) -> None:
-        """Create the table comparing recent and older outcome glucose by meal event."""
-        title = QLabel("7-Day Improvement by Previous Meal Event")
-        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        title.setStyleSheet(
-            """
-            QLabel {
-                font-size: 18px;
-                font-weight: bold;
-                color: #f0f0f0;
-                margin-top: 8px;
-                margin-bottom: 4px;
-            }
-            """
-        )
-
-        self.time_effectiveness_table = QTableWidget()
-        self.time_effectiveness_table.setColumnCount(4)
-        self.time_effectiveness_table.setHorizontalHeaderLabels(
-            ["Meal Event", "Older Avg", "Recent Avg", "Change"]
-        )
-        self.time_effectiveness_table.verticalHeader().setVisible(False)
-        self.time_effectiveness_table.setEditTriggers(QTableWidget.NoEditTriggers)
-        self.time_effectiveness_table.setSelectionMode(QTableWidget.NoSelection)
-        self.time_effectiveness_table.setMinimumHeight(220)
-
-        header = self.time_effectiveness_table.horizontalHeader()
-        header.setSectionResizeMode(0, QHeaderView.Stretch)
-        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
-        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
-
-        self.layout.addWidget(title)
-        self.layout.addWidget(self.time_effectiveness_table)
-
-
-class GlucoseProfileChart(FigureCanvasQTAgg):
-    """Matplotlib canvas for the daily glucose profile chart."""
-
-    def __init__(self) -> None:
-        """Initialise the chart canvas and axes."""
-        self.figure = Figure(figsize=(6, 4.5))
-        self.ax = self.figure.add_subplot(111)
-        super().__init__(self.figure)
-
-    def plot_profile(self, profile_data: list[dict]) -> None:
-        """Plot mean glucose by time-of-day bucket."""
-        self.ax.clear()
-
-        self.figure.patch.set_facecolor("#1e1e1e")
-        self.ax.set_facecolor("#1e1e1e")
-
-        self.ax.set_title("Daily Glucose Profile", color="#f0f0f0")
-        self.ax.set_ylabel("mmol/L", color="#f0f0f0")
-        self.ax.set_xlabel("Time of Day", color="#f0f0f0", labelpad=10)
-
-        self.ax.tick_params(axis="x", colors="#f0f0f0")
-        self.ax.tick_params(axis="y", colors="#f0f0f0")
-
-        self.ax.set_ylim(0, 30)
-        self.ax.set_yticks(range(0, 31, 5))
-
-        for spine in self.ax.spines.values():
-            spine.set_color("#888888")
-
-        self.ax.grid(True, color="#444444", alpha=0.5)
-
-        self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
-        self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
-        self.ax.axhspan(15, 30, color="#8e24aa", alpha=0.12)
-
-        self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
-        self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
-
-        if not profile_data:
-            self.draw()
-            return
-
-        x = [row["bucket_minutes"] / 60 for row in profile_data]
-        y = [row["avg"] for row in profile_data]
-        labels = [row["time_label"] for row in profile_data]
-
-        self.ax.plot(
-            x,
-            y,
-            color="#ff4d4d",
-            marker="o",
-            markersize=4,
-            linewidth=2,
-            alpha=0.9,
-            label="Average by Time of Day",
-        )
-
-        tick_positions = []
-        tick_labels = []
-
-        for row in profile_data:
-            minutes = row["bucket_minutes"]
-
-            if minutes % 120 == 0:  # every 2 hours
-                tick_positions.append(minutes / 60)
-                tick_labels.append(row["time_label"])
-
-        self.ax.set_xticks(tick_positions)
-        self.ax.set_xticklabels(tick_labels)
-
-        self.ax.legend(
-            facecolor="#1e1e1e",
-            edgecolor="#888888",
-            labelcolor="#f0f0f0",
-        )
-
-        self.figure.subplots_adjust(bottom=0.24)
-        self.draw()
-
-
-class MealEventBoxPlotChart(FigureCanvasQTAgg):
-    """Matplotlib canvas for glucose distribution by meal event."""
-
-    def __init__(self) -> None:
-        """Initialise the chart canvas and axes."""
-        self.figure = Figure(figsize=(6, 4.5))
-        self.ax = self.figure.add_subplot(111)
-        super().__init__(self.figure)
-
-    def plot_boxplot(self, boxplot_data: list[dict]) -> None:
-        """Plot glucose distributions for each meal event as a boxplot."""
-        self.ax.clear()
-
-        self.figure.patch.set_facecolor("#1e1e1e")
-        self.ax.set_facecolor("#1e1e1e")
-
-        self.ax.set_title("Glucose Distribution by Meal Event", color="#f0f0f0")
-        self.ax.set_xlabel("Meal Event", color="#f0f0f0", labelpad=10)
-        self.ax.set_ylabel("mmol/L", color="#f0f0f0")
-
-        self.ax.tick_params(axis="x", colors="#f0f0f0", labelsize=9)
-        self.ax.tick_params(axis="y", colors="#f0f0f0")
-
-        for spine in self.ax.spines.values():
-            spine.set_color("#888888")
-
-        self.ax.grid(True, axis="y", color="#444444", alpha=0.5)
-
-        self.ax.axhspan(0, 3.3, color="#d32f2f", alpha=0.12)
-        self.ax.axhspan(4, 10, color="#43a047", alpha=0.35)
-        self.ax.axhspan(15, 30, color="#8e24aa", alpha=0.12)
-
-        self.ax.axhline(3.3, color="#ff6666", linestyle="--", linewidth=1)
-        self.ax.axhline(4, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(10, color="#66bb6a", linestyle=":", linewidth=1)
-        self.ax.axhline(15, color="#b388ff", linestyle="--", linewidth=1)
-
-        self.ax.set_ylim(0, 30)
-        self.ax.set_yticks(range(0, 31, 5))
-
-        if not boxplot_data:
-            self.draw()
-            return
-
-        labels = [row["meal_event"] for row in boxplot_data]
-        values = [row["values"] for row in boxplot_data]
-
-        box = self.ax.boxplot(
-            values,
-            labels=labels,
-            patch_artist=True,
-            widths=0.6,
-        )
-
-        for patch in box["boxes"]:
-            patch.set(facecolor="#ff4d4d", alpha=0.35, edgecolor="#f0f0f0")
-
-        for median in box["medians"]:
-            median.set(color="#ffffff", linewidth=2)
-
-        for whisker in box["whiskers"]:
-            whisker.set(color="#dddddd")
-
-        for cap in box["caps"]:
-            cap.set(color="#dddddd")
-
-        for flier in box["fliers"]:
-            flier.set(
-                marker="o",
-                markerfacecolor="#ff9999",
-                markeredgecolor="#ff9999",
-                alpha=0.4,
-                markersize=4,
-            )
-
-        self.figure.subplots_adjust(bottom=0.24)
-        self.draw()
+        try:
+            update_glucose_field(reading_id, field_name, value)
+        except Exception as exc:
+            QMessageBox.critical(self, "Save failed", f"Could not save field:\n{exc}")
+            self.load_readings()
