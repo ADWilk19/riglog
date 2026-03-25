@@ -11,6 +11,7 @@ from PySide6.QtGui import QIcon
 
 from app.ui.tabs.glucose_tab import GlucoseTab
 from app.ui.tabs.home_tab import HomeTab
+from app.ui.tabs.activity_tab import ActivityTab
 
 
 class MainWindow(QMainWindow):
@@ -30,7 +31,7 @@ class MainWindow(QMainWindow):
 
         self.tabs.addTab(HomeTab(), "Home")
         self.tabs.addTab(GlucoseTab(), "Glucose")
-        self.tabs.addTab(self._build_tab("Activity"), "Activity")
+        self.tabs.addTab(ActivityTab(), "Activity")
         self.tabs.addTab(self._build_tab("Workouts"), "Workouts")
 
         self.setCentralWidget(self.tabs)

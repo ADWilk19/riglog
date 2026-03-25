@@ -1,0 +1,278 @@
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import (
+    QComboBox,
+    QHBoxLayout,
+    QLabel,
+    QPushButton,
+    QTableWidget,
+    QTableWidgetItem,
+    QVBoxLayout,
+    QWidget,
+    QHeaderView,
+)
+
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+from datetime import timedelta
+
+
+CHART_BG = "#1E1E1E"
+CHART_TEXT = "#F0F0F0"
+CHART_GRID = "#444444"
+CHART_SPINE = "#888888"
+LINE_COLOUR = "#F5F5F5"
+ACCENT_GREEN = "#43A047"
+
+
+def apply_chart_theme(fig: Figure, ax) -> None:
+    fig.patch.set_facecolor(CHART_BG)
+    ax.set_facecolor(CHART_BG)
+    ax.tick_params(axis="x", colors=CHART_TEXT)
+    ax.tick_params(axis="y", colors=CHART_TEXT)
+
+    for spine in ax.spines.values():
+        spine.set_color(CHART_SPINE)
+
+    ax.grid(True, color=CHART_GRID, alpha=0.5)
+
+
+class ActivityTrendChart(FigureCanvasQTAgg):
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_steps(self, activity_rows: list[dict]) -> None:
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+
+        self.ax.set_title("Daily Steps", color=CHART_TEXT)
+        self.ax.set_ylabel("Steps", color=CHART_TEXT)
+
+        if not activity_rows:
+            self.ax.text(
+                0.5,
+                0.5,
+                "No activity data available",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+            )
+            self.ax.set_axis_off()
+            self.draw()
+            return
+
+        dates = [row["activity_date"] for row in activity_rows]
+        steps = [row["steps"] for row in activity_rows]
+
+        self.ax.plot(
+            dates,
+            steps,
+            color=LINE_COLOUR,
+            marker="o",
+            markersize=4,
+            linewidth=2,
+            label="Steps",
+        )
+
+        self.ax.axhline(10000, color=ACCENT_GREEN, linestyle="--", linewidth=1.2, label="10k target")
+
+        legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
+        for text in legend.get_texts():
+            text.set_color(CHART_TEXT)
+
+        self.figure.autofmt_xdate()
+        self.figure.subplots_adjust(bottom=0.20)
+        self.draw()
+
+
+class ActivityTab(QWidget):
+    def __init__(self) -> None:
+        super().__init__()
+
+        self.layout = QVBoxLayout(self)
+        self.layout.setSpacing(20)
+        self.layout.setContentsMargins(16, 16, 16, 24)
+
+        self._build_toolbar()
+        self._build_summary_panel()
+        self._build_chart()
+        self._build_table()
+
+        self.load_activity()
+
+    def _create_section_title(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("sectionTitle")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        return label
+
+    def _create_toolbar_label(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("fieldLabel")
+        return label
+
+    def _create_summary_card(self, text: str) -> QLabel:
+        label = QLabel(text)
+        label.setObjectName("summaryCardNeutral")
+        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        label.setMinimumHeight(64)
+        return label
+
+    def _build_toolbar(self) -> None:
+        toolbar = QHBoxLayout()
+        toolbar.setSpacing(12)
+
+        self.refresh_button = QPushButton("Refresh")
+        self.refresh_button.setObjectName("secondaryAction")
+        self.refresh_button.clicked.connect(self.load_activity)
+
+        self.time_filter = QComboBox()
+        self.time_filter.addItems(
+            [
+                "All Time",
+                "Last 7 Days",
+                "Last 14 Days",
+                "Last 30 Days",
+                "Last 90 Days",
+            ]
+        )
+        self.time_filter.currentIndexChanged.connect(self.load_activity)
+        self.time_filter.setFixedWidth(140)
+
+        toolbar.addStretch()
+        toolbar.addWidget(self.refresh_button)
+        toolbar.addSpacing(12)
+        toolbar.addWidget(self._create_toolbar_label("Time Range"))
+        toolbar.addWidget(self.time_filter)
+        toolbar.addStretch()
+
+        self.layout.addLayout(toolbar)
+
+    def _build_summary_panel(self) -> None:
+        summary_layout = QHBoxLayout()
+        summary_layout.setSpacing(12)
+        summary_layout.setContentsMargins(0, 8, 0, 8)
+
+        self.days_label = self._create_summary_card("Days\n-")
+        self.avg_steps_label = self._create_summary_card("Average Steps\n-")
+        self.best_day_label = self._create_summary_card("Best Day\n-")
+        self.total_steps_label = self._create_summary_card("Total Steps\n-")
+
+        cards = [
+            self.days_label,
+            self.avg_steps_label,
+            self.best_day_label,
+            self.total_steps_label,
+        ]
+
+        summary_layout.addStretch()
+        for card in cards:
+            summary_layout.addWidget(card)
+        summary_layout.addStretch()
+
+        self.layout.addLayout(summary_layout)
+
+    def _build_chart(self) -> None:
+        self.chart = ActivityTrendChart()
+        self.chart.setMinimumHeight(320)
+        self.layout.addWidget(self.chart)
+
+    def _build_table(self) -> None:
+        self.layout.addWidget(self._create_section_title("Daily Activity"))
+
+        self.table = QTableWidget()
+        self.table.setObjectName("analysisTable")
+        self.table.setColumnCount(3)
+        self.table.setHorizontalHeaderLabels(["Date", "Steps", "Source"])
+        self.table.verticalHeader().setVisible(False)
+        self.table.setAlternatingRowColors(True)
+        self.table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.table.setSelectionMode(QTableWidget.NoSelection)
+        self.table.setMinimumHeight(260)
+
+        header = self.table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.table)
+
+    def _get_activity_rows(self) -> list[dict]:
+        """
+        Replace this stub with your real activity service call.
+        Expected shape:
+        [
+            {
+                "activity_date": datetime.date,
+                "steps": int,
+                "source": "fitbit",
+            },
+            ...
+        ]
+        """
+        return []
+
+    def _filter_activity_rows(self, rows: list[dict]) -> list[dict]:
+        if not rows:
+            return rows
+
+        selected_time_range = self.time_filter.currentText()
+        if selected_time_range == "All Time":
+            return rows
+
+        latest_date = max(row["activity_date"] for row in rows)
+
+        if selected_time_range == "Last 7 Days":
+            cutoff = latest_date - timedelta(days=7)
+        elif selected_time_range == "Last 14 Days":
+            cutoff = latest_date - timedelta(days=14)
+        elif selected_time_range == "Last 30 Days":
+            cutoff = latest_date - timedelta(days=30)
+        elif selected_time_range == "Last 90 Days":
+            cutoff = latest_date - timedelta(days=90)
+        else:
+            return rows
+
+        return [row for row in rows if row["activity_date"] >= cutoff]
+
+    def _update_summary(self, rows: list[dict]) -> None:
+        if not rows:
+            self.days_label.setText("Days\n0")
+            self.avg_steps_label.setText("Average Steps\n-")
+            self.best_day_label.setText("Best Day\n-")
+            self.total_steps_label.setText("Total Steps\n-")
+            return
+
+        total_steps = sum(row["steps"] for row in rows)
+        avg_steps = total_steps / len(rows)
+        best_day = max(row["steps"] for row in rows)
+
+        self.days_label.setText(f"Days\n{len(rows)}")
+        self.avg_steps_label.setText(f"Average Steps\n{avg_steps:,.0f}")
+        self.best_day_label.setText(f"Best Day\n{best_day:,.0f}")
+        self.total_steps_label.setText(f"Total Steps\n{total_steps:,.0f}")
+
+    def _populate_table(self, rows: list[dict]) -> None:
+        self.table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            date_item = QTableWidgetItem(row["activity_date"].strftime("%Y-%m-%d"))
+            steps_item = QTableWidgetItem(f"{row['steps']:,}")
+            source_item = QTableWidgetItem(str(row["source"]))
+
+            date_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+            steps_item.setTextAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
+            source_item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            self.table.setItem(row_index, 0, date_item)
+            self.table.setItem(row_index, 1, steps_item)
+            self.table.setItem(row_index, 2, source_item)
+
+    def load_activity(self) -> None:
+        rows = self._get_activity_rows()
+        rows = self._filter_activity_rows(rows)
+
+        self._update_summary(rows)
+        self.chart.plot_steps(rows)
+        self._populate_table(rows)
