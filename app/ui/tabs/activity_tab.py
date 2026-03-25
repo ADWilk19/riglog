@@ -15,6 +15,7 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from datetime import timedelta
 
+from app.services.activity.analysis import get_daily_activity
 
 CHART_BG = "#1E1E1E"
 CHART_TEXT = "#F0F0F0"
@@ -154,7 +155,7 @@ class ActivityTab(QWidget):
         summary_layout.setSpacing(12)
         summary_layout.setContentsMargins(0, 8, 0, 8)
 
-        self.days_label = self._create_summary_card("Days\n-")
+        self.days_label = self._create_summary_card("10k Goal Days\n-")
         self.avg_steps_label = self._create_summary_card("Average Steps\n-")
         self.best_day_label = self._create_summary_card("Best Day\n-")
         self.total_steps_label = self._create_summary_card("Total Steps\n-")
@@ -199,19 +200,8 @@ class ActivityTab(QWidget):
         self.layout.addWidget(self.table)
 
     def _get_activity_rows(self) -> list[dict]:
-        """
-        Replace this stub with your real activity service call.
-        Expected shape:
-        [
-            {
-                "activity_date": datetime.date,
-                "steps": int,
-                "source": "fitbit",
-            },
-            ...
-        ]
-        """
-        return []
+        """Fetch daily activity rows from the activity service."""
+        return get_daily_activity()
 
     def _filter_activity_rows(self, rows: list[dict]) -> list[dict]:
         if not rows:
@@ -238,7 +228,7 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            self.days_label.setText("Days\n0")
+            self.days_label.setText("10k Goal Days\n0")
             self.avg_steps_label.setText("Average Steps\n-")
             self.best_day_label.setText("Best Day\n-")
             self.total_steps_label.setText("Total Steps\n-")
@@ -247,8 +237,9 @@ class ActivityTab(QWidget):
         total_steps = sum(row["steps"] for row in rows)
         avg_steps = total_steps / len(rows)
         best_day = max(row["steps"] for row in rows)
+        goal_days = sum(1 for row in rows if row["steps"] >= 10000)
 
-        self.days_label.setText(f"Days\n{len(rows)}")
+        self.days_label.setText(f"10k Goal Days\n{goal_days}")
         self.avg_steps_label.setText(f"Average Steps\n{avg_steps:,.0f}")
         self.best_day_label.setText(f"Best Day\n{best_day:,.0f}")
         self.total_steps_label.setText(f"Total Steps\n{total_steps:,.0f}")
