@@ -55,13 +55,9 @@ def import_diabetes_m_csv(file_path: str) -> int:
         with open(file_path, "r", encoding="utf-8-sig", newline="") as csv_file:
             reader = csv.reader(csv_file)
 
-            # Skip Diabetes:M metadata row
-            next(reader)
-
-            # Read the actual header row
+            next(reader)  # metadata row
             header = next(reader)
 
-            # Read remaining rows using that header
             dict_reader = csv.DictReader(csv_file, fieldnames=header)
 
             for row in dict_reader:
@@ -73,6 +69,17 @@ def import_diabetes_m_csv(file_path: str) -> int:
                     continue
 
                 recorded_at = datetime.strptime(datetime_text, "%Y-%m-%d %H:%M:%S")
+
+                # Diabetes:M export bug workaround:
+                # observed bad years 2048/2049 appear to correspond to 2025/2026
+                if recorded_at.year in {2048, 2049}:
+                    recorded_at = recorded_at.replace(year=recorded_at.year - 23)
+
+                if recorded_at.year < 2020 or recorded_at.year > 2035:
+                    raise ValueError(
+                        f"Invalid datetime detected in DateTimeFormatted: {recorded_at}"
+                    )
+
                 glucose_value = float(glucose_text)
 
                 existing = (
