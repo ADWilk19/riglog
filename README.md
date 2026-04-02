@@ -1,5 +1,7 @@
 # RigLog 🩸💪
 
+![RigLog Logo](assets/branding/logo_full.png)
+
 > One app. Multiple health signals. Clearer decisions.
 
 RigLog is a personal health analytics desktop application built in Python,
