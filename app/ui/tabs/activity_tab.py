@@ -15,6 +15,8 @@ from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 from datetime import date, datetime, timedelta
 from statistics import mean
+from pathlib import Path
+import json
 
 from app.services.activity.analysis import get_daily_activity
 
@@ -24,7 +26,35 @@ CHART_GRID = "#444444"
 CHART_SPINE = "#888888"
 LINE_COLOUR = "#F5F5F5"
 ACCENT_GREEN = "#43A047"
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+ACTIVITY_SYNC_PATH = PROJECT_ROOT / "data" / "activity_sync.json"
 
+
+def save_activity_last_synced(timestamp: datetime) -> None:
+    """Persist the most recent successful activity sync timestamp."""
+    ACTIVITY_SYNC_PATH.parent.mkdir(parents=True, exist_ok=True)
+    ACTIVITY_SYNC_PATH.write_text(
+        json.dumps({"last_synced": timestamp.isoformat()}, indent=2),
+        encoding="utf-8",
+    )
+
+
+def load_activity_last_synced() -> datetime | None:
+    """Load the most recent successful activity sync timestamp, if present."""
+    if not ACTIVITY_SYNC_PATH.exists():
+        return None
+
+    try:
+        payload = json.loads(ACTIVITY_SYNC_PATH.read_text(encoding="utf-8"))
+        raw_value = payload.get("last_synced")
+
+        if not raw_value:
+            return None
+
+        return datetime.fromisoformat(raw_value)
+
+    except (json.JSONDecodeError, ValueError, TypeError):
+        return None
 
 def apply_chart_theme(fig: Figure, ax) -> None:
     fig.patch.set_facecolor(CHART_BG)
@@ -201,6 +231,7 @@ class ActivityTab(QWidget):
         self._build_chart()
         self._build_table()
 
+        self._set_last_synced_label(load_activity_last_synced())
         self.load_activity()
 
     def _create_section_title(self, text: str) -> QLabel:
@@ -417,7 +448,18 @@ class ActivityTab(QWidget):
                 f"Could not refresh Fitbit activity:\n{exc}",
             )
 
+    def _set_last_synced_label(self, timestamp: datetime | None) -> None:
+        """Render the last synced label from a timestamp or fallback state."""
+        if timestamp is None:
+            self.last_synced_label.setText("Last synced: Never")
+            return
+
+        formatted = timestamp.strftime("%Y-%m-%d %H:%M")
+        self.last_synced_label.setText(f"Last synced: {formatted}")
+
+
     def _set_last_synced_now(self) -> None:
-        """Update the last synced label to the current local timestamp."""
-        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-        self.last_synced_label.setText(f"Last synced: {timestamp}")
+        """Persist and display the current local timestamp as last synced."""
+        timestamp = datetime.now()
+        save_activity_last_synced(timestamp)
+        self._set_last_synced_label(timestamp)
