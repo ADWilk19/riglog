@@ -40,6 +40,7 @@ QLabel#tagline {
 QTabWidget::pane {
     border: none;
     background: #121212;
+    top: 8px;
 }
 
 QTabBar::tab {
@@ -47,16 +48,30 @@ QTabBar::tab {
     color: #B0B0B0;
     padding: 6px 14px;
     margin-right: 4px;
+    margin-top: 8px;
     border-radius: 6px;
-}
-
-QTabBar::tab:selected {
-    background: #C62828;
-    color: #FFFFFF;
 }
 
 QTabBar::tab:hover {
     background: #3A3A3A;
+    color: #F5F5F5;
+}
+
+/* --- Active Tab (Selected) --- */
+QTabBar::tab:selected {
+    background: #43A047;   /* your green accent */
+    color: #F5F5F5;
+    font-weight: 600;
+}
+
+/* --- Optional: soft glow effect --- */
+QTabBar::tab:selected {
+    border: 1px solid #66BB6A;
+}
+
+/* --- Remove default focus outline (cleaner look) --- */
+QTabBar::tab:focus {
+    outline: none;
 }
 
 /* =========================
