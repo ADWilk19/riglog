@@ -49,6 +49,55 @@ def rolling_average(values: list[float], window: int = 7) -> list[float]:
     return result
 
 
+def calculate_step_streaks(
+    rows: list[dict],
+    goal_steps: int = 10_000,
+) -> tuple[int, int]:
+    """
+    Return (current_streak, longest_streak) for consecutive days meeting the goal.
+
+    Assumes at most one row per day and uses activity_date.
+    """
+    if not rows:
+        return 0, 0
+
+    sorted_rows = sorted(rows, key=lambda row: row["activity_date"])
+    qualifying_dates = [
+        row["activity_date"]
+        for row in sorted_rows
+        if row["steps"] >= goal_steps
+    ]
+
+    if not qualifying_dates:
+        return 0, 0
+
+    longest_streak = 0
+    current_run = 0
+    previous_date = None
+
+    for activity_date in qualifying_dates:
+        if previous_date is None:
+            current_run = 1
+        elif (activity_date - previous_date).days == 1:
+            current_run += 1
+        else:
+            current_run = 1
+
+        longest_streak = max(longest_streak, current_run)
+        previous_date = activity_date
+
+    latest_date = sorted_rows[-1]["activity_date"]
+    current_streak = 0
+    qualifying_set = set(qualifying_dates)
+
+    check_date = latest_date
+    while check_date in qualifying_set:
+        current_streak += 1
+        check_date = check_date - timedelta(days=1)
+
+    return current_streak, longest_streak
+
+
 class ActivityTrendChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
         self.figure = Figure(figsize=(6, 4.5))
@@ -132,6 +181,14 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.draw()
 
 class ActivityTab(QWidget):
+    CARD_BASE_STYLE = """
+        font-size: 15px;
+        font-weight: 700;
+        padding: 10px 16px;
+        border: 1px solid #2A2A2A;
+        border-radius: 10px;
+    """
+
     def __init__(self) -> None:
         super().__init__()
 
@@ -199,16 +256,18 @@ class ActivityTab(QWidget):
         summary_layout.setSpacing(12)
         summary_layout.setContentsMargins(0, 8, 0, 8)
 
-        self.days_label = self._create_summary_card("10k Goal Days\n-")
+        self.goal_days_label = self._create_summary_card("10k Goal Days\n-")
         self.avg_steps_label = self._create_summary_card("Average Steps\n-")
         self.best_day_label = self._create_summary_card("Best Day\n-")
-        self.total_steps_label = self._create_summary_card("Total Steps\n-")
+        self.current_streak_label = self._create_summary_card("Current Streak\n-")
+        self.longest_streak_label = self._create_summary_card("Longest Streak\n-")
 
         cards = [
-            self.days_label,
+            self.goal_days_label,
             self.avg_steps_label,
             self.best_day_label,
-            self.total_steps_label,
+            self.current_streak_label,
+            self.longest_streak_label,
         ]
 
         summary_layout.addStretch()
@@ -272,21 +331,38 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            self.days_label.setText("10k Goal Days\n0")
+            self.goal_days_label.setText("10k Goal Days\n0")
             self.avg_steps_label.setText("Average Steps\n-")
             self.best_day_label.setText("Best Day\n-")
-            self.total_steps_label.setText("Total Steps\n-")
+            self.current_streak_label.setText("Current Streak\n0")
+            self.longest_streak_label.setText("Longest Streak\n0")
             return
 
         total_steps = sum(row["steps"] for row in rows)
         avg_steps = total_steps / len(rows)
         best_day = max(row["steps"] for row in rows)
         goal_days = sum(1 for row in rows if row["steps"] >= 10000)
+        current_streak, longest_streak = calculate_step_streaks(rows)
 
-        self.days_label.setText(f"10k Goal Days\n{goal_days}")
+        self.goal_days_label.setText(f"10k Goal Days\n{goal_days}")
         self.avg_steps_label.setText(f"Average Steps\n{avg_steps:,.0f}")
         self.best_day_label.setText(f"Best Day\n{best_day:,.0f}")
-        self.total_steps_label.setText(f"Total Steps\n{total_steps:,.0f}")
+        self.current_streak_label.setText(f"Current Streak\n{current_streak}")
+        self.longest_streak_label.setText(f"Longest Streak\n{longest_streak}")
+
+        if current_streak > 0:
+            self.current_streak_label.setStyleSheet(
+                self.CARD_BASE_STYLE + "background-color: #43A047; color: #F5F5F5;"
+            )
+        else:
+            self.current_streak_label.setStyleSheet("")
+
+        if longest_streak >= 7:
+            self.longest_streak_label.setStyleSheet(
+                self.CARD_BASE_STYLE + "background-color: #C62828; color: #F5F5F5;"
+            )
+        else:
+            self.longest_streak_label.setStyleSheet("")
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))
