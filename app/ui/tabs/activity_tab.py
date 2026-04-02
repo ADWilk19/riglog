@@ -128,6 +128,34 @@ def calculate_step_streaks(
     return current_streak, longest_streak
 
 
+def format_relative_timestamp(timestamp: datetime, now: datetime | None = None) -> str:
+    """Return a human-friendly relative time string."""
+    now = now or datetime.now()
+    delta = now - timestamp
+
+    total_seconds = int(delta.total_seconds())
+
+    if total_seconds < 0:
+        return "just now"
+
+    if total_seconds < 60:
+        return "just now"
+
+    minutes = total_seconds // 60
+    if minutes < 60:
+        return f"{minutes} min ago"
+
+    hours = minutes // 60
+    if hours < 24:
+        return f"{hours} hr ago"
+
+    days = hours // 24
+    if days < 7:
+        return f"{days} day{'s' if days != 1 else ''} ago"
+
+    return timestamp.strftime("%Y-%m-%d")
+
+
 class ActivityTrendChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
         self.figure = Figure(figsize=(6, 4.5))
@@ -452,10 +480,14 @@ class ActivityTab(QWidget):
         """Render the last synced label from a timestamp or fallback state."""
         if timestamp is None:
             self.last_synced_label.setText("Last synced: Never")
+            self.last_synced_label.setToolTip("")
             return
 
-        formatted = timestamp.strftime("%Y-%m-%d %H:%M")
-        self.last_synced_label.setText(f"Last synced: {formatted}")
+        relative_text = format_relative_timestamp(timestamp)
+        full_text = timestamp.strftime("%Y-%m-%d %H:%M")
+
+        self.last_synced_label.setText(f"Last synced: {relative_text}")
+        self.last_synced_label.setToolTip(full_text)
 
 
     def _set_last_synced_now(self) -> None:
