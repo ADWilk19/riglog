@@ -194,28 +194,25 @@ QLabel#sectionTitle {
     font-size: 18px;
     font-weight: 700;
     color: #F5F5F5;
-    padding-top: 8px;
-    padding-bottom: 4px;
+    padding-top: 10px;
+    padding-bottom: 6px;
 }
 
-QLabel#summaryCard {
-    font-size: 15px;
-    font-weight: 700;
-    padding: 10px 16px;
-    border: 1px solid #2A2A2A;
-    border-radius: 10px;
-    background-color: #1E1E1E;
-    color: #F5F5F5;
-}
-
+QLabel#summaryCard,
 QLabel#summaryCardNeutral {
     font-size: 15px;
     font-weight: 700;
     padding: 10px 16px;
-    border: 1px solid #2A2A2A;
+    border: 1px solid #2F2F2F;
     border-radius: 10px;
     background-color: #1E1E1E;
     color: #F5F5F5;
+}
+
+QLabel#summaryCardNeutral:hover,
+QLabel#summaryCard:hover {
+    background-color: #242424;
+    border: 1px solid #3A3A3A;
 }
 
 QLabel#legendChip {

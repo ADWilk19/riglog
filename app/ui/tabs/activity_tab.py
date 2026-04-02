@@ -185,7 +185,7 @@ class ActivityTab(QWidget):
         font-size: 15px;
         font-weight: 700;
         padding: 10px 16px;
-        border: 1px solid #2A2A2A;
+        border: 1px solid #2F2F2F;
         border-radius: 10px;
     """
 
