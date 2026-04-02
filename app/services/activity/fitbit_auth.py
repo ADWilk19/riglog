@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+from dotenv import load_dotenv
 from typing import Any
 
 import requests
@@ -10,9 +11,12 @@ from requests.auth import HTTPBasicAuth
 from requests_oauthlib import OAuth2Session
 
 
+PROJECT_ROOT = Path(__file__).resolve().parents[3]
+load_dotenv(PROJECT_ROOT / ".env")
+
 AUTH_BASE_URL = "https://www.fitbit.com/oauth2/authorize"
 TOKEN_URL = "https://api.fitbit.com/oauth2/token"
-TOKEN_PATH = Path("data/fitbit_tokens.json")
+TOKEN_PATH = PROJECT_ROOT / "data" / "fitbit_tokens.json"
 
 # local dev only
 os.environ.setdefault("OAUTHLIB_INSECURE_TRANSPORT", "1")

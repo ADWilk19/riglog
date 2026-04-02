@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from datetime import timedelta
+from datetime import date, timedelta
 from statistics import mean
 
 from app.services.activity.analysis import get_daily_activity
@@ -227,7 +227,7 @@ class ActivityTab(QWidget):
 
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.setObjectName("secondaryAction")
-        self.refresh_button.clicked.connect(self.load_activity)
+        self.refresh_button.clicked.connect(self.handle_refresh_activity)
 
         self.time_filter = QComboBox()
         self.time_filter.addItems(
@@ -387,3 +387,26 @@ class ActivityTab(QWidget):
         self._update_summary(rows)
         self.chart.plot_steps(rows)
         self._populate_table(rows)
+
+    def handle_refresh_activity(self) -> None:
+        """Pull latest Fitbit activity into the database, then refresh the UI."""
+        try:
+            from app.services.activity.fitbit_importer import FitbitImporter
+
+            importer = FitbitImporter()
+
+            end_date = date.today()
+            start_date = end_date - timedelta(days=30)
+
+            importer.import_daily_steps(start_date, end_date)
+
+            self.load_activity()
+
+        except Exception as exc:
+            from PySide6.QtWidgets import QMessageBox
+
+            QMessageBox.critical(
+                self,
+                "Activity refresh failed",
+                f"Could not refresh Fitbit activity:\n{exc}",
+            )
