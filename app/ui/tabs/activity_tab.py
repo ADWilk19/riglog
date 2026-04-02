@@ -13,7 +13,7 @@ from PySide6.QtWidgets import (
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 from statistics import mean
 
 from app.services.activity.analysis import get_daily_activity
@@ -242,11 +242,16 @@ class ActivityTab(QWidget):
         self.time_filter.currentIndexChanged.connect(self.load_activity)
         self.time_filter.setFixedWidth(140)
 
+        self.last_synced_label = QLabel("Last synced: Never")
+        self.last_synced_label.setObjectName("statusLabel")
+
         toolbar.addStretch()
         toolbar.addWidget(self.refresh_button)
         toolbar.addSpacing(12)
         toolbar.addWidget(self._create_toolbar_label("Time Range"))
         toolbar.addWidget(self.time_filter)
+        toolbar.addSpacing(16)
+        toolbar.addWidget(self.last_synced_label)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
@@ -400,6 +405,7 @@ class ActivityTab(QWidget):
 
             importer.import_daily_steps(start_date, end_date)
 
+            self._set_last_synced_now()
             self.load_activity()
 
         except Exception as exc:
@@ -410,3 +416,8 @@ class ActivityTab(QWidget):
                 "Activity refresh failed",
                 f"Could not refresh Fitbit activity:\n{exc}",
             )
+
+    def _set_last_synced_now(self) -> None:
+        """Update the last synced label to the current local timestamp."""
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M")
+        self.last_synced_label.setText(f"Last synced: {timestamp}")

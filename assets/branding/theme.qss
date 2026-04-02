@@ -228,6 +228,12 @@ QLabel#fieldLabel {
     font-weight: 600;
 }
 
+QLabel#statusLabel {
+    color: #A0A0A0;
+    font-size: 12px;
+    padding-left: 6px;
+}
+
 QTableWidget#glucoseTable,
 QTableWidget#analysisTable {
     background-color: #1E1E1E;
