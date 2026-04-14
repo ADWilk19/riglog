@@ -19,7 +19,7 @@ data/*.db
 
 # Data
 data/imports/
-data/fitbit_tokens.json
+data/fitbit_tokens*.json
 data/activity_sync.json
 
 # Environment
