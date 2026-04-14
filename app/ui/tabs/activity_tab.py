@@ -9,6 +9,8 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QHeaderView,
+    QMessageBox,
+    QInputDialog,
 )
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
@@ -19,6 +21,13 @@ from pathlib import Path
 import json
 
 from app.services.activity.analysis import get_daily_activity
+
+from app.services.activity.fitbit_exceptions import (
+    FitbitAuthError,
+    FitbitAPIError,
+    FitbitNetworkError,
+    FitbitRateLimitError,
+)
 
 CHART_BG = "#1E1E1E"
 CHART_TEXT = "#F0F0F0"
@@ -454,27 +463,55 @@ class ActivityTab(QWidget):
 
     def handle_refresh_activity(self) -> None:
         """Pull latest Fitbit activity into the database, then refresh the UI."""
+        from app.services.activity.fitbit_importer import FitbitImporter
+
+        importer = FitbitImporter()
+        end_date = date.today()
+        start_date = end_date - timedelta(days=30)
+
+        self.refresh_button.setEnabled(False)
+        self.refresh_button.setText("Refreshing...")
+
         try:
-            from app.services.activity.fitbit_importer import FitbitImporter
-
-            importer = FitbitImporter()
-
-            end_date = date.today()
-            start_date = end_date - timedelta(days=30)
-
             importer.import_daily_steps(start_date, end_date)
-
             self._set_last_synced_now()
             self.load_activity()
 
-        except Exception as exc:
-            from PySide6.QtWidgets import QMessageBox
+        except FitbitAuthError:
+            self._handle_fitbit_auth_error()
 
+        except FitbitRateLimitError:
+            QMessageBox.warning(
+                self,
+                "Fitbit temporarily unavailable",
+                "Fitbit rate-limited the request. Please wait a moment and try again.",
+            )
+
+        except FitbitNetworkError:
+            QMessageBox.warning(
+                self,
+                "Network error",
+                "RigLog could not reach Fitbit. Check your connection and try again.",
+            )
+
+        except FitbitAPIError as exc:
+            QMessageBox.critical(
+                self,
+                "Fitbit error",
+                str(exc),
+            )
+
+        except Exception as exc:
             QMessageBox.critical(
                 self,
                 "Activity refresh failed",
-                f"Could not refresh Fitbit activity:\n{exc}",
+                f"An unexpected error occurred while refreshing activity data:\n{exc}",
             )
+
+        finally:
+            self.refresh_button.setEnabled(True)
+            self.refresh_button.setText("Refresh")
+
 
     def _set_last_synced_label(self, timestamp: datetime | None) -> None:
         """Render the last synced label from a timestamp or fallback state."""
@@ -495,3 +532,70 @@ class ActivityTab(QWidget):
         timestamp = datetime.now()
         save_activity_last_synced(timestamp)
         self._set_last_synced_label(timestamp)
+
+
+    def _handle_fitbit_auth_error(self) -> None:
+        message_box = QMessageBox(self)
+        message_box.setIcon(QMessageBox.Warning)
+        message_box.setWindowTitle("Fitbit connection expired")
+        message_box.setText(
+            "Your Fitbit session has expired or been revoked. "
+            "Please reconnect Fitbit to continue syncing activity data."
+        )
+
+        reconnect_button = message_box.addButton("Reconnect Fitbit", QMessageBox.AcceptRole)
+        message_box.addButton(QMessageBox.Cancel)
+        message_box.exec()
+
+        if message_box.clickedButton() is reconnect_button:
+            self._reconnect_fitbit()
+
+
+    def _show_fitbit_reconnect_instructions(self) -> None:
+        QMessageBox.information(
+            self,
+            "Reconnect Fitbit",
+            "Please run your Fitbit auth setup flow to reconnect the account, "
+            "then return to RigLog and press Refresh again.",
+        )
+
+
+    def _reconnect_fitbit(self) -> None:
+        import webbrowser
+        from PySide6.QtWidgets import QInputDialog, QMessageBox
+
+        from app.services.activity.fitbit_auth import (
+            get_authorization_url,
+            fetch_and_store_token,
+        )
+
+        auth_url = get_authorization_url()
+        webbrowser.open(auth_url)
+
+        redirect_url, ok = QInputDialog.getText(
+            self,
+            "Reconnect Fitbit",
+            "After approving Fitbit access in your browser,\n"
+            "paste the full redirect URL here:",
+        )
+
+        if not ok or not redirect_url.strip():
+            return
+
+        try:
+            fetch_and_store_token(redirect_url.strip())
+
+            QMessageBox.information(
+                self,
+                "Fitbit reconnected",
+                "Fitbit was reconnected successfully. Sync will now retry.",
+            )
+
+            self.handle_refresh_activity()
+
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Reconnect failed",
+                f"RigLog could not complete Fitbit reconnection:\n{exc}",
+            )
