@@ -1,4 +1,4 @@
-from PySide6.QtCore import QObject, Qt, QThread, Signal
+from PySide6.QtCore import QObject, Qt, QThread, Signal, QTimer
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -318,6 +318,10 @@ class ActivityTab(QWidget):
 
         self._set_last_synced_label(load_activity_last_synced())
 
+        self.sync_status_timer = QTimer(self)
+        self.sync_status_timer.setSingleShot(True)
+        self.sync_status_timer.timeout.connect(self._clear_sync_status)
+
         self.refresh_thread = None
         self.refresh_worker = None
 
@@ -365,6 +369,11 @@ class ActivityTab(QWidget):
         self.last_synced_label = QLabel("Last synced: Never")
         self.last_synced_label.setObjectName("statusLabel")
 
+        self.sync_status_label = QLabel("")
+        self.sync_status_label.setObjectName("statusLabel")
+        self.sync_status_label.setMinimumWidth(140)
+        self.sync_status_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
+
         toolbar.addStretch()
         toolbar.addWidget(self.refresh_button)
         toolbar.addSpacing(12)
@@ -372,6 +381,8 @@ class ActivityTab(QWidget):
         toolbar.addWidget(self.time_filter)
         toolbar.addSpacing(16)
         toolbar.addWidget(self.last_synced_label)
+        toolbar.addWidget(self.sync_status_label)
+        toolbar.addSpacing(12)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
@@ -524,6 +535,8 @@ class ActivityTab(QWidget):
         self.refresh_button.setEnabled(False)
         self.refresh_button.setText("Refreshing...")
 
+        self._set_sync_status("Refreshing...", "#BBBBBB", timeout_ms=0)
+
         self.refresh_thread = QThread()
         self.refresh_worker = ActivityRefreshWorker(start_date, end_date)
         self.refresh_worker.moveToThread(self.refresh_thread)
@@ -640,13 +653,16 @@ class ActivityTab(QWidget):
     def _on_refresh_success(self, rows_written: int) -> None:
         self._set_last_synced_now()
         self.load_activity()
+        self._set_sync_status("Sync complete", "#43A047")
 
 
     def _on_refresh_auth_error(self) -> None:
+        self._set_sync_status("Reconnect required", "#FB8C00")
         self._handle_fitbit_auth_error()
 
 
     def _on_refresh_rate_limit_error(self) -> None:
+        self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.warning(
             self,
             "Fitbit temporarily unavailable",
@@ -655,6 +671,7 @@ class ActivityTab(QWidget):
 
 
     def _on_refresh_network_error(self) -> None:
+        self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.warning(
             self,
             "Network error",
@@ -663,6 +680,7 @@ class ActivityTab(QWidget):
 
 
     def _on_refresh_api_error(self, message: str) -> None:
+        self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.critical(
             self,
             "Fitbit error",
@@ -671,6 +689,7 @@ class ActivityTab(QWidget):
 
 
     def _on_refresh_unexpected_error(self, message: str) -> None:
+        self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.critical(
             self,
             "Activity refresh failed",
@@ -689,3 +708,24 @@ class ActivityTab(QWidget):
         if self.refresh_thread is not None:
             self.refresh_thread.deleteLater()
             self.refresh_thread = None
+
+
+    def _set_sync_status(
+        self,
+        message: str,
+        colour: str = "#BBBBBB",
+        timeout_ms: int = 4000,
+    ) -> None:
+        self.sync_status_label.setText(message)
+        self.sync_status_label.setStyleSheet(
+            f"color: {colour}; font-size: 13px; font-weight: 600;"
+        )
+
+        self.sync_status_timer.stop()
+        if timeout_ms > 0:
+            self.sync_status_timer.start(timeout_ms)
+
+
+    def _clear_sync_status(self) -> None:
+        self.sync_status_label.clear()
+        self.sync_status_label.setStyleSheet("")
