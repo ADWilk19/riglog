@@ -1,4 +1,4 @@
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QObject, Qt, QThread, Signal
 from PySide6.QtWidgets import (
     QComboBox,
     QHBoxLayout,
@@ -64,6 +64,7 @@ def load_activity_last_synced() -> datetime | None:
 
     except (json.JSONDecodeError, ValueError, TypeError):
         return None
+
 
 def apply_chart_theme(fig: Figure, ax) -> None:
     fig.patch.set_facecolor(CHART_BG)
@@ -165,6 +166,52 @@ def format_relative_timestamp(timestamp: datetime, now: datetime | None = None) 
     return timestamp.strftime("%Y-%m-%d")
 
 
+class ActivityRefreshWorker(QObject):
+    finished = Signal(int)
+    auth_error = Signal()
+    rate_limit_error = Signal()
+    network_error = Signal()
+    api_error = Signal(str)
+    unexpected_error = Signal(str)
+
+    def __init__(self, start_date: date, end_date: date) -> None:
+        super().__init__()
+        self.start_date = start_date
+        self.end_date = end_date
+
+    def run(self) -> None:
+        from app.services.activity.fitbit_exceptions import (
+            FitbitAPIError,
+            FitbitAuthError,
+            FitbitNetworkError,
+            FitbitRateLimitError,
+        )
+        from app.services.activity.fitbit_importer import FitbitImporter
+
+        try:
+            importer = FitbitImporter()
+            rows_written = importer.import_daily_steps(
+                self.start_date,
+                self.end_date,
+            )
+            self.finished.emit(rows_written)
+
+        except FitbitAuthError:
+            self.auth_error.emit()
+
+        except FitbitRateLimitError:
+            self.rate_limit_error.emit()
+
+        except FitbitNetworkError:
+            self.network_error.emit()
+
+        except FitbitAPIError as exc:
+            self.api_error.emit(str(exc))
+
+        except Exception as exc:
+            self.unexpected_error.emit(str(exc))
+
+
 class ActivityTrendChart(FigureCanvasQTAgg):
     def __init__(self) -> None:
         self.figure = Figure(figsize=(6, 4.5))
@@ -247,6 +294,7 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.figure.subplots_adjust(bottom=0.20)
         self.draw()
 
+
 class ActivityTab(QWidget):
     CARD_BASE_STYLE = """
         font-size: 15px;
@@ -269,6 +317,10 @@ class ActivityTab(QWidget):
         self._build_table()
 
         self._set_last_synced_label(load_activity_last_synced())
+
+        self.refresh_thread = None
+        self.refresh_worker = None
+
         self.load_activity()
 
     def _create_section_title(self, text: str) -> QLabel:
@@ -462,55 +514,39 @@ class ActivityTab(QWidget):
         self._populate_table(rows)
 
     def handle_refresh_activity(self) -> None:
-        """Pull latest Fitbit activity into the database, then refresh the UI."""
-        from app.services.activity.fitbit_importer import FitbitImporter
+        """Start a background Fitbit refresh without blocking the UI."""
+        if self.refresh_thread is not None and self.refresh_thread.isRunning():
+            return
 
-        importer = FitbitImporter()
         end_date = date.today()
         start_date = end_date - timedelta(days=30)
 
         self.refresh_button.setEnabled(False)
         self.refresh_button.setText("Refreshing...")
 
-        try:
-            importer.import_daily_steps(start_date, end_date)
-            self._set_last_synced_now()
-            self.load_activity()
+        self.refresh_thread = QThread()
+        self.refresh_worker = ActivityRefreshWorker(start_date, end_date)
+        self.refresh_worker.moveToThread(self.refresh_thread)
 
-        except FitbitAuthError:
-            self._handle_fitbit_auth_error()
+        self.refresh_thread.started.connect(self.refresh_worker.run)
 
-        except FitbitRateLimitError:
-            QMessageBox.warning(
-                self,
-                "Fitbit temporarily unavailable",
-                "Fitbit rate-limited the request. Please wait a moment and try again.",
-            )
+        self.refresh_worker.finished.connect(self._on_refresh_success)
+        self.refresh_worker.auth_error.connect(self._on_refresh_auth_error)
+        self.refresh_worker.rate_limit_error.connect(self._on_refresh_rate_limit_error)
+        self.refresh_worker.network_error.connect(self._on_refresh_network_error)
+        self.refresh_worker.api_error.connect(self._on_refresh_api_error)
+        self.refresh_worker.unexpected_error.connect(self._on_refresh_unexpected_error)
 
-        except FitbitNetworkError:
-            QMessageBox.warning(
-                self,
-                "Network error",
-                "RigLog could not reach Fitbit. Check your connection and try again.",
-            )
+        self.refresh_worker.finished.connect(self.refresh_thread.quit)
+        self.refresh_worker.auth_error.connect(self.refresh_thread.quit)
+        self.refresh_worker.rate_limit_error.connect(self.refresh_thread.quit)
+        self.refresh_worker.network_error.connect(self.refresh_thread.quit)
+        self.refresh_worker.api_error.connect(self.refresh_thread.quit)
+        self.refresh_worker.unexpected_error.connect(self.refresh_thread.quit)
 
-        except FitbitAPIError as exc:
-            QMessageBox.critical(
-                self,
-                "Fitbit error",
-                str(exc),
-            )
+        self.refresh_thread.finished.connect(self._cleanup_refresh_thread)
 
-        except Exception as exc:
-            QMessageBox.critical(
-                self,
-                "Activity refresh failed",
-                f"An unexpected error occurred while refreshing activity data:\n{exc}",
-            )
-
-        finally:
-            self.refresh_button.setEnabled(True)
-            self.refresh_button.setText("Refresh")
+        self.refresh_thread.start()
 
 
     def _set_last_synced_label(self, timestamp: datetime | None) -> None:
@@ -599,3 +635,57 @@ class ActivityTab(QWidget):
                 "Reconnect failed",
                 f"RigLog could not complete Fitbit reconnection:\n{exc}",
             )
+
+
+    def _on_refresh_success(self, rows_written: int) -> None:
+        self._set_last_synced_now()
+        self.load_activity()
+
+
+    def _on_refresh_auth_error(self) -> None:
+        self._handle_fitbit_auth_error()
+
+
+    def _on_refresh_rate_limit_error(self) -> None:
+        QMessageBox.warning(
+            self,
+            "Fitbit temporarily unavailable",
+            "Fitbit rate-limited the request. Please wait a moment and try again.",
+        )
+
+
+    def _on_refresh_network_error(self) -> None:
+        QMessageBox.warning(
+            self,
+            "Network error",
+            "RigLog could not reach Fitbit. Check your connection and try again.",
+        )
+
+
+    def _on_refresh_api_error(self, message: str) -> None:
+        QMessageBox.critical(
+            self,
+            "Fitbit error",
+            message,
+        )
+
+
+    def _on_refresh_unexpected_error(self, message: str) -> None:
+        QMessageBox.critical(
+            self,
+            "Activity refresh failed",
+            f"An unexpected error occurred while refreshing activity data:\n{message}",
+        )
+
+
+    def _cleanup_refresh_thread(self) -> None:
+        self.refresh_button.setEnabled(True)
+        self.refresh_button.setText("Refresh")
+
+        if self.refresh_worker is not None:
+            self.refresh_worker.deleteLater()
+            self.refresh_worker = None
+
+        if self.refresh_thread is not None:
+            self.refresh_thread.deleteLater()
+            self.refresh_thread = None
