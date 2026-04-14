@@ -8,26 +8,15 @@ import pandas as pd
 from app.db.database import SessionLocal
 from app.db.models import DailyActivity
 from app.services.activity.fitbit_auth import get_fitbit_session
+from app.services.activity.fitbit_client import FitbitClient
 
 
 class FitbitImporter:
     BASE_URL = "https://api.fitbit.com/1/user/-"
 
     def fetch_daily_steps(self, start_date: str, end_date: str) -> pd.DataFrame:
-        session = get_fitbit_session()
-
-        url = (
-            f"{self.BASE_URL}/activities/steps/date/"
-            f"{start_date}/{end_date}.json"
-        )
-
-        response = session.get(url)
-        response.raise_for_status()
-        payload: dict[str, Any] = response.json()
-
-        rows = payload.get("activities-steps", [])
-        if not rows:
-            return pd.DataFrame(columns=["activity_date", "steps", "source"])
+        client = FitbitClient()
+        rows = client.get_daily_steps(start_date, end_date)
 
         df = pd.DataFrame(rows)
         df = df.rename(columns={"dateTime": "activity_date", "value": "steps"})

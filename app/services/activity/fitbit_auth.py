@@ -29,6 +29,7 @@ def _token_updater(token: dict[str, Any]) -> None:
 
 def get_fitbit_session() -> OAuth2Session:
     client_id = os.environ["FITBIT_CLIENT_ID"]
+    client_secret = os.environ["FITBIT_CLIENT_SECRET"]
     redirect_uri = os.environ.get("FITBIT_REDIRECT_URI", "http://127.0.0.1:8080/")
 
     token = None
@@ -40,6 +41,12 @@ def get_fitbit_session() -> OAuth2Session:
         token=token,
         redirect_uri=redirect_uri,
         scope=["activity", "profile"],
+        auto_refresh_url=TOKEN_URL,
+        auto_refresh_kwargs={
+            "client_id": client_id,
+            "client_secret": client_secret,
+        },
+        token_updater=_token_updater,
     )
 
 
