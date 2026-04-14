@@ -20,7 +20,7 @@ from statistics import mean
 from pathlib import Path
 import json
 
-from app.services.activity.analysis import get_daily_activity
+from app.services.activity.analysis import get_daily_activity, get_activity_summary
 
 from app.services.activity.fitbit_exceptions import (
     FitbitAuthError,
@@ -218,12 +218,65 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.ax = self.figure.add_subplot(111)
         super().__init__(self.figure)
 
+        self.scatter = None
+        self.dates: list = []
+        self.steps: list[int] = []
+        self.annot = None
+        self.hover_cid = self.mpl_connect("motion_notify_event", self._on_hover)
+
+    def _on_hover(self, event) -> None:
+        if self.scatter is None or self.annot is None:
+            return
+
+        if event.inaxes != self.ax:
+            if self.annot.get_visible():
+                self.annot.set_visible(False)
+                self.scatter.set_sizes([30] * len(self.steps))
+                self.draw_idle()
+            return
+
+        contains, index_data = self.scatter.contains(event)
+
+        if contains:
+            index = index_data["ind"][0]
+            hovered_date = self.dates[index]
+            hovered_steps = self.steps[index]
+
+            self.annot.xy = (hovered_date, hovered_steps)
+            self.annot.set_text(
+                f"{hovered_date.strftime('%Y-%m-%d')}\n{hovered_steps:,} steps"
+            )
+
+            if event.x > self.figure.bbox.width * 0.75:
+                self.annot.set_position((-80, 10))
+            else:
+                self.annot.set_position((10, 10))
+
+            self.annot.set_visible(True)
+
+            self.scatter.set_sizes([
+                55 if i == index else 30
+                for i in range(len(self.steps))
+            ])
+
+            self.draw_idle()
+        else:
+            if self.annot.get_visible():
+                self.annot.set_visible(False)
+                self.scatter.set_sizes([30] * len(self.steps))
+                self.draw_idle()
+
     def plot_steps(self, activity_rows: list[dict]) -> None:
         self.ax.clear()
         apply_chart_theme(self.figure, self.ax)
 
         self.ax.set_title("Daily Steps", color=CHART_TEXT)
         self.ax.set_ylabel("Steps", color=CHART_TEXT)
+
+        self.scatter = None
+        self.dates = []
+        self.steps = []
+        self.annot = None
 
         if not activity_rows:
             self.ax.text(
@@ -238,38 +291,34 @@ class ActivityTrendChart(FigureCanvasQTAgg):
             self.draw()
             return
 
-        dates = [row["activity_date"] for row in activity_rows]
-        steps = [row["steps"] for row in activity_rows]
+        self.dates = [row["activity_date"] for row in activity_rows]
+        self.steps = [row["steps"] for row in activity_rows]
 
-        rolling_avg = rolling_average(steps, window=7)
+        rolling_avg = rolling_average(self.steps, window=7)
 
-        # --- main line ---
         colors = [
             ACCENT_GREEN if value >= 10000 else "#BBBBBB"
-            for value in steps
+            for value in self.steps
         ]
 
-        # subtle baseline line
         self.ax.plot(
-            dates,
-            steps,
+            self.dates,
+            self.steps,
             color="#888888",
             alpha=0.4,
             linewidth=1,
         )
 
-        # coloured points
-        self.ax.scatter(
-            dates,
-            steps,
+        self.scatter = self.ax.scatter(
+            self.dates,
+            self.steps,
             c=colors,
             s=30,
             label="Daily Steps",
         )
 
-        # --- rolling average ---
         self.ax.plot(
-            dates,
+            self.dates,
             rolling_avg,
             color="#FFFFFF",
             linewidth=2.5,
@@ -277,7 +326,6 @@ class ActivityTrendChart(FigureCanvasQTAgg):
             label="7-Day Average",
         )
 
-        # --- 10k goal line ---
         self.ax.axhline(
             10000,
             color=ACCENT_GREEN,
@@ -285,6 +333,16 @@ class ActivityTrendChart(FigureCanvasQTAgg):
             linewidth=1.2,
             label="10k Target",
         )
+
+        self.annot = self.ax.annotate(
+            "",
+            xy=(0, 0),
+            xytext=(10, 10),
+            textcoords="offset points",
+            bbox=dict(boxstyle="round", fc="#2A2A2A", ec="#888888", alpha=0.95),
+            color="#F0F0F0",
+        )
+        self.annot.set_visible(False)
 
         legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
         for text in legend.get_texts():
@@ -342,7 +400,7 @@ class ActivityTab(QWidget):
         label = QLabel(text)
         label.setObjectName("summaryCardNeutral")
         label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setMinimumHeight(64)
+        label.setMinimumHeight(84)
         return label
 
     def _build_toolbar(self) -> None:
@@ -397,10 +455,13 @@ class ActivityTab(QWidget):
         self.best_day_label = self._create_summary_card("Best Day\n-")
         self.current_streak_label = self._create_summary_card("Current Streak\n-")
         self.longest_streak_label = self._create_summary_card("Longest Streak\n-")
+        self.change_label = self._create_summary_card("7-Day Change\n-")
+        self.change_label.setToolTip("Change in total steps vs previous 7 days")
 
         cards = [
             self.goal_days_label,
             self.avg_steps_label,
+            self.change_label,
             self.best_day_label,
             self.current_streak_label,
             self.longest_streak_label,
@@ -465,6 +526,7 @@ class ActivityTab(QWidget):
 
         return [row for row in rows if row["activity_date"] >= cutoff]
 
+
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
             self.goal_days_label.setText("10k Goal Days\n0")
@@ -472,21 +534,68 @@ class ActivityTab(QWidget):
             self.best_day_label.setText("Best Day\n-")
             self.current_streak_label.setText("Current Streak\n0")
             self.longest_streak_label.setText("Longest Streak\n0")
+            self.change_label.setText("7-Day Change\n-")
+            self.current_streak_label.setStyleSheet("")
+            self.longest_streak_label.setStyleSheet("")
             return
 
-        total_steps = sum(row["steps"] for row in rows)
-        avg_steps = total_steps / len(rows)
-        best_day = max(row["steps"] for row in rows)
+        summary = get_activity_summary(target_steps=10000)
+
+        if summary["has_previous_period"]:
+            if summary["direction"] == "up":
+                self.change_label.setText(
+                    f"7-Day Change\n↑ {abs(summary['vs_previous_7_pct']):.1f}%"
+                )
+            elif summary["direction"] == "down":
+                self.change_label.setText(
+                    f"7-Day Change\n↓ {abs(summary['vs_previous_7_pct']):.1f}%"
+                )
+            else:
+                self.change_label.setText("7-Day Change\nNo change")
+        else:
+            self.change_label.setText("7-Day Change\n-")
+
+        if summary["has_previous_period"]:
+            if summary["direction"] == "up":
+                self.change_label.setStyleSheet(
+                    self.CARD_BASE_STYLE + "background-color: #1B5E20; color: #F5F5F5;"
+                )
+            elif summary["direction"] == "down":
+                self.change_label.setStyleSheet(
+                    self.CARD_BASE_STYLE + "background-color: #7F1D1D; color: #F5F5F5;"
+                )
+            else:
+                self.change_label.setStyleSheet("")
+        else:
+            self.change_label.setStyleSheet("")
+
         goal_days = sum(1 for row in rows if row["steps"] >= 10000)
-        current_streak, longest_streak = calculate_step_streaks(rows)
+        _, longest_streak = calculate_step_streaks(rows)
 
         self.goal_days_label.setText(f"10k Goal Days\n{goal_days}")
-        self.avg_steps_label.setText(f"Average Steps\n{avg_steps:,.0f}")
-        self.best_day_label.setText(f"Best Day\n{best_day:,.0f}")
-        self.current_streak_label.setText(f"Current Streak\n{current_streak}")
+        self.avg_steps_label.setText(
+            f"Average Steps\n{summary['avg_steps_last_7']:,}"
+        )
+        self.best_day_label.setText(
+            f"Best Day\n{summary['best_day_steps']:,}\n{summary['best_day_date']}"
+        )
+        self.current_streak_label.setText(
+            f"Current Streak\n{summary['streak_days']}"
+        )
         self.longest_streak_label.setText(f"Longest Streak\n{longest_streak}")
 
-        if current_streak > 0:
+        if summary["has_previous_period"]:
+            if summary["direction"] == "up":
+                avg_suffix = f"\n↑ {abs(summary['vs_previous_7_pct']):.1f}%"
+            elif summary["direction"] == "down":
+                avg_suffix = f"\n↓ {abs(summary['vs_previous_7_pct']):.1f}%"
+            else:
+                avg_suffix = "\nNo change"
+            self.avg_steps_label.setText(
+                f"Average Steps\n{summary['avg_steps_last_7']:,}"
+            )
+
+        if summary["streak_days"] > 0:
             self.current_streak_label.setStyleSheet(
                 self.CARD_BASE_STYLE + "background-color: #43A047; color: #F5F5F5;"
             )
@@ -499,6 +608,7 @@ class ActivityTab(QWidget):
             )
         else:
             self.longest_streak_label.setStyleSheet("")
+
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))
