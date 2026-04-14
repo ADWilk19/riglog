@@ -26,12 +26,14 @@ class FitbitImporter:
 
         return df[["activity_date", "steps", "source"]]
 
-    def import_daily_steps(self, start_date: str, end_date: str) -> int:
+    def import_daily_steps(self, start_date: str, end_date: str, db=None) -> int:
         df = self.fetch_daily_steps(start_date=start_date, end_date=end_date)
         if df.empty:
             return 0
 
-        db = SessionLocal()
+        own_session = db is None
+        db = db or SessionLocal()
+        
         rows_written = 0
 
         try:
@@ -58,8 +60,11 @@ class FitbitImporter:
 
             db.commit()
             return rows_written
+
         except Exception:
             db.rollback()
             raise
+
         finally:
-            db.close()
+            if db is None:
+                db.close()
