@@ -451,13 +451,39 @@ class ActivityTab(QWidget):
         summary_layout.setContentsMargins(0, 8, 0, 8)
 
         self.goal_days_label = self._create_summary_card("Goal Days (7d)\n-")
+        self.goal_days_label.setToolTip(
+            "Number of days in the last 7 recorded days where steps met or exceeded the 10,000-step target."
+        )
+
         self.goal_adherence_label = self._create_summary_card("Goal Adherence\n-")
+        self.goal_adherence_label.setToolTip(
+            "Percentage of the last 7 recorded days where steps met or exceeded the 10,000-step target."
+        )
+
         self.avg_steps_label = self._create_summary_card("Average Steps\n-")
-        self.best_day_label = self._create_summary_card("Best Day\n-")
-        self.current_streak_label = self._create_summary_card("Current Streak\n-")
-        self.longest_streak_label = self._create_summary_card("Longest Streak\n-")
+        self.avg_steps_label.setToolTip(
+            "Average daily step count across the last 7 recorded days."
+        )
+
         self.change_label = self._create_summary_card("7-Day Change\n-")
-        self.change_label.setToolTip("Change in total steps vs previous 7 days")
+        self.change_label.setToolTip(
+            "Change in total steps for the last 7 recorded days compared with the previous 7 recorded days."
+        )
+
+        self.best_day_label = self._create_summary_card("Best Day\n-")
+        self.best_day_label.setToolTip(
+            "Highest single recorded daily step count in the current activity dataset."
+        )
+
+        self.current_streak_label = self._create_summary_card("Current Streak\n-")
+        self.current_streak_label.setToolTip(
+            "Number of consecutive recorded days, ending with the latest day, where steps met or exceeded the 10,000-step target."
+        )
+
+        self.longest_streak_label = self._create_summary_card("Longest Streak\n-")
+        self.longest_streak_label.setToolTip(
+            "Longest run of consecutive recorded days where steps met or exceeded the 10,000-step target."
+        )
 
         cards = [
             self.goal_days_label,

@@ -8,7 +8,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## Activity → Service Layer (`app/services/activity/analysis.py`)
 
-* [ ] Goal Adherence Metric
+* [x] Goal Adherence Metric
 
   * `% of days hitting target (default: 10k)`
   * Return:
@@ -20,7 +20,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## Activity → UI Layer (`app/ui/tabs/activity_tab.py`)
 
-* [ ] Goal Adherence Card
+* [x] Goal Adherence Card
 
   * Display:
 
