@@ -52,6 +52,8 @@ def get_activity_summary(target_steps: int = 10000) -> dict[str, Any]:
             "vs_previous_7_abs": 0,
             "vs_previous_7_pct": 0.0,
             "direction": "flat",
+            "goal_days": 0,
+            "goal_adherence_pct": 0.0,
         }
 
     latest_date = daily_activity[-1]["activity_date"]
@@ -63,6 +65,11 @@ def get_activity_summary(target_steps: int = 10000) -> dict[str, Any]:
         row for row in daily_activity
         if last_7_start <= row["activity_date"] <= latest_date
     ]
+
+    goal_days = sum(1 for row in last_7_days if row["steps"] >= target_steps)
+
+    goal_adherence_pct = round((goal_days / len(last_7_days)) * 100, 1) if last_7_days else 0.0
+
     previous_7_days = [
         row for row in daily_activity
         if previous_7_start <= row["activity_date"] <= previous_7_end
@@ -108,5 +115,7 @@ def get_activity_summary(target_steps: int = 10000) -> dict[str, Any]:
         "vs_previous_7_abs": vs_previous_7_abs,
         "vs_previous_7_pct": vs_previous_7_pct,
         "direction": direction,
-        "has_previous_period": bool(previous_7_days)
+        "has_previous_period": bool(previous_7_days),
+        "goal_days": goal_days,
+        "goal_adherence_pct": goal_adherence_pct
     }
