@@ -450,7 +450,8 @@ class ActivityTab(QWidget):
         summary_layout.setSpacing(12)
         summary_layout.setContentsMargins(0, 8, 0, 8)
 
-        self.goal_days_label = self._create_summary_card("10k Goal Days\n-")
+        self.goal_days_label = self._create_summary_card("Goal Days (7d)\n-")
+        self.goal_adherence_label = self._create_summary_card("Goal Adherence\n-")
         self.avg_steps_label = self._create_summary_card("Average Steps\n-")
         self.best_day_label = self._create_summary_card("Best Day\n-")
         self.current_streak_label = self._create_summary_card("Current Streak\n-")
@@ -460,6 +461,7 @@ class ActivityTab(QWidget):
 
         cards = [
             self.goal_days_label,
+            self.goal_adherence_label,
             self.avg_steps_label,
             self.change_label,
             self.best_day_label,
@@ -529,12 +531,15 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            self.goal_days_label.setText("10k Goal Days\n0")
+            self.goal_days_label.setText("Goal Days (7d)\n0")
+            self.goal_adherence_label.setText("Goal Adherence\n-")
             self.avg_steps_label.setText("Average Steps\n-")
             self.best_day_label.setText("Best Day\n-")
             self.current_streak_label.setText("Current Streak\n0")
             self.longest_streak_label.setText("Longest Streak\n0")
             self.change_label.setText("7-Day Change\n-")
+            self.goal_adherence_label.setStyleSheet("")
+            self.change_label.setStyleSheet("")
             self.current_streak_label.setStyleSheet("")
             self.longest_streak_label.setStyleSheet("")
             return
@@ -569,10 +574,12 @@ class ActivityTab(QWidget):
         else:
             self.change_label.setStyleSheet("")
 
-        goal_days = sum(1 for row in rows if row["steps"] >= 10000)
         _, longest_streak = calculate_step_streaks(rows)
 
-        self.goal_days_label.setText(f"10k Goal Days\n{goal_days}")
+        self.goal_adherence_label.setText(
+            f"Goal Adherence\n{summary['goal_days']} / 7 ({summary['goal_adherence_pct']:.1f}%)"
+        )
+        self.goal_days_label.setText(f"Goal Days (7d)\n{summary['goal_days']}")
         self.avg_steps_label.setText(
             f"Average Steps\n{summary['avg_steps_last_7']:,}"
         )
@@ -584,16 +591,12 @@ class ActivityTab(QWidget):
         )
         self.longest_streak_label.setText(f"Longest Streak\n{longest_streak}")
 
-        if summary["has_previous_period"]:
-            if summary["direction"] == "up":
-                avg_suffix = f"\n↑ {abs(summary['vs_previous_7_pct']):.1f}%"
-            elif summary["direction"] == "down":
-                avg_suffix = f"\n↓ {abs(summary['vs_previous_7_pct']):.1f}%"
-            else:
-                avg_suffix = "\nNo change"
-            self.avg_steps_label.setText(
-                f"Average Steps\n{summary['avg_steps_last_7']:,}"
+        if summary["goal_adherence_pct"] >= 70:
+            self.goal_adherence_label.setStyleSheet(
+                self.CARD_BASE_STYLE + "background-color: #1B5E20; color: #F5F5F5;"
             )
+        else:
+            self.goal_adherence_label.setStyleSheet("")
 
         if summary["streak_days"] > 0:
             self.current_streak_label.setStyleSheet(
