@@ -166,6 +166,31 @@ def format_relative_timestamp(timestamp: datetime, now: datetime | None = None) 
     return timestamp.strftime("%Y-%m-%d")
 
 
+def aggregate_weekly_steps(rows: list[dict]) -> list[dict]:
+    """
+    Aggregate daily activity rows into weekly totals.
+
+    Weeks are labelled by their Monday start date.
+    """
+    if not rows:
+        return []
+
+    weekly_totals: dict[date, int] = {}
+
+    for row in rows:
+        activity_date = row["activity_date"]
+        week_start = activity_date - timedelta(days=activity_date.weekday())
+        weekly_totals[week_start] = weekly_totals.get(week_start, 0) + row["steps"]
+
+    return [
+        {
+            "week_start": week_start,
+            "steps": weekly_totals[week_start],
+        }
+        for week_start in sorted(weekly_totals)
+    ]
+
+
 class ActivityRefreshWorker(QObject):
     finished = Signal(int)
     auth_error = Signal()
@@ -266,12 +291,9 @@ class ActivityTrendChart(FigureCanvasQTAgg):
                 self.scatter.set_sizes([30] * len(self.steps))
                 self.draw_idle()
 
-    def plot_steps(self, activity_rows: list[dict]) -> None:
+    def plot_steps(self, activity_rows: list[dict], chart_view: str = "Daily") -> None:
         self.ax.clear()
         apply_chart_theme(self.figure, self.ax)
-
-        self.ax.set_title("Daily Steps", color=CHART_TEXT)
-        self.ax.set_ylabel("Steps", color=CHART_TEXT)
 
         self.scatter = None
         self.dates = []
@@ -290,6 +312,23 @@ class ActivityTrendChart(FigureCanvasQTAgg):
             self.ax.set_axis_off()
             self.draw()
             return
+
+        if chart_view == "Weekly":
+            self._plot_weekly_steps(activity_rows)
+        else:
+            self._plot_daily_steps(activity_rows)
+
+        legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
+        for text in legend.get_texts():
+            text.set_color(CHART_TEXT)
+
+        self.figure.autofmt_xdate()
+        self.figure.subplots_adjust(bottom=0.20)
+        self.draw()
+
+    def _plot_daily_steps(self, activity_rows: list[dict]) -> None:
+        self.ax.set_title("Daily Steps", color=CHART_TEXT)
+        self.ax.set_ylabel("Steps", color=CHART_TEXT)
 
         self.dates = [row["activity_date"] for row in activity_rows]
         self.steps = [row["steps"] for row in activity_rows]
@@ -344,13 +383,40 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         )
         self.annot.set_visible(False)
 
-        legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
-        for text in legend.get_texts():
-            text.set_color(CHART_TEXT)
+    def _plot_weekly_steps(self, activity_rows: list[dict]) -> None:
+        self.ax.set_title("Weekly Steps", color=CHART_TEXT)
+        self.ax.set_ylabel("Total Steps", color=CHART_TEXT)
 
-        self.figure.autofmt_xdate()
-        self.figure.subplots_adjust(bottom=0.20)
-        self.draw()
+        weekly_rows = aggregate_weekly_steps(activity_rows)
+
+        week_starts = [row["week_start"] for row in weekly_rows]
+        weekly_steps = [row["steps"] for row in weekly_rows]
+
+        colors = [
+            ACCENT_GREEN if value >= 70000 else "#BBBBBB"
+            for value in weekly_steps
+        ]
+
+        self.ax.bar(
+            week_starts,
+            weekly_steps,
+            color=colors,
+            width=6,
+            label="Weekly Total",
+        )
+
+        self.ax.axhline(
+            70000,
+            color=ACCENT_GREEN,
+            linestyle="--",
+            linewidth=1.2,
+            label="10k/Day Equivalent",
+        )
+
+        self.scatter = None
+        self.dates = []
+        self.steps = []
+        self.annot = None
 
 
 class ActivityTab(QWidget):
@@ -432,12 +498,23 @@ class ActivityTab(QWidget):
         self.sync_status_label.setMinimumWidth(140)
         self.sync_status_label.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
 
+        self.chart_view_filter = QComboBox()
+        self.chart_view_filter.addItems(["Daily", "Weekly"])
+        self.chart_view_filter.currentIndexChanged.connect(self.load_activity)
+        self.chart_view_filter.setFixedWidth(120)
+
         toolbar.addStretch()
         toolbar.addWidget(self.refresh_button)
         toolbar.addSpacing(12)
+
+        toolbar.addWidget(self._create_toolbar_label("Chart View"))
+        toolbar.addWidget(self.chart_view_filter)
+        toolbar.addSpacing(12)
+
         toolbar.addWidget(self._create_toolbar_label("Time Range"))
         toolbar.addWidget(self.time_filter)
         toolbar.addSpacing(16)
+
         toolbar.addWidget(self.last_synced_label)
         toolbar.addWidget(self.sync_status_label)
         toolbar.addSpacing(12)
@@ -554,7 +631,6 @@ class ActivityTab(QWidget):
 
         return [row for row in rows if row["activity_date"] >= cutoff]
 
-
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
             self.goal_days_label.setText("Goal Days (7d)\n0")
@@ -638,7 +714,6 @@ class ActivityTab(QWidget):
         else:
             self.longest_streak_label.setStyleSheet("")
 
-
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))
 
@@ -660,7 +735,10 @@ class ActivityTab(QWidget):
         rows = self._filter_activity_rows(rows)
 
         self._update_summary(rows)
-        self.chart.plot_steps(rows)
+
+        chart_view = self.chart_view_filter.currentText()
+        self.chart.plot_steps(rows, chart_view=chart_view)
+
         self._populate_table(rows)
 
     def handle_refresh_activity(self) -> None:
@@ -700,7 +778,6 @@ class ActivityTab(QWidget):
 
         self.refresh_thread.start()
 
-
     def _set_last_synced_label(self, timestamp: datetime | None) -> None:
         """Render the last synced label from a timestamp or fallback state."""
         if timestamp is None:
@@ -714,13 +791,11 @@ class ActivityTab(QWidget):
         self.last_synced_label.setText(f"Last synced: {relative_text}")
         self.last_synced_label.setToolTip(full_text)
 
-
     def _set_last_synced_now(self) -> None:
         """Persist and display the current local timestamp as last synced."""
         timestamp = datetime.now()
         save_activity_last_synced(timestamp)
         self._set_last_synced_label(timestamp)
-
 
     def _handle_fitbit_auth_error(self) -> None:
         message_box = QMessageBox(self)
@@ -738,7 +813,6 @@ class ActivityTab(QWidget):
         if message_box.clickedButton() is reconnect_button:
             self._reconnect_fitbit()
 
-
     def _show_fitbit_reconnect_instructions(self) -> None:
         QMessageBox.information(
             self,
@@ -746,7 +820,6 @@ class ActivityTab(QWidget):
             "Please run your Fitbit auth setup flow to reconnect the account, "
             "then return to RigLog and press Refresh again.",
         )
-
 
     def _reconnect_fitbit(self) -> None:
         import webbrowser
@@ -788,17 +861,14 @@ class ActivityTab(QWidget):
                 f"RigLog could not complete Fitbit reconnection:\n{exc}",
             )
 
-
     def _on_refresh_success(self, rows_written: int) -> None:
         self._set_last_synced_now()
         self.load_activity()
         self._set_sync_status("Sync complete", "#43A047")
 
-
     def _on_refresh_auth_error(self) -> None:
         self._set_sync_status("Reconnect required", "#FB8C00")
         self._handle_fitbit_auth_error()
-
 
     def _on_refresh_rate_limit_error(self) -> None:
         self._set_sync_status("Sync failed", "#E53935")
@@ -808,7 +878,6 @@ class ActivityTab(QWidget):
             "Fitbit rate-limited the request. Please wait a moment and try again.",
         )
 
-
     def _on_refresh_network_error(self) -> None:
         self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.warning(
@@ -816,7 +885,6 @@ class ActivityTab(QWidget):
             "Network error",
             "RigLog could not reach Fitbit. Check your connection and try again.",
         )
-
 
     def _on_refresh_api_error(self, message: str) -> None:
         self._set_sync_status("Sync failed", "#E53935")
@@ -826,7 +894,6 @@ class ActivityTab(QWidget):
             message,
         )
 
-
     def _on_refresh_unexpected_error(self, message: str) -> None:
         self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.critical(
@@ -834,7 +901,6 @@ class ActivityTab(QWidget):
             "Activity refresh failed",
             f"An unexpected error occurred while refreshing activity data:\n{message}",
         )
-
 
     def _cleanup_refresh_thread(self) -> None:
         self.refresh_button.setEnabled(True)
@@ -847,7 +913,6 @@ class ActivityTab(QWidget):
         if self.refresh_thread is not None:
             self.refresh_thread.deleteLater()
             self.refresh_thread = None
-
 
     def _set_sync_status(
         self,
@@ -863,7 +928,6 @@ class ActivityTab(QWidget):
         self.sync_status_timer.stop()
         if timeout_ms > 0:
             self.sync_status_timer.start(timeout_ms)
-
 
     def _clear_sync_status(self) -> None:
         self.sync_status_label.clear()
