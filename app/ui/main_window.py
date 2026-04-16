@@ -20,9 +20,7 @@ class MainWindow(QMainWindow):
 
         project_root = Path(__file__).resolve().parents[2]
         icon_path = project_root / "assets" / "branding" / "logo_full_detailed.png"
-        print(icon_path)
-        print(icon_path.exists())
-
+        
         self.setWindowTitle("RigLog")
         self.setWindowIcon(QIcon(str(icon_path)))
         self.resize(1400, 900)
