@@ -40,7 +40,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## Activity → Chart Layer (`ActivityTrendChart`)
 
-* [ ] Weekly Aggregation View
+* [x] Weekly Aggregation View
 
   * Add toggle: `Daily` ↔ `Weekly`
   * Weekly options:
