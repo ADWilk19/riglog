@@ -247,49 +247,108 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.dates: list = []
         self.steps: list[int] = []
         self.annot = None
+        self.bar_patches = []
+        self.week_labels: list = []
+        self.weekly_steps: list[int] = []
         self.hover_cid = self.mpl_connect("motion_notify_event", self._on_hover)
 
     def _on_hover(self, event) -> None:
-        if self.scatter is None or self.annot is None:
+        if self.annot is None:
             return
 
         if event.inaxes != self.ax:
             if self.annot.get_visible():
                 self.annot.set_visible(False)
-                self.scatter.set_sizes([30] * len(self.steps))
+
+                if self.scatter is not None:
+                    self.scatter.set_sizes([30] * len(self.steps))
+
+                for bar in self.bar_patches:
+                    bar.set_linewidth(0)
+
                 self.draw_idle()
             return
 
-        contains, index_data = self.scatter.contains(event)
+        # --- daily mode: scatter hover ---
+        if self.scatter is not None:
+            contains, index_data = self.scatter.contains(event)
 
-        if contains:
-            index = index_data["ind"][0]
-            hovered_date = self.dates[index]
-            hovered_steps = self.steps[index]
+            if contains:
+                index = index_data["ind"][0]
+                hovered_date = self.dates[index]
+                hovered_steps = self.steps[index]
 
-            self.annot.xy = (hovered_date, hovered_steps)
-            self.annot.set_text(
-                f"{hovered_date.strftime('%Y-%m-%d')}\n{hovered_steps:,} steps"
-            )
+                self.annot.xy = (hovered_date, hovered_steps)
+                self.annot.set_text(
+                    f"{hovered_date.strftime('%Y-%m-%d')}\n{hovered_steps:,} steps"
+                )
 
-            if event.x > self.figure.bbox.width * 0.75:
-                self.annot.set_position((-80, 10))
+                if event.x > self.figure.bbox.width * 0.75:
+                    self.annot.set_position((-80, 10))
+                else:
+                    self.annot.set_position((10, 10))
+
+                self.annot.set_visible(True)
+
+                self.scatter.set_sizes([
+                    55 if i == index else 30
+                    for i in range(len(self.steps))
+                ])
+
+                self.draw_idle()
+                return
             else:
-                self.annot.set_position((10, 10))
+                self.scatter.set_sizes([30] * len(self.steps))
 
-            self.annot.set_visible(True)
+        # --- weekly mode: bar hover ---
+        for i, bar in enumerate(self.bar_patches):
+            contains, _ = bar.contains(event)
 
-            self.scatter.set_sizes([
-                55 if i == index else 30
-                for i in range(len(self.steps))
-            ])
+            if contains:
+                x = bar.get_x() + bar.get_width() / 2
+                y = bar.get_height()
+
+                week_start = self.week_labels[i]
+                week_end = week_start + timedelta(days=6)
+                weekly_total = self.weekly_steps[i]
+
+                self.annot.xy = (x, y)
+                self.annot.set_text(
+                    f"{week_start.strftime('%d %b')}–{week_end.strftime('%d %b')}\n{weekly_total:,} steps"
+                )
+
+                top_threshold = self.ax.get_ylim()[1] * 0.75
+                is_near_top = y > top_threshold
+                is_near_right = event.x > self.figure.bbox.width * 0.75
+
+                if is_near_right:
+                    self.annot.set_position((-110, -40) if is_near_top else (-110, 10))
+                else:
+                    self.annot.set_position((10, -40) if is_near_top else (10, 10))
+
+                self.annot.set_visible(True)
+
+                for j, other_bar in enumerate(self.bar_patches):
+                    if j == i:
+                        other_bar.set_edgecolor("#FFFFFF")
+                        other_bar.set_linewidth(1.2)
+                    else:
+                        other_bar.set_linewidth(0)
+
+                self.draw_idle()
+                return
+
+        # --- nothing hovered ---
+        if self.annot.get_visible():
+            self.annot.set_visible(False)
+
+            if self.scatter is not None:
+                self.scatter.set_sizes([30] * len(self.steps))
+
+            for bar in self.bar_patches:
+                bar.set_linewidth(0)
 
             self.draw_idle()
-        else:
-            if self.annot.get_visible():
-                self.annot.set_visible(False)
-                self.scatter.set_sizes([30] * len(self.steps))
-                self.draw_idle()
 
     def plot_steps(self, activity_rows: list[dict], chart_view: str = "Daily") -> None:
         self.ax.clear()
@@ -299,6 +358,9 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.dates = []
         self.steps = []
         self.annot = None
+        self.bar_patches = []
+        self.week_labels = []
+        self.weekly_steps = []
 
         if not activity_rows:
             self.ax.text(
@@ -389,34 +451,41 @@ class ActivityTrendChart(FigureCanvasQTAgg):
 
         weekly_rows = aggregate_weekly_steps(activity_rows)
 
-        week_starts = [row["week_start"] for row in weekly_rows]
-        weekly_steps = [row["steps"] for row in weekly_rows]
+        self.week_labels = [row["week_start"] for row in weekly_rows]
+        self.weekly_steps = [row["steps"] for row in weekly_rows]
 
         colors = [
             ACCENT_GREEN if value >= 70000 else "#BBBBBB"
-            for value in weekly_steps
+            for value in self.weekly_steps
         ]
 
-        self.ax.bar(
-            week_starts,
-            weekly_steps,
+        bars = self.ax.bar(
+            self.week_labels,
+            self.weekly_steps,
             color=colors,
             width=6,
             label="Weekly Total",
         )
+
+        self.bar_patches = list(bars)
 
         self.ax.axhline(
             70000,
             color=ACCENT_GREEN,
             linestyle="--",
             linewidth=1.2,
-            label="10k/Day Equivalent",
+            label="10k/day Equivalent",
         )
 
-        self.scatter = None
-        self.dates = []
-        self.steps = []
-        self.annot = None
+        self.annot = self.ax.annotate(
+            "",
+            xy=(0, 0),
+            xytext=(10, 10),
+            textcoords="offset points",
+            bbox=dict(boxstyle="round", fc="#262626", ec="#888888", alpha=0.95),
+            color="#F0F0F0",
+        )
+        self.annot.set_visible(False)
 
 
 class ActivityTab(QWidget):
