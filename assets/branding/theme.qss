@@ -25,7 +25,7 @@ QLabel#title {
 
 QLabel#subtitle {
     font-size: 14px;
-    color: #A0A0A0;
+    color: #888888;
 }
 
 QLabel#tagline {
@@ -312,6 +312,11 @@ QFrame#summaryCard[variant="danger"] {
     border: 1px solid #C62828;
 }
 
+#summaryCard[variant="primary"] {
+    border: 1px solid #4CAF50;
+    background-color: rgba(76, 175, 80, 0.05);
+}
+
 QLabel#summaryCardTitle {
     color: #D0D0D0;
     font-size: 12px;
@@ -333,4 +338,8 @@ QLabel#summaryCardSubtitle {
     font-size: 11px;
     background: transparent;
     border: none;
+}
+
+#summaryCard:hover {
+    border: 1px solid #4CAF50;
 }

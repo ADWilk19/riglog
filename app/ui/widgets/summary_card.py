@@ -19,6 +19,7 @@ class SummaryCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(84)
         self.setMinimumWidth(140)
+        self.setCursor(Qt.PointingHandCursor)
 
         self.title_label = QLabel(title)
         self.title_label.setObjectName("summaryCardTitle")
