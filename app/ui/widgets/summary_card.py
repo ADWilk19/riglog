@@ -1,0 +1,52 @@
+from __future__ import annotations
+
+from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QSizePolicy
+
+
+class SummaryCard(QFrame):
+    def __init__(
+        self,
+        title: str,
+        value: str = "-",
+        subtitle: str = "",
+        parent=None,
+    ) -> None:
+        super().__init__(parent)
+
+        self.setObjectName("summaryCard")
+        self.setProperty("variant", "neutral")
+        self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
+        self.setMinimumHeight(84)
+
+        self.title_label = QLabel(title)
+        self.title_label.setObjectName("summaryCardTitle")
+        self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.value_label = QLabel(value)
+        self.value_label.setObjectName("summaryCardValue")
+        self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.subtitle_label = QLabel(subtitle)
+        self.subtitle_label.setObjectName("summaryCardSubtitle")
+        self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.subtitle_label.setVisible(bool(subtitle))
+
+        layout = QVBoxLayout()
+        layout.setContentsMargins(16, 12, 16, 12)
+        layout.setSpacing(2)
+        layout.addWidget(self.title_label)
+        layout.addWidget(self.value_label)
+        layout.addWidget(self.subtitle_label)
+
+        self.setLayout(layout)
+
+    def set_content(self, value: str, subtitle: str = "") -> None:
+        self.value_label.setText(value)
+        self.subtitle_label.setText(subtitle)
+        self.subtitle_label.setVisible(bool(subtitle))
+
+    def set_variant(self, variant: str = "neutral") -> None:
+        self.setProperty("variant", variant)
+        self.style().unpolish(self)
+        self.style().polish(self)

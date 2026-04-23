@@ -29,6 +29,8 @@ from app.services.activity.fitbit_exceptions import (
     FitbitRateLimitError,
 )
 
+from app.ui.widgets.summary_card import SummaryCard
+
 CHART_BG = "#1E1E1E"
 CHART_TEXT = "#F0F0F0"
 CHART_GRID = "#444444"
@@ -531,13 +533,6 @@ class ActivityTab(QWidget):
         label.setObjectName("fieldLabel")
         return label
 
-    def _create_summary_card(self, text: str) -> QLabel:
-        label = QLabel(text)
-        label.setObjectName("summaryCardNeutral")
-        label.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        label.setMinimumHeight(84)
-        return label
-
     def _build_toolbar(self) -> None:
         toolbar = QHBoxLayout()
         toolbar.setSpacing(12)
@@ -593,40 +588,40 @@ class ActivityTab(QWidget):
 
     def _build_summary_panel(self) -> None:
         summary_layout = QHBoxLayout()
-        summary_layout.setSpacing(12)
+        summary_layout.setSpacing(16)
         summary_layout.setContentsMargins(0, 8, 0, 8)
 
-        self.goal_days_label = self._create_summary_card("Goal Days (7d)\n-")
+        self.goal_days_label = SummaryCard(title="Goal Days (7d)", value="-")
         self.goal_days_label.setToolTip(
             "Number of days in the last 7 recorded days where steps met or exceeded the 10,000-step target."
         )
 
-        self.goal_adherence_label = self._create_summary_card("Goal Adherence\n-")
+        self.goal_adherence_label = SummaryCard(title="Goal Adherence", value="-")
         self.goal_adherence_label.setToolTip(
             "Percentage of the last 7 recorded days where steps met or exceeded the 10,000-step target."
         )
 
-        self.avg_steps_label = self._create_summary_card("Average Steps\n-")
+        self.avg_steps_label = SummaryCard(title="Average Steps", value="-")
         self.avg_steps_label.setToolTip(
             "Average daily step count across the last 7 recorded days."
         )
 
-        self.change_label = self._create_summary_card("7-Day Change\n-")
+        self.change_label = SummaryCard(title="7-Day Change", value="-")
         self.change_label.setToolTip(
             "Change in total steps for the last 7 recorded days compared with the previous 7 recorded days."
         )
 
-        self.best_day_label = self._create_summary_card("Best Day\n-")
+        self.best_day_label = SummaryCard(title="Best Day", value="-")
         self.best_day_label.setToolTip(
             "Highest single recorded daily step count in the current activity dataset."
         )
 
-        self.current_streak_label = self._create_summary_card("Current Streak\n-")
+        self.current_streak_label = SummaryCard(title="Current Streak", value="-")
         self.current_streak_label.setToolTip(
             "Number of consecutive recorded days, ending with the latest day, where steps met or exceeded the 10,000-step target."
         )
 
-        self.longest_streak_label = self._create_summary_card("Longest Streak\n-")
+        self.longest_streak_label = SummaryCard(title="Longest Streak", value="-")
         self.longest_streak_label.setToolTip(
             "Longest run of consecutive recorded days where steps met or exceeded the 10,000-step target."
         )
@@ -702,13 +697,14 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            self.goal_days_label.setText("Goal Days (7d)\n0")
-            self.goal_adherence_label.setText("Goal Adherence\n-")
-            self.avg_steps_label.setText("Average Steps\n-")
-            self.best_day_label.setText("Best Day\n-")
-            self.current_streak_label.setText("Current Streak\n0")
-            self.longest_streak_label.setText("Longest Streak\n0")
-            self.change_label.setText("7-Day Change\n-")
+            self.goal_days_label.set_content("0")
+            self.goal_adherence_label.set_content("-")
+            self.avg_steps_label.set_content("-")
+            self.best_day_label.set_content("-")
+            self.current_streak_label.set_content("0")
+            self.longest_streak_label.set_content("0")
+            self.change_label.set_content("-")
+
             self.goal_adherence_label.setStyleSheet("")
             self.change_label.setStyleSheet("")
             self.current_streak_label.setStyleSheet("")
@@ -719,69 +715,59 @@ class ActivityTab(QWidget):
 
         if summary["has_previous_period"]:
             if summary["direction"] == "up":
-                self.change_label.setText(
-                    f"7-Day Change\n↑ {abs(summary['vs_previous_7_pct']):.1f}%"
+                self.change_label.set_content(
+                    f"↑ {abs(summary['vs_previous_7_pct']):.1f}%",
+                    "vs previous 7d"
                 )
             elif summary["direction"] == "down":
-                self.change_label.setText(
-                    f"7-Day Change\n↓ {abs(summary['vs_previous_7_pct']):.1f}%"
+                self.change_label.set_content(
+                    f"↓ {abs(summary['vs_previous_7_pct']):.1f}%",
+                    "vs previous 7d"
                 )
             else:
-                self.change_label.setText("7-Day Change\nNo change")
+                self.change_label.set_content("No change")
         else:
-            self.change_label.setText("7-Day Change\n-")
+            self.change_label.set_content("-")
 
         if summary["has_previous_period"]:
             if summary["direction"] == "up":
-                self.change_label.setStyleSheet(
-                    self.CARD_BASE_STYLE + "background-color: #1B5E20; color: #F5F5F5;"
-                )
+                self.change_label.set_variant("success")
             elif summary["direction"] == "down":
-                self.change_label.setStyleSheet(
-                    self.CARD_BASE_STYLE + "background-color: #7F1D1D; color: #F5F5F5;"
-                )
+                self.change_label.set_variant("danger")
             else:
-                self.change_label.setStyleSheet("")
+                self.change_label.set_variant("neutral")
         else:
-            self.change_label.setStyleSheet("")
+            self.change_label.set_variant("neutral")
 
         _, longest_streak = calculate_step_streaks(rows)
 
-        self.goal_adherence_label.setText(
-            f"Goal Adherence\n{summary['goal_days']} / 7 ({summary['goal_adherence_pct']:.1f}%)"
+        self.goal_adherence_label.set_content(
+            f"{summary['goal_days']} / 7",
+            f"{summary['goal_adherence_pct']:.0f}%",
         )
-        self.goal_days_label.setText(f"Goal Days (7d)\n{summary['goal_days']}")
-        self.avg_steps_label.setText(
-            f"Average Steps\n{summary['avg_steps_last_7']:,}"
+        self.goal_days_label.set_content(str(summary["goal_days"]))
+        self.avg_steps_label.set_content(f"{summary['avg_steps_last_7']:,}")
+        self.best_day_label.set_content(
+            f"{summary['best_day_steps']:,}",
+            str(summary["best_day_date"]),
         )
-        self.best_day_label.setText(
-            f"Best Day\n{summary['best_day_steps']:,}\n{summary['best_day_date']}"
-        )
-        self.current_streak_label.setText(
-            f"Current Streak\n{summary['streak_days']}"
-        )
-        self.longest_streak_label.setText(f"Longest Streak\n{longest_streak}")
+        self.current_streak_label.set_content(str(summary['streak_days']))
+        self.longest_streak_label.set_content(str(longest_streak))
 
         if summary["goal_adherence_pct"] >= 70:
-            self.goal_adherence_label.setStyleSheet(
-                self.CARD_BASE_STYLE + "background-color: #1B5E20; color: #F5F5F5;"
-            )
+            self.goal_adherence_label.set_variant("success")
         else:
-            self.goal_adherence_label.setStyleSheet("")
+            self.goal_adherence_label.set_variant("neutral")
 
         if summary["streak_days"] > 0:
-            self.current_streak_label.setStyleSheet(
-                self.CARD_BASE_STYLE + "background-color: #43A047; color: #F5F5F5;"
-            )
+            self.current_streak_label.set_variant("success")
         else:
-            self.current_streak_label.setStyleSheet("")
+            self.current_streak_label.set_variant("neutral")
 
         if longest_streak >= 7:
-            self.longest_streak_label.setStyleSheet(
-                self.CARD_BASE_STYLE + "background-color: #C62828; color: #F5F5F5;"
-            )
+            self.longest_streak_label.set_variant("success")
         else:
-            self.longest_streak_label.setStyleSheet("")
+            self.longest_streak_label.set_variant("neutral")
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))
