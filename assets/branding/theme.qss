@@ -302,6 +302,11 @@ QFrame#summaryCard[variant="success"] {
     border: 1px solid #2E7D32;
 }
 
+QFrame#summaryCard[variant="warning"] {
+    background-color: #FFAA00;
+    border: 1px solid #CC8800;
+}
+
 QFrame#summaryCard[variant="danger"] {
     background-color: #7F1D1D;
     border: 1px solid #C62828;

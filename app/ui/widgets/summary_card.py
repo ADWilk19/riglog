@@ -18,31 +18,39 @@ class SummaryCard(QFrame):
         self.setProperty("variant", "neutral")
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(84)
+        self.setMinimumWidth(140)
 
         self.title_label = QLabel(title)
         self.title_label.setObjectName("summaryCardTitle")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_label.setStyleSheet("background: transparent;")
 
         self.value_label = QLabel(value)
         self.value_label.setObjectName("summaryCardValue")
         self.value_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.value_label.setStyleSheet("background: transparent;")
 
         self.subtitle_label = QLabel(subtitle)
         self.subtitle_label.setObjectName("summaryCardSubtitle")
         self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.subtitle_label.setVisible(bool(subtitle))
+        self.subtitle_label.setStyleSheet("background: transparent;")
 
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 12, 16, 12)
-        layout.setSpacing(2)
+        layout.setSpacing(4)
         layout.addWidget(self.title_label)
         layout.addWidget(self.value_label)
         layout.addWidget(self.subtitle_label)
 
         self.setLayout(layout)
 
-    def set_content(self, value: str, subtitle: str = "") -> None:
+    def set_content(self, value: str, subtitle: str | None = None) -> None:
         self.value_label.setText(value)
+
+        if subtitle is None:
+            return
+
         self.subtitle_label.setText(subtitle)
         self.subtitle_label.setVisible(bool(subtitle))
 
@@ -50,3 +58,9 @@ class SummaryCard(QFrame):
         self.setProperty("variant", variant)
         self.style().unpolish(self)
         self.style().polish(self)
+
+    def clear(self) -> None:
+        self.value_label.setText("-")
+        self.subtitle_label.clear()
+        self.subtitle_label.setVisible(False)
+        self.set_variant("neutral")
