@@ -10,6 +10,7 @@ class SummaryCard(QFrame):
         title: str,
         value: str = "-",
         subtitle: str = "",
+        on_click=None,
         parent=None,
     ) -> None:
         super().__init__(parent)
@@ -36,6 +37,8 @@ class SummaryCard(QFrame):
         self.subtitle_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.subtitle_label.setVisible(bool(subtitle))
         self.subtitle_label.setStyleSheet("background: transparent;")
+
+        self.on_click = on_click
 
         layout = QVBoxLayout()
         layout.setContentsMargins(16, 12, 16, 12)
@@ -65,3 +68,8 @@ class SummaryCard(QFrame):
         self.subtitle_label.clear()
         self.subtitle_label.setVisible(False)
         self.set_variant("neutral")
+
+    def mousePressEvent(self, event) -> None:
+        if self.on_click and event.button() == Qt.LeftButton:
+            self.on_click()
+        super().mousePressEvent(event)

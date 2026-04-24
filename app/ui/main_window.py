@@ -20,17 +20,27 @@ class MainWindow(QMainWindow):
 
         project_root = Path(__file__).resolve().parents[2]
         icon_path = project_root / "assets" / "branding" / "logo_full_detailed.png"
-        
+
         self.setWindowTitle("RigLog")
         self.setWindowIcon(QIcon(str(icon_path)))
         self.resize(1400, 900)
 
         self.tabs = QTabWidget()
 
-        self.tabs.addTab(HomeTab(), "Home")
-        self.tabs.addTab(GlucoseTab(), "Glucose")
-        self.tabs.addTab(ActivityTab(), "Activity")
-        self.tabs.addTab(self._build_tab("Workouts"), "Workouts")
+        self.glucose_tab = GlucoseTab()
+        self.activity_tab = ActivityTab()
+        self.workouts_tab = self._build_tab("Workouts")
+
+        self.home_tab = HomeTab(
+            on_open_glucose=lambda: self.tabs.setCurrentWidget(self.glucose_tab),
+            on_open_activity=lambda: self.tabs.setCurrentWidget(self.activity_tab),
+            on_open_workouts=lambda: self.tabs.setCurrentWidget(self.workouts_tab),
+        )
+
+        self.tabs.addTab(self.home_tab, "Home")
+        self.tabs.addTab(self.glucose_tab, "Glucose")
+        self.tabs.addTab(self.activity_tab, "Activity")
+        self.tabs.addTab(self.workouts_tab, "Workouts")
 
         self.setCentralWidget(self.tabs)
 

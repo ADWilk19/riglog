@@ -312,6 +312,11 @@ QFrame#summaryCard[variant="danger"] {
     border: 1px solid #C62828;
 }
 
+QFrame#summaryCard:hover {
+    border: 1px solid #5A5A5A;
+    background-color: #2A2A2A;
+}
+
 #summaryCard[variant="primary"] {
     border: 1px solid #4CAF50;
     background-color: rgba(76, 175, 80, 0.05);
