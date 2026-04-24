@@ -4,9 +4,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 🔥 Phase 1 — Activity Module Completion (High Impact, Low Effort)
+## 🔥 Phase 1 — Activity Module Completion (High Impact, Low Effort)
 
-## Activity → Service Layer (`app/services/activity/analysis.py`)
+### Activity → Service Layer (`app/services/activity/analysis.py`)
 
 * [x] Goal Adherence Metric
 
@@ -18,7 +18,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Activity → UI Layer (`app/ui/tabs/activity_tab.py`)
+### Activity → UI Layer (`app/ui/tabs/activity_tab.py`)
 
 * [x] Goal Adherence Card
 
@@ -31,14 +31,14 @@ This backlog is organised by architectural layer and implementation priority.
     * green if ≥ 70%
     * neutral otherwise
 
-* [ ] Refactor Summary Cards
+* [~] Refactor Summary Cards
 
-  * Ensure all cards consume `get_activity_summary()`
-  * Remove duplicate calculations in UI
+  * Home cards now implemented
+  * Activity tab cards pending full alignment with service layer
 
 ---
 
-## Activity → Chart Layer (`ActivityTrendChart`)
+### Activity → Chart Layer (`ActivityTrendChart`)
 
 * [x] Weekly Aggregation View
 
@@ -47,7 +47,7 @@ This backlog is organised by architectural layer and implementation priority.
 
     * total steps OR average steps
 
-* [ ] Chart Mode Toggle
+* [x] Chart Mode Toggle
 
   * Toggle:
 
@@ -55,11 +55,34 @@ This backlog is organised by architectural layer and implementation priority.
     * Rolling Average
     * Weekly
 
+### Home → UI Layer
+
+* [x] Summary Cards Navigation
+  * Clickable cards navigate to modules
+
+* [x] Live Data Binding
+  * Glucose and Activity cards display real metrics
+
+* [ ] Auto-refresh on Activity Sync
+  * Update Home cards when new data is imported
+
+### System
+
+* [x] Fitbit OAuth token auto-refresh
+
+  * Prevent reauthentication on expiry
+  * Persist refreshed tokens automatically
+
+* [ ] Background Sync
+
+  * Scheduled Fitbit sync
+  * Update `last_synced` automatically
+
 ---
 
-# 🧠 Phase 2 — Insight Layer Expansion
+## 🧠 Phase 2 — Insight Layer Expansion
 
-## Activity → Service Layer
+### Activity → Service Layer
 
 * [ ] Rolling Goal Adherence
 
@@ -85,7 +108,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Activity → UI Layer
+### Activity → UI Layer
 
 * [ ] Weekly Summary Card(s)
 
@@ -101,9 +124,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 📊 Phase 3 — Interaction Enhancements
+## 📊 Phase 3 — Interaction Enhancements
 
-## Activity → Chart Layer
+### Activity → Chart Layer
 
 * [ ] Click-to-Select Day
 
@@ -112,7 +135,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Activity → UI Layer
+### Activity → UI Layer
 
 * [ ] Selected Day Detail Panel
 
@@ -129,9 +152,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 🔗 Phase 4 — Cross-Module Intelligence
+## 🔗 Phase 4 — Cross-Module Intelligence
 
-## Activity ↔ Glucose Integration
+### Activity ↔ Glucose Integration
 
 * [ ] Overlay Activity on Glucose Charts
 
@@ -145,7 +168,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Event-Based Activity Analysis (Backlog)
+### Event-Based Activity Analysis (Backlog)
 
 * [ ] Introduce Activity Event Classification
 
@@ -163,9 +186,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 🧱 Phase 5 — Data Layer Expansion
+## 🧱 Phase 5 — Data Layer Expansion
 
-## Activity → Database (`app/db/models.py`)
+### Activity → Database (`app/db/models.py`)
 
 * [ ] Add `activity_intraday` table
 
@@ -177,7 +200,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Activity → Importer (`app/services/activity/fitbit_importer.py`)
+### Activity → Importer (`app/services/activity/fitbit_importer.py`)
 
 * [ ] Add Intraday Import
 
@@ -186,7 +209,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Activity → Service Layer
+### Activity → Service Layer
 
 * [ ] Intraday Aggregation Functions
 
@@ -195,18 +218,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## System
+## 🎨 Phase 6 — UI / UX Polish
 
-* [ ] Background Sync
-
-  * Scheduled Fitbit sync
-  * Update `last_synced` automatically
-
----
-
-# 🎨 Phase 6 — UI / UX Polish
-
-## Activity → UI Layer
+### Activity → UI Layer
 
 * [ ] Card Iconography
 
@@ -226,7 +240,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Chart Layer
+### Chart Layer
 
 * [ ] Animation on Refresh
 
@@ -237,9 +251,9 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 🧪 Phase 7 — Advanced Features
+## 🧪 Phase 7 — Advanced Features
 
-## Export / Reporting
+### Export / Reporting
 
 * [ ] Activity Report Export
 
@@ -251,7 +265,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Personalisation
+### Personalisation
 
 * [ ] Configurable Step Target
 
@@ -259,7 +273,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## Analytics
+### Analytics
 
 * [ ] Anomaly Detection
 
@@ -267,7 +281,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-# 🧭 Notes
+## 🧭 Notes
 
 * Prioritise features that:
 

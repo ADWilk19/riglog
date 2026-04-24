@@ -7,7 +7,7 @@
 RigLog is a personal health analytics desktop application built in Python,
 designed to turn raw health data into actionable insights.
 
-It currently focuses on glucose analysis, with future support planned for activity, nutrition, and training data.
+It currently supports glucose and activity analysis, with future modules planned for nutrition and training.
 
 The goal is to combine multiple health data sources into a single application for analysis and visualisation, including:
 
@@ -36,6 +36,15 @@ The goal is to combine multiple health data sources into a single application fo
   - Tresiba (u)
   - Notes
 - Export professional PDF reports with charts
+- Activity tracking via Fitbit integration:
+  - Daily step import and sync
+  - 7-day rolling averages
+  - Goal adherence tracking (10k steps)
+  - Streak and trend analysis
+  - Daily and weekly charts with hover insights
+- Unified home dashboard:
+  - Live summary cards for glucose and activity
+  - Quick navigation between modules
 
 ## Why RigLog?
 
@@ -43,11 +52,12 @@ RigLog was built to centralise and analyse personal health data,
 starting with glucose monitoring.
 
 The goal is to move beyond raw readings and provide:
+
 - actionable insights
 - trend analysis
 - decision support for insulin dosing
 
-Future modules will integrate activity, nutrition, and training data.
+Future modules will expand into nutrition, training, and cross-metric insights.
 
 ## Tech Stack
 
@@ -62,15 +72,20 @@ Future modules will integrate activity, nutrition, and training data.
 
 Glucose module complete (v1)
 
+Activity module MVP complete
+
 Current capabilities:
+
 - Full glucose data ingestion pipeline
 - Advanced analytics (AGP, variability, dose effectiveness)
 - Interactive desktop dashboard
 - PDF report generation with charts
 
 Next focus:
-- Idempotent imports
-- Activity module integration
+
+- Background sync for activity data
+- Home dashboard auto-refresh
+- Refactor activity summary cards
 
 ## Roadmap
 
