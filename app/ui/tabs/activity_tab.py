@@ -491,6 +491,8 @@ class ActivityTrendChart(FigureCanvasQTAgg):
 
 
 class ActivityTab(QWidget):
+    data_updated = Signal(int)
+
     CARD_BASE_STYLE = """
         font-size: 15px;
         font-weight: 700;
@@ -919,6 +921,7 @@ class ActivityTab(QWidget):
     def _on_refresh_success(self, rows_written: int) -> None:
         self._set_last_synced_now()
         self.load_activity()
+        self.data_updated.emit()
         self._set_sync_status("Sync complete", "#43A047")
 
     def _on_refresh_auth_error(self) -> None:

@@ -37,6 +37,8 @@ class MainWindow(QMainWindow):
             on_open_workouts=lambda: self.tabs.setCurrentWidget(self.workouts_tab),
         )
 
+        self.activity_tab.data_updated.connect(self.home_tab._refresh_card_data)
+        
         self.tabs.addTab(self.home_tab, "Home")
         self.tabs.addTab(self.glucose_tab, "Glucose")
         self.tabs.addTab(self.activity_tab, "Activity")
