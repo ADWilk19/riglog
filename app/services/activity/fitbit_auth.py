@@ -33,8 +33,12 @@ def get_fitbit_session() -> OAuth2Session:
     redirect_uri = os.environ.get("FITBIT_REDIRECT_URI", "http://127.0.0.1:8080/")
 
     token = None
+
     if TOKEN_PATH.exists():
         token = json.loads(TOKEN_PATH.read_text())
+
+        if "refresh_token" not in token:
+            token = None
 
     return OAuth2Session(
         client_id=client_id,

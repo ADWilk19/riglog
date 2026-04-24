@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import requests
+import os
 
-from app.services.activity.fitbit_auth import get_fitbit_session
+from app.services.activity.fitbit_auth import get_fitbit_session, TOKEN_URL
 from app.services.activity.fitbit_exceptions import (
     FitbitAPIError,
     FitbitAuthError,
@@ -36,8 +37,17 @@ class FitbitClient:
         response = self._safe_request(url)
 
         if response.status_code == 401:
-            # retry once after rebuilding session
-            self.session = get_fitbit_session()
+            try:
+                # force refresh using OAuth2Session
+                self.session.refresh_token(
+                    TOKEN_URL,
+                    client_id=self.session.client_id,
+                    client_secret=os.environ["FITBIT_CLIENT_SECRET"],
+                )
+            except Exception:
+                raise FitbitAuthError("Fitbit authentication failed. Reconnect required.")
+
+            # retry after refresh
             response = self._safe_request(url)
 
         self._handle_errors(response)
