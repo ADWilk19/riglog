@@ -491,7 +491,7 @@ class ActivityTrendChart(FigureCanvasQTAgg):
 
 
 class ActivityTab(QWidget):
-    data_updated = Signal(int)
+    data_updated = Signal()
 
     CARD_BASE_STYLE = """
         font-size: 15px;
@@ -523,6 +523,7 @@ class ActivityTab(QWidget):
         self.refresh_worker = None
 
         self.load_activity()
+        QTimer.singleShot(1000, lambda: self.handle_refresh_activity(is_auto=True))
 
     def _create_section_title(self, text: str) -> QLabel:
         label = QLabel(text)
@@ -798,7 +799,7 @@ class ActivityTab(QWidget):
 
         self._populate_table(rows)
 
-    def handle_refresh_activity(self) -> None:
+    def handle_refresh_activity(self, is_auto: bool = False) -> None:
         """Start a background Fitbit refresh without blocking the UI."""
         if self.refresh_thread is not None and self.refresh_thread.isRunning():
             return
@@ -806,8 +807,9 @@ class ActivityTab(QWidget):
         end_date = date.today()
         start_date = end_date - timedelta(days=30)
 
-        self.refresh_button.setEnabled(False)
-        self.refresh_button.setText("Refreshing...")
+        if not is_auto:
+            self.refresh_button.setEnabled(False)
+            self.refresh_button.setText("Refreshing...")
 
         self._set_sync_status("Refreshing...", "#BBBBBB", timeout_ms=0)
 
@@ -961,8 +963,9 @@ class ActivityTab(QWidget):
         )
 
     def _cleanup_refresh_thread(self) -> None:
-        self.refresh_button.setEnabled(True)
-        self.refresh_button.setText("Refresh")
+        if self.refresh_button.text() == "Refreshing...":
+            self.refresh_button.setEnabled(True)
+            self.refresh_button.setText("Refresh")
 
         if self.refresh_worker is not None:
             self.refresh_worker.deleteLater()
