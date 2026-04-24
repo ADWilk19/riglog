@@ -11,6 +11,13 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from datetime import date, timedelta
+
+from sqlalchemy import func
+
+from app.db.database import SessionLocal
+from app.db.models import DailyActivity, GlucoseReading
+
 from app.ui.widgets.summary_card import SummaryCard
 
 
@@ -52,6 +59,7 @@ class HomeTab(QWidget):
 
         main_layout.addWidget(container)
         main_layout.addStretch()
+        self._refresh_card_data()
 
         self.setLayout(main_layout)
 
@@ -130,38 +138,38 @@ class HomeTab(QWidget):
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(16)
 
-        glucose_card = SummaryCard(
+        self.glucose_card = SummaryCard(
             title="Glucose",
-            value="Ready",
-            subtitle="Import and analyse readings",
+            value="Loading...",
+            subtitle="Checking readings",
             on_click=self.on_open_glucose,
         )
-        activity_card = SummaryCard(
+        self.activity_card = SummaryCard(
             title="Activity",
-            value="Ready",
-            subtitle="Sync Fitbit and review steps",
+            value="Loading...",
+            subtitle="Checking Fitbit data",
             on_click=self.on_open_activity,
         )
-        workouts_card = SummaryCard(
+        self.workouts_card = SummaryCard(
             title="Workouts",
             value="Coming soon",
             subtitle="Track sessions and progression",
             on_click=self.on_open_workouts,
         )
-        nutrition_card = SummaryCard(
+        self.nutrition_card = SummaryCard(
             title="Nutrition",
             value="Coming soon",
             subtitle="Log meals and calorie trends",
         )
 
-        glucose_card.set_variant("primary")
-        activity_card.set_variant("primary")
+        self.glucose_card.set_variant("primary")
+        self.activity_card.set_variant("primary")
 
         for card in (
-            glucose_card,
-            activity_card,
-            workouts_card,
-            nutrition_card,
+            self.glucose_card,
+            self.activity_card,
+            self.workouts_card,
+            self.nutrition_card,
         ):
             card.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
@@ -169,22 +177,77 @@ class HomeTab(QWidget):
             )
             card.setMinimumHeight(90)
 
-        activity_card.set_content(
-            "8,412 steps",
-            "7-day average"
-        )
-
-        glucose_card.set_content(
-            "1,167 readings",
-            "Last import: 2 days ago"
-        )
-
-        grid.addWidget(glucose_card, 0, 0)
-        grid.addWidget(activity_card, 0, 1)
-        grid.addWidget(workouts_card, 1, 0)
-        grid.addWidget(nutrition_card, 1, 1)
+        grid.addWidget(self.glucose_card, 0, 0)
+        grid.addWidget(self.activity_card, 0, 1)
+        grid.addWidget(self.workouts_card, 1, 0)
+        grid.addWidget(self.nutrition_card, 1, 1)
 
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
 
         return grid
+
+    def _refresh_card_data(self) -> None:
+        session = SessionLocal()
+
+        try:
+            self._refresh_glucose_card(session)
+            self._refresh_activity_card(session)
+        finally:
+            session.close()
+
+    def _refresh_glucose_card(self, session) -> None:
+        reading_count = session.query(GlucoseReading).count()
+
+        latest_reading = (
+            session.query(GlucoseReading)
+            .order_by(GlucoseReading.recorded_at.desc())
+            .first()
+        )
+
+        if reading_count == 0 or latest_reading is None:
+            self.glucose_card.set_content(
+                "No readings",
+                "Import Diabetes:M data"
+            )
+            return
+
+        latest_date = latest_reading.recorded_at.strftime("%d %b %Y")
+
+        self.glucose_card.set_content(
+            f"{reading_count:,} readings",
+            f"Latest reading: {latest_date}"
+        )
+
+    def _refresh_activity_card(self, session) -> None:
+        latest_activity = (
+            session.query(DailyActivity)
+            .filter(DailyActivity.steps.isnot(None))
+            .order_by(DailyActivity.activity_date.desc())
+            .first()
+        )
+
+        if latest_activity is None:
+            self.activity_card.set_content(
+                "No activity",
+                "Sync Fitbit data"
+            )
+            return
+
+        end_date = latest_activity.activity_date
+        start_date = end_date - timedelta(days=6)
+
+        avg_steps = (
+            session.query(func.avg(DailyActivity.steps))
+            .filter(DailyActivity.activity_date >= start_date)
+            .filter(DailyActivity.activity_date <= end_date)
+            .filter(DailyActivity.steps.isnot(None))
+            .scalar()
+        )
+
+        latest_date = end_date.strftime("%d %b %Y")
+
+        self.activity_card.set_content(
+            f"{round(avg_steps):,} steps",
+            f"7-day avg · Latest activity: {latest_date}"
+        )
