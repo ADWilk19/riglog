@@ -42,6 +42,7 @@ class HomeTab(QWidget):
         main_layout.setSpacing(16)
 
         main_layout.addLayout(self._build_header(logo_path))
+        main_layout.addSpacing(72)
 
         grid = self._build_summary_grid()
 
@@ -51,16 +52,16 @@ class HomeTab(QWidget):
         container_layout.addLayout(grid)
         container.setLayout(container_layout)
 
-        container.setMaximumWidth(1000)
         container.setSizePolicy(
             QSizePolicy.Policy.Expanding,
             QSizePolicy.Policy.Fixed,
         )
+        container.setMaximumWidth(1600)
 
-        main_layout.addWidget(container)
-        main_layout.addStretch()
+        main_layout.addWidget(container, alignment=Qt.AlignHCenter)
+        main_layout.addStretch(1)
+
         self._refresh_card_data()
-
         self.setLayout(main_layout)
 
     def _build_header(self, logo_path: Path) -> QHBoxLayout:
@@ -175,7 +176,7 @@ class HomeTab(QWidget):
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.Fixed,
             )
-            card.setMinimumHeight(90)
+            card.setMinimumHeight(110)
 
         grid.addWidget(self.glucose_card, 0, 0)
         grid.addWidget(self.activity_card, 0, 1)
