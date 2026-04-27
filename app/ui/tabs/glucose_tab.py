@@ -20,11 +20,13 @@ from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFileDialog,
     QComboBox,
+    QGridLayout,
     QHeaderView,
     QHBoxLayout,
     QLabel,
     QMessageBox,
     QPushButton,
+    QSizePolicy,
     QScrollArea,
     QTableWidget,
     QTableWidgetItem,
@@ -409,6 +411,36 @@ class GlucoseTab(QWidget):
         label.setObjectName("fieldLabel")
         return label
 
+    def _add_summary_cards(
+        self,
+        parent_layout: QVBoxLayout,
+        title: str,
+        cards: list[SummaryCard],
+        columns: int,
+    ) -> None:
+        parent_layout.addWidget(self._create_section_title(title))
+
+        grid = QGridLayout()
+        grid.setHorizontalSpacing(12)
+        grid.setVerticalSpacing(12)
+
+        for card in cards:
+            card.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+            card.setMinimumWidth(0)
+
+        for index, card in enumerate(cards):
+            row = index // columns
+            column = index % columns
+            grid.addWidget(card, row, column)
+
+        for column in range(columns):
+            grid.setColumnStretch(column, 1)
+
+        parent_layout.addLayout(grid)
+
     def _create_analysis_table(
         self,
         column_count: int,
@@ -489,12 +521,6 @@ class GlucoseTab(QWidget):
         summary_panel.setSpacing(12)
         summary_panel.setContentsMargins(0, 8, 0, 8)
 
-        top_row = QHBoxLayout()
-        top_row.setSpacing(12)
-
-        bottom_row = QHBoxLayout()
-        bottom_row.setSpacing(12)
-
         self.count_label = SummaryCard(title="Readings", value="-")
         self.avg_label = SummaryCard(title="Average", value="-")
         self.min_label = SummaryCard(title="Lowest", value="-")
@@ -502,44 +528,67 @@ class GlucoseTab(QWidget):
         self.tir_label = SummaryCard(title="In Range", value="-")
         self.hypo_label = SummaryCard(title="Hypo", value="-")
         self.low_label = SummaryCard(title="Low", value="-")
-        self.target_label = SummaryCard(title="Target", value="-")
         self.high_label = SummaryCard(title="High", value="-")
         self.hyper_label = SummaryCard(title="Hyper", value="-")
         self.sd_label = SummaryCard(title="SD", value="-")
         self.cv_label = SummaryCard(title="CV", value="-")
         self.gmi_label = SummaryCard(title="GMI", value="-")
 
-        top_cards = [
-            self.count_label,
-            self.avg_label,
-            self.min_label,
-            self.max_label,
-            self.tir_label,
-        ]
+        self._add_summary_cards(
+            summary_panel,
+            "Overview",
+            [
+                self.count_label,
+                self.avg_label,
+                self.min_label,
+                self.max_label,
+            ],
+            columns=4,
+        )
 
-        bottom_cards = [
+        summary_panel.addWidget(self._create_section_title("Time in Range"))
+
+        time_range_grid = QGridLayout()
+        time_range_grid.setHorizontalSpacing(12)
+        time_range_grid.setVerticalSpacing(12)
+
+        time_range_cards = [
             self.hypo_label,
             self.low_label,
-            self.target_label,
+            self.tir_label,
             self.high_label,
             self.hyper_label,
-            self.sd_label,
-            self.cv_label,
-            self.gmi_label,
         ]
 
-        top_row.addStretch()
-        for card in top_cards:
-            top_row.addWidget(card)
-        top_row.addStretch()
+        for card in time_range_cards:
+            card.setSizePolicy(
+                QSizePolicy.Policy.Expanding,
+                QSizePolicy.Policy.Fixed,
+            )
+            card.setMinimumWidth(0)
 
-        bottom_row.addStretch()
-        for card in bottom_cards:
-            bottom_row.addWidget(card)
-        bottom_row.addStretch()
+        time_range_grid.addWidget(self.hypo_label, 0, 0)
+        time_range_grid.addWidget(self.low_label, 0, 1)
+        time_range_grid.addWidget(self.tir_label, 0, 2, 1, 2)
 
-        summary_panel.addLayout(top_row)
-        summary_panel.addLayout(bottom_row)
+        time_range_grid.addWidget(self.high_label, 1, 0)
+        time_range_grid.addWidget(self.hyper_label, 1, 1)
+
+        for column in range(4):
+            time_range_grid.setColumnStretch(column, 1)
+
+        summary_panel.addLayout(time_range_grid)
+
+        self._add_summary_cards(
+            summary_panel,
+            "Variability",
+            [
+                self.sd_label,
+                self.cv_label,
+                self.gmi_label,
+            ],
+            columns=3,
+        )
 
         self.layout.addLayout(summary_panel)
 
@@ -750,7 +799,6 @@ class GlucoseTab(QWidget):
             self.tir_label.set_content("-")
             self.hypo_label.set_content("-")
             self.low_label.set_content("-")
-            self.target_label.set_content("-")
             self.high_label.set_content("-")
             self.hyper_label.set_content("-")
             self.sd_label.set_content("-")
@@ -759,7 +807,6 @@ class GlucoseTab(QWidget):
 
             self.hypo_label.set_variant("neutral")
             self.low_label.set_variant("neutral")
-            self.target_label.set_variant("neutral")
             self.high_label.set_variant("neutral")
             self.hyper_label.set_variant("neutral")
             self.cv_label.set_variant("neutral")
@@ -775,11 +822,10 @@ class GlucoseTab(QWidget):
         self.avg_label.set_content(f"{sum(values) / len(values):.1f}", "mmol/L")
         self.min_label.set_content(f"{min(values):.1f}", "mmol/L")
         self.max_label.set_content(f"{max(values):.1f}", "mmol/L")
-        self.tir_label.set_content(f"{tir_metrics['target_pct']:.1f}%", "target")
-
+        self.tir_label.set_content(f"{tir_metrics['target_pct']:.1f}%")
+        self.tir_label.set_variant("success")
         self.hypo_label.set_content(f"{breakdown['hypo']['pct']:.1f}%")
         self.low_label.set_content(f"{breakdown['low']['pct']:.1f}%")
-        self.target_label.set_content(f"{breakdown['target']['pct']:.1f}%")
         self.high_label.set_content(f"{breakdown['high']['pct']:.1f}%")
         self.hyper_label.set_content(f"{breakdown['hyper']['pct']:.1f}%")
 
@@ -793,7 +839,6 @@ class GlucoseTab(QWidget):
 
         self.hypo_label.set_variant("danger")
         self.low_label.set_variant("warning")
-        self.target_label.set_variant("success")
         self.high_label.set_variant("warning")
         self.hyper_label.set_variant("danger")
 
