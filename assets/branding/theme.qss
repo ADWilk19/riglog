@@ -348,3 +348,8 @@ QLabel#summaryCardSubtitle {
 #summaryCard:hover {
     border: 1px solid #4CAF50;
 }
+
+
+QFrame#summaryCard[selected="true"] {
+    border: 3px solid #F5F5F5;
+}

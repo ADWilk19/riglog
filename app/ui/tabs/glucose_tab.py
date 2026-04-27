@@ -367,6 +367,7 @@ class GlucoseTab(QWidget):
         super().__init__()
 
         self.selected_reading_id: int | None = None
+        self.selected_range_filter: str | None = None
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -526,10 +527,33 @@ class GlucoseTab(QWidget):
         self.min_label = SummaryCard(title="Lowest", value="-")
         self.max_label = SummaryCard(title="Highest", value="-")
         self.tir_label = SummaryCard(title="In Range", value="-")
-        self.hypo_label = SummaryCard(title="Hypo", value="-")
-        self.low_label = SummaryCard(title="Low", value="-")
-        self.high_label = SummaryCard(title="High", value="-")
-        self.hyper_label = SummaryCard(title="Hyper", value="-")
+
+        self.hypo_label = SummaryCard(
+            title="Hypo",
+            value="-",
+            on_click=lambda: self.handle_range_card_click("hypo"),
+        )
+        self.low_label = SummaryCard(
+            title="Low",
+            value="-",
+            on_click=lambda: self.handle_range_card_click("low"),
+        )
+        self.tir_label = SummaryCard(
+            title="In Range",
+            value="-",
+            on_click=lambda: self.handle_range_card_click("target"),
+        )
+        self.high_label = SummaryCard(
+            title="High",
+            value="-",
+            on_click=lambda: self.handle_range_card_click("high"),
+        )
+        self.hyper_label = SummaryCard(
+            title="Hyper",
+            value="-",
+            on_click=lambda: self.handle_range_card_click("hyper"),
+        )
+
         self.sd_label = SummaryCard(title="SD", value="-")
         self.cv_label = SummaryCard(title="CV", value="-")
         self.gmi_label = SummaryCard(title="GMI", value="-")
@@ -591,6 +615,7 @@ class GlucoseTab(QWidget):
         )
 
         self.layout.addLayout(summary_panel)
+        self._update_range_card_selection_state()
 
     def _build_chart(self) -> None:
         self.chart = GlucoseTrendChart()
@@ -787,6 +812,7 @@ class GlucoseTab(QWidget):
                     if reading["recorded_at"] >= cutoff
                 ]
 
+        readings = self._apply_range_filter(readings)
         return readings
 
     def _update_summary(self, readings: list[dict]) -> None:
@@ -1289,3 +1315,53 @@ class GlucoseTab(QWidget):
         except Exception as exc:
             QMessageBox.critical(self, "Save failed", f"Could not save field:\n{exc}")
             self.load_readings()
+
+    def _apply_range_filter(self, readings: list[dict]) -> list[dict]:
+        """Filter readings by the selected glucose range card."""
+        if self.selected_range_filter is None:
+            return readings
+
+        if self.selected_range_filter == "hypo":
+            return [r for r in readings if r["glucose_value"] < 3.3]
+
+        if self.selected_range_filter == "low":
+            return [r for r in readings if 3.3 <= r["glucose_value"] < 4.0]
+
+        if self.selected_range_filter == "target":
+            return [r for r in readings if 4.0 <= r["glucose_value"] <= 10.0]
+
+        if self.selected_range_filter == "high":
+            return [r for r in readings if 10.0 < r["glucose_value"] <= 15.0]
+
+        if self.selected_range_filter == "hyper":
+            return [r for r in readings if r["glucose_value"] > 15.0]
+
+        return readings
+
+    def handle_range_card_click(self, range_name: str) -> None:
+        """Toggle a glucose range card filter and refresh the tab."""
+        if self.selected_range_filter == range_name:
+            self.selected_range_filter = None
+        else:
+            self.selected_range_filter = range_name
+
+        self._update_range_card_selection_state()
+        self.load_readings()
+
+    def _update_range_card_selection_state(self) -> None:
+        """Visually mark the active glucose range filter card."""
+        range_cards = {
+            "hypo": self.hypo_label,
+            "low": self.low_label,
+            "target": self.tir_label,
+            "high": self.high_label,
+            "hyper": self.hyper_label,
+        }
+
+        for range_name, card in range_cards.items():
+            card.setProperty(
+                "selected",
+                self.selected_range_filter == range_name,
+            )
+            card.style().unpolish(card)
+            card.style().polish(card)
