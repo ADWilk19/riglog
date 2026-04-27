@@ -877,6 +877,25 @@ class GlucoseTab(QWidget):
 
         effectiveness_df = calculate_insulin_effectiveness(readings)
 
+        meal_event_order = [
+            "Pre-Breakfast",
+            "Post-Breakfast",
+            "Pre-Lunch",
+            "Post-Lunch",
+            "Pre-Dinner",
+            "Post-Dinner",
+            "Before Bed",
+            "Night",
+        ]
+
+        if not effectiveness_df.empty:
+            effectiveness_df["meal_event_label"] = pd.Categorical(
+                effectiveness_df["meal_event_label"],
+                categories=meal_event_order,
+                ordered=True,
+            )
+            effectiveness_df = effectiveness_df.sort_values("meal_event_label")
+
         if effectiveness_df.empty:
             self.insulin_effectiveness_table.setRowCount(0)
         else:
