@@ -126,6 +126,21 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## 📊 Phase 3 — Interaction Enhancements
 
+### 🩸 Glucose — UI Layer
+
+* [ ] Range-Based Meal Event Breakdown
+
+  * When a glucose range card is selected (e.g. Low, High, Hyper):
+    * Display count of readings grouped by meal event
+    * Sorted chronologically (Pre → Post events)
+  * Only visible when a range filter is active
+  * Initial version:
+    * simple table (meal event → count)
+  * Future:
+    * percentage breakdown by meal event
+
+---
+
 ### Activity → Chart Layer
 
 * [ ] Click-to-Select Day
@@ -168,6 +183,19 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
+* [ ] Calories Burned by Meal Event
+
+  * Aggregate activity calories by glucose meal-event window
+  * Compare calories burned against subsequent glucose trajectory
+  * Initial version:
+    * meal event → calories burned → average next glucose reading
+  * Future:
+    * correlation between calories burned and glucose change
+  * Requires:
+    * intraday calorie burn data
+
+---
+
 ### Event-Based Activity Analysis (Backlog)
 
 * [ ] Introduce Activity Event Classification
@@ -198,6 +226,11 @@ This backlog is organised by architectural layer and implementation priority.
     * `steps`
     * `source`
 
+* [ ] Add calorie fields to `activity_intraday`
+
+  * Fields:
+    * `calories_burned`
+
 ---
 
 ### Activity → Importer (`app/services/activity/fitbit_importer.py`)
@@ -206,6 +239,14 @@ This backlog is organised by architectural layer and implementation priority.
 
   * Pull minute / interval data from Fitbit API
   * Persist to `activity_intraday`
+
+* [ ] Add Calorie Burn Import
+
+  * Pull calorie expenditure from Fitbit API
+  * Support:
+    * daily total calories (initial)
+    * intraday calorie burn (preferred)
+  * Persist to database
 
 ---
 
