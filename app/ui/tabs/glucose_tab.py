@@ -649,7 +649,7 @@ class GlucoseTab(QWidget):
 
     def _build_time_effectiveness_table(self) -> None:
         self.layout.addWidget(
-            self._create_section_title("7-Day Improvement by Previous Meal Event")
+            self._create_section_title("7-Day Change by Previous Meal Event")
         )
 
         self.time_effectiveness_table = self._create_analysis_table(
@@ -1038,6 +1038,14 @@ class GlucoseTab(QWidget):
         self.dose_effectiveness_chart.draw()
 
         time_df = calculate_time_based_effectiveness(readings, days=7)
+
+        if not time_df.empty:
+            time_df["meal_event_label"] = pd.Categorical(
+                time_df["meal_event_label"],
+                categories=meal_event_order,
+                ordered=True,
+            )
+            time_df = time_df.sort_values("meal_event_label")
 
         if time_df.empty:
             self.time_effectiveness_table.setRowCount(0)
