@@ -807,6 +807,8 @@ class ActivityTab(QWidget):
         end_date = date.today()
         start_date = end_date - timedelta(days=30)
 
+        self.is_auto_refresh = is_auto
+
         if not is_auto:
             self.refresh_button.setEnabled(False)
             self.refresh_button.setText("Refreshing...")
@@ -928,7 +930,9 @@ class ActivityTab(QWidget):
 
     def _on_refresh_auth_error(self) -> None:
         self._set_sync_status("Reconnect required", "#FB8C00")
-        self._handle_fitbit_auth_error()
+
+        if not getattr(self, "is_auto_refresh", False):
+            self._handle_fitbit_auth_error()
 
     def _on_refresh_rate_limit_error(self) -> None:
         self._set_sync_status("Sync failed", "#E53935")
