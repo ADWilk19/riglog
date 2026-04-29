@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtWidgets import QFrame, QLabel, QVBoxLayout, QSizePolicy
 
 
 class SummaryCard(QFrame):
+    clicked = Signal()
+
     def __init__(
         self,
         title: str,
@@ -20,8 +22,7 @@ class SummaryCard(QFrame):
         self.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Fixed)
         self.setMinimumHeight(84)
         self.setMinimumWidth(220)
-        self.setCursor(Qt.PointingHandCursor)
-
+        
         self.title_label = QLabel(title)
         self.title_label.setObjectName("summaryCardTitle")
         self.title_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -48,6 +49,7 @@ class SummaryCard(QFrame):
         layout.addWidget(self.subtitle_label)
 
         self.setLayout(layout)
+        self.setCursor(Qt.CursorShape.PointingHandCursor)
 
     def set_content(self, value: str, subtitle: str | None = None) -> None:
         self.value_label.setText(value)
@@ -70,6 +72,10 @@ class SummaryCard(QFrame):
         self.set_variant("neutral")
 
     def mousePressEvent(self, event) -> None:
-        if self.on_click and event.button() == Qt.LeftButton:
-            self.on_click()
+        if event.button() == Qt.LeftButton:
+            self.clicked.emit()
+
+            if self.on_click:
+                self.on_click()
+
         super().mousePressEvent(event)

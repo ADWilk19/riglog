@@ -614,6 +614,12 @@ class GlucoseTab(QWidget):
             columns=3,
         )
 
+        # self.hypo_label.clicked.connect(lambda: self.handle_range_card_click("hypo"))
+        # self.low_label.clicked.connect(lambda: self.handle_range_card_click("low"))
+        # self.tir_label.clicked.connect(lambda: self.handle_range_card_click("target"))
+        # self.high_label.clicked.connect(lambda: self.handle_range_card_click("high"))
+        # self.hyper_label.clicked.connect(lambda: self.handle_range_card_click("hyper"))
+
         self.layout.addLayout(summary_panel)
         self._update_range_card_selection_state()
 
