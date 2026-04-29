@@ -362,6 +362,16 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
 
 class GlucoseTab(QWidget):
     """Main glucose analytics tab for import, review, analysis, and export."""
+    MEAL_EVENT_ORDER = [
+        "Pre-Breakfast",
+        "Post-Breakfast",
+        "Pre-Lunch",
+        "Post-Lunch",
+        "Pre-Dinner",
+        "Post-Dinner",
+        "Before Bed",
+        "Night",
+    ]
 
     def __init__(self) -> None:
         super().__init__()
@@ -619,6 +629,16 @@ class GlucoseTab(QWidget):
             columns=3,
         )
 
+        # --- Selected Range Breakdown (placeholder) ---
+        self.range_breakdown_title = self._create_section_title(
+            "Selected Range by Meal Event"
+        )
+        summary_panel.addWidget(self.range_breakdown_title)
+
+        self.range_breakdown_container = QVBoxLayout()
+        self.range_breakdown_container.setSpacing(6)
+
+        summary_panel.addLayout(self.range_breakdown_container)
 
         self.layout.addLayout(summary_panel)
         self._update_range_card_selection_state()
@@ -897,6 +917,7 @@ class GlucoseTab(QWidget):
         self.agp_canvas.draw()
 
         self._update_summary(readings)
+        self._update_range_breakdown(readings)
 
         daily_data = get_daily_average_glucose(readings)
         self.chart.plot_daily_average(daily_data)
@@ -1377,3 +1398,37 @@ class GlucoseTab(QWidget):
             )
             card.style().unpolish(card)
             card.style().polish(card)
+
+    def _update_range_breakdown(self, readings: list[dict]) -> None:
+        """Show count of selected range readings by meal event."""
+
+        # Clear existing items
+        while self.range_breakdown_container.count():
+            item = self.range_breakdown_container.takeAt(0)
+            if item.widget():
+                item.widget().deleteLater()
+
+        # Only show when a range is selected
+        if not self.selected_range_filter or not readings:
+            return
+
+        breakdown: dict[str, int] = {}
+
+        for reading in readings:
+            label = reading["meal_event_label"]
+            breakdown[label] = breakdown.get(label, 0) + 1
+
+        # Sort for consistency (optional but nice)
+        sorted_items = sorted(
+            breakdown.items(),
+            key=lambda x: self.MEAL_EVENT_ORDER.index(x[0]) if x[0] in self.MEAL_EVENT_ORDER else 999
+        )
+
+        total = sum(breakdown.values())
+
+        for label, count in sorted_items:
+            pct = (count / total) * 100 if total else 0
+            row = QLabel(f"{label}: {count} ({pct:.0f}%)")
+            row.setObjectName("analysisText")
+            row.setAlignment(Qt.AlignCenter)
+            self.range_breakdown_container.addWidget(row)
