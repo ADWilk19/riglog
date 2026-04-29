@@ -504,6 +504,9 @@ class GlucoseTab(QWidget):
         self.time_filter.currentIndexChanged.connect(self.load_readings)
         self.time_filter.setFixedWidth(140)
 
+        self.active_filter_label = QLabel("")
+        self.active_filter_label.setObjectName("statusLabel")
+
         toolbar.addStretch()
         toolbar.addWidget(self.import_button)
         toolbar.addWidget(self.refresh_button)
@@ -513,6 +516,8 @@ class GlucoseTab(QWidget):
         toolbar.addWidget(self.meal_event_filter)
         toolbar.addWidget(self._create_toolbar_label("Time Range"))
         toolbar.addWidget(self.time_filter)
+        toolbar.addSpacing(12)
+        toolbar.addWidget(self.active_filter_label)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
@@ -614,11 +619,6 @@ class GlucoseTab(QWidget):
             columns=3,
         )
 
-        # self.hypo_label.clicked.connect(lambda: self.handle_range_card_click("hypo"))
-        # self.low_label.clicked.connect(lambda: self.handle_range_card_click("low"))
-        # self.tir_label.clicked.connect(lambda: self.handle_range_card_click("target"))
-        # self.high_label.clicked.connect(lambda: self.handle_range_card_click("high"))
-        # self.hyper_label.clicked.connect(lambda: self.handle_range_card_click("hyper"))
 
         self.layout.addLayout(summary_panel)
         self._update_range_card_selection_state()
@@ -1352,6 +1352,12 @@ class GlucoseTab(QWidget):
             self.selected_range_filter = range_name
 
         self._update_range_card_selection_state()
+        if self.selected_range_filter:
+            self.active_filter_label.setText(
+                f"Filtered: {self.selected_range_filter.capitalize()}"
+            )
+        else:
+            self.active_filter_label.setText("")
         self.load_readings()
 
     def _update_range_card_selection_state(self) -> None:

@@ -345,6 +345,12 @@ QLabel#summaryCardSubtitle {
     border: none;
 }
 
+QLabel#statusLabel {
+    font-size: 13px;
+    font-weight: 700;
+    color: #DDDDDD;
+}
+
 #summaryCard:hover {
     border: 1px solid #4CAF50;
 }
