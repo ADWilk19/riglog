@@ -57,11 +57,11 @@ CHART_BG = "#1E1E1E"
 CHART_TEXT = "#F0F0F0"
 CHART_GRID = "#444444"
 CHART_SPINE = "#888888"
-HYPO_RED = "#DC5050"
+HYPO_RED = "#7F1D1D"
 LOW_AMBER = "#FFAA00"
-TARGET_GREEN = "#43A047"
-HIGH_YELLOW = "#FFD54F"
-HYPER_PURPLE = "#B388FF"
+TARGET_GREEN = "#1F7A34"
+HIGH_YELLOW = "#FFAA00"
+HYPER_DANGER = "#7F1D1D"
 LINE_RED = "#FF4D4D"
 WHITE = "#FFFFFF"
 
@@ -139,7 +139,7 @@ def draw_agp_figure(fig: Figure, agp_df: pd.DataFrame) -> None:
     ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
     ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
     ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
-    ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
+    ax.axhline(15, color=HYPER_DANGER, linestyle="--", linewidth=1)
 
     ax.fill_between(x, p10, p90, color=LINE_RED, alpha=0.15, label="10–90%")
     ax.fill_between(x, p25, p75, color=LINE_RED, alpha=0.30, label="25–75%")
@@ -183,7 +183,7 @@ class GlucoseTrendChart(FigureCanvasQTAgg):
         self.ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
         self.ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
         self.ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
-        self.ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
+        self.ax.axhline(15, color=HYPER_DANGER, linestyle="--", linewidth=1)
 
         self.ax.set_ylim(0, 30)
         self.ax.set_yticks(range(0, 31, 5))
@@ -259,7 +259,7 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
         self.ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
         self.ax.axhline(4, color="#66BB6A", linestyle=":", linewidth=1)
         self.ax.axhline(10, color="#66BB6A", linestyle=":", linewidth=1)
-        self.ax.axhline(15, color=HYPER_PURPLE, linestyle="--", linewidth=1)
+        self.ax.axhline(15, color=HYPER_DANGER, linestyle="--", linewidth=1)
 
         if not profile_data:
             self.draw()
@@ -358,6 +358,83 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
 
         self.figure.subplots_adjust(bottom=0.24)
         self.draw()
+
+
+class RangeBreakdownChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for selected glucose range breakdown by meal event."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 2.4))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_breakdown(
+        self,
+        breakdown_items: list[tuple[str, int]],
+        selected_range: str | None,
+        ) -> None:
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+        self.ax.grid(False)
+
+        for spine in self.ax.spines.values():
+            spine.set_visible(False)
+
+        self.ax.tick_params(axis="x", length=0)
+        self.ax.tick_params(axis="y", length=0)
+        self.ax.xaxis.set_visible(False)
+
+        if not breakdown_items:
+            self.ax.text(
+                0.5,
+                0.5,
+                "Select a range card to see meal-event breakdown",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+            )
+            self.ax.set_axis_off()
+            self.draw()
+            return
+
+        labels = [label for label, _ in breakdown_items]
+        counts = [count for _, count in breakdown_items]
+
+        color = self._get_range_color(selected_range)
+        bars = self.ax.barh(labels, counts, color=color)
+
+        self.ax.invert_yaxis()
+        self.ax.xaxis.set_visible(False)
+        self.ax.set_title("Selected Range by Meal Event", color=CHART_TEXT)
+
+        max_count = max(counts)
+        self.ax.set_xlim(0, max_count + 1)
+
+        for bar, count in zip(bars, counts):
+            self.ax.text(
+                count + (max_count * 0.01),
+                bar.get_y() + bar.get_height() / 2,
+                f"{count}",
+                va="center",
+                color=CHART_TEXT,
+                fontsize=9,
+            )
+
+        self.figure.tight_layout()
+        self.draw()
+
+    def _get_range_color(self, selected_range: str | None) -> str:
+        if selected_range == "hypo":
+            return HYPO_RED
+        if selected_range == "low":
+            return LOW_AMBER
+        if selected_range == "target":
+            return TARGET_GREEN
+        if selected_range == "high":
+            return HIGH_YELLOW
+        if selected_range == "hyper":
+            return HYPO_RED
+        return LINE_RED
 
 
 class GlucoseTab(QWidget):
@@ -629,16 +706,9 @@ class GlucoseTab(QWidget):
             columns=3,
         )
 
-        # --- Selected Range Breakdown (placeholder) ---
-        self.range_breakdown_title = self._create_section_title(
-            "Selected Range by Meal Event"
-        )
-        summary_panel.addWidget(self.range_breakdown_title)
-
-        self.range_breakdown_container = QVBoxLayout()
-        self.range_breakdown_container.setSpacing(6)
-
-        summary_panel.addLayout(self.range_breakdown_container)
+        self.range_breakdown_chart = RangeBreakdownChart()
+        self.range_breakdown_chart.setMinimumHeight(260)
+        summary_panel.addWidget(self.range_breakdown_chart)
 
         self.layout.addLayout(summary_panel)
         self._update_range_card_selection_state()
@@ -1071,7 +1141,7 @@ class GlucoseTab(QWidget):
                 elif value <= 15:
                     bar.set_color(HIGH_YELLOW)
                 else:
-                    bar.set_color(HYPER_PURPLE)
+                    bar.set_color(HYPER_DANGER)
 
             for bar, value in zip(bars, glucose):
                 ax.text(
@@ -1400,16 +1470,9 @@ class GlucoseTab(QWidget):
             card.style().polish(card)
 
     def _update_range_breakdown(self, readings: list[dict]) -> None:
-        """Show count of selected range readings by meal event."""
-
-        # Clear existing items
-        while self.range_breakdown_container.count():
-            item = self.range_breakdown_container.takeAt(0)
-            if item.widget():
-                item.widget().deleteLater()
-
-        # Only show when a range is selected
+        """Update selected range breakdown chart by meal event."""
         if not self.selected_range_filter or not readings:
+            self.range_breakdown_chart.plot_breakdown([], None)
             return
 
         breakdown: dict[str, int] = {}
@@ -1418,17 +1481,14 @@ class GlucoseTab(QWidget):
             label = reading["meal_event_label"]
             breakdown[label] = breakdown.get(label, 0) + 1
 
-        # Sort for consistency (optional but nice)
         sorted_items = sorted(
             breakdown.items(),
-            key=lambda x: self.MEAL_EVENT_ORDER.index(x[0]) if x[0] in self.MEAL_EVENT_ORDER else 999
+            key=lambda x: self.MEAL_EVENT_ORDER.index(x[0])
+            if x[0] in self.MEAL_EVENT_ORDER
+            else 999,
         )
 
-        total = sum(breakdown.values())
-
-        for label, count in sorted_items:
-            pct = (count / total) * 100 if total else 0
-            row = QLabel(f"{label}: {count} ({pct:.0f}%)")
-            row.setObjectName("analysisText")
-            row.setAlignment(Qt.AlignCenter)
-            self.range_breakdown_container.addWidget(row)
+        self.range_breakdown_chart.plot_breakdown(
+            sorted_items,
+            self.selected_range_filter,
+        )
