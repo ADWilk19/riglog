@@ -34,7 +34,14 @@ This backlog is organised by architectural layer and implementation priority.
 * [~] Refactor Summary Cards
 
   * Home cards now implemented
-  * Activity tab cards pending full alignment with service layer
+  * Activity Summary Refactor ✅ COMPLETE
+    * Moved summary logic to service layer
+    * Introduced shared card contract
+    * Integrated HomeTab with service output
+  * Glucose Summary Refactor (Next)
+    * Align GlucoseTab with service-driven summary cards
+    * Remove UI formatting logic
+    * Reuse SummaryCard contract
 
 ---
 
@@ -63,7 +70,7 @@ This backlog is organised by architectural layer and implementation priority.
 * [x] Live Data Binding
   * Glucose and Activity cards display real metrics
 
-* [ ] Auto-refresh on Activity Sync
+* [x] Auto-refresh on Activity Sync
 
   * Update Home cards when new activity data is imported
   * Trigger Home refresh from Activity tab `data_updated` signal
