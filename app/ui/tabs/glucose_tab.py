@@ -15,7 +15,7 @@ from reportlab.platypus import (
     Spacer,
 )
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
     QFileDialog,
@@ -362,10 +362,14 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
 
 class RangeBreakdownChart(FigureCanvasQTAgg):
     """Matplotlib canvas for selected glucose range breakdown by meal event."""
+    meal_event_clicked = Signal(str)
 
     def __init__(self) -> None:
         self.figure = Figure(figsize=(6, 2.4))
         self.ax = self.figure.add_subplot(111)
+        self.bars = []
+        self.bar_labels = []
+        self.mpl_connect("button_press_event", self._on_click)
         super().__init__(self.figure)
 
     def plot_breakdown(
@@ -402,6 +406,8 @@ class RangeBreakdownChart(FigureCanvasQTAgg):
 
         color = self._get_range_color(selected_range)
         bars = self.ax.barh(labels, counts, color=color)
+        self.bars = list(bars)
+        self.bar_labels = labels
 
         self.ax.invert_yaxis()
         self.ax.xaxis.set_visible(False)
@@ -435,6 +441,17 @@ class RangeBreakdownChart(FigureCanvasQTAgg):
         if selected_range == "hyper":
             return HYPO_RED
         return LINE_RED
+
+    def _on_click(self, event) -> None:
+        if event.inaxes != self.ax:
+            return
+
+        for index, bar in enumerate(self.bars):
+            contains, _ = bar.contains(event)
+
+            if contains:
+                self.meal_event_clicked.emit(self.bar_labels[index])
+                return
 
 
 class GlucoseTab(QWidget):
@@ -707,6 +724,9 @@ class GlucoseTab(QWidget):
         )
 
         self.range_breakdown_chart = RangeBreakdownChart()
+        self.range_breakdown_chart.meal_event_clicked.connect(
+            self.handle_breakdown_meal_event_click
+        )
         self.range_breakdown_chart.setMinimumHeight(260)
         summary_panel.addWidget(self.range_breakdown_chart)
 
@@ -1249,6 +1269,24 @@ class GlucoseTab(QWidget):
         self.selected_reading_id = None
         self.notes_editor.clear()
 
+        # --- Update active filter label ---
+        meal_event = self.meal_event_filter.currentText()
+
+        if self.selected_range_filter and meal_event != "All":
+            self.active_filter_label.setText(
+                f"Filtered: {self.selected_range_filter.capitalize()} • {meal_event}"
+            )
+        elif self.selected_range_filter:
+            self.active_filter_label.setText(
+                f"Filtered: {self.selected_range_filter.capitalize()}"
+            )
+        elif meal_event != "All":
+            self.active_filter_label.setText(
+                f"Filtered: {meal_event}"
+            )
+        else:
+            self.active_filter_label.setText("")
+
     def handle_import_csv(self) -> None:
         """Import a Diabetes:M CSV file and refresh the tab on success."""
         file_path, _ = QFileDialog.getOpenFileName(
@@ -1492,3 +1530,18 @@ class GlucoseTab(QWidget):
             sorted_items,
             self.selected_range_filter,
         )
+
+    def handle_breakdown_meal_event_click(self, meal_event_label: str) -> None:
+        """Toggle the clicked meal event filter from the breakdown chart."""
+        current_text = self.meal_event_filter.currentText()
+
+        if current_text == meal_event_label:
+            self.meal_event_filter.setCurrentIndex(0)  # All
+            return
+
+        index = self.meal_event_filter.findText(meal_event_label)
+
+        if index == -1:
+            return
+
+        self.meal_event_filter.setCurrentIndex(index)
