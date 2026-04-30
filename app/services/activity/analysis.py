@@ -128,7 +128,6 @@ def get_activity_summary_cards(
     rows: list[dict],
     target_steps: int = 10000,
 ) -> list[dict]:
-
     summary = get_activity_summary(rows, target_steps)
 
     if summary["has_previous_period"]:
@@ -152,43 +151,57 @@ def get_activity_summary_cards(
 
     return [
         {
+            "key": "goal_days",
             "title": "Goal Days (7d)",
             "value": str(summary["goal_days"]),
             "subtitle": f"{summary['goal_days']} / 7",
+            "variant": "neutral",
         },
         {
+            "key": "goal_adherence",
             "title": "Goal Adherence",
             "value": f"{summary['goal_adherence_pct']:.0f}%",
-            "variant": "success" if summary["goal_adherence_pct"] >= 70 else "neutral",
+            "subtitle": f"{summary['goal_days']} / 7",
+            "variant": (
+                "success"
+                if summary["goal_adherence_pct"] >= 70
+                else "neutral"
+            ),
         },
         {
+            "key": "average_steps",
             "title": "Average Steps",
             "value": f"{summary['avg_steps_last_7']:,}",
+            "variant": "neutral",
         },
         {
+            "key": "seven_day_change",
             "title": "7-Day Change",
-            "value": change_value,   # pre-formatted in service
+            "value": change_value,
             "subtitle": "vs previous 7d" if summary["has_previous_period"] else "",
             "variant": change_variant,
         },
         {
+            "key": "best_day",
             "title": "Best Day",
             "value": f"{summary['best_day_steps']:,}",
             "subtitle": str(summary["best_day_date"]),
+            "variant": "neutral",
         },
         {
+            "key": "current_streak",
             "title": "Current Streak",
             "value": str(current_streak),
             "variant": "success" if current_streak > 0 else "neutral",
         },
         {
+            "key": "longest_streak",
             "title": "Longest Streak",
             "value": str(longest_streak),
             "variant": "success" if longest_streak >= 7 else "neutral",
         },
     ]
-
-
+    
 def calculate_step_streaks(
     rows: list[dict],
     goal_steps: int = 10_000,

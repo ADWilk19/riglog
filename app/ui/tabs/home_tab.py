@@ -11,13 +11,12 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
-from datetime import date, timedelta
-
-from sqlalchemy import func
-
 from app.db.database import SessionLocal
-from app.db.models import DailyActivity, GlucoseReading
-
+from app.db.models import GlucoseReading
+from app.services.activity.analysis import (
+    get_activity_summary_cards,
+    get_daily_activity,
+)
 from app.ui.widgets.summary_card import SummaryCard
 
 
@@ -193,7 +192,7 @@ class HomeTab(QWidget):
 
         try:
             self._refresh_glucose_card(session)
-            self._refresh_activity_card(session)
+            self._refresh_activity_card()
         finally:
             session.close()
 
@@ -220,37 +219,31 @@ class HomeTab(QWidget):
             f"Latest reading: {latest_date}"
         )
 
-    def _refresh_activity_card(self, session) -> None:
-        latest_activity = (
-            session.query(DailyActivity)
-            .filter(DailyActivity.steps.isnot(None))
-            .order_by(DailyActivity.activity_date.desc())
-            .first()
-        )
+    def _refresh_activity_card(self) -> None:
+        rows = get_daily_activity()
 
-        if latest_activity is None:
+        if not rows:
             self.activity_card.set_content(
                 "No activity",
-                "Sync Fitbit data"
+                "Sync Fitbit data",
             )
             return
 
-        end_date = latest_activity.activity_date
-        start_date = end_date - timedelta(days=6)
+        cards_data = get_activity_summary_cards(rows)
 
-        avg_steps = (
-            session.query(func.avg(DailyActivity.steps))
-            .filter(DailyActivity.activity_date >= start_date)
-            .filter(DailyActivity.activity_date <= end_date)
-            .filter(DailyActivity.steps.isnot(None))
-            .scalar()
-        )
+        card_map = {card["key"]: card for card in cards_data}
+        goal_adherence_card = card_map.get("goal_adherence")
 
-        latest_date = end_date.strftime("%d %b %Y")
+        if goal_adherence_card is None:
+            self.activity_card.set_content(
+                "Activity ready",
+                "Open Activity dashboard",
+            )
+            return
 
         self.activity_card.set_content(
-            f"{round(avg_steps):,} steps",
-            f"7-day avg · Latest activity: {latest_date}"
+            goal_adherence_card.get("value", "-"),
+            "7-day goal adherence",
         )
 
     def refresh_data(self) -> None:
