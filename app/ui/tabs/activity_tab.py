@@ -20,7 +20,7 @@ from statistics import mean
 from pathlib import Path
 import json
 
-from app.services.activity.analysis import get_daily_activity, get_activity_summary
+from app.services.activity.analysis import get_daily_activity, get_activity_summary_cards
 
 from app.services.activity.fitbit_exceptions import (
     FitbitAuthError,
@@ -89,55 +89,6 @@ def rolling_average(values: list[float], window: int = 7) -> list[float]:
         result.append(mean(window_values))
 
     return result
-
-
-def calculate_step_streaks(
-    rows: list[dict],
-    goal_steps: int = 10_000,
-) -> tuple[int, int]:
-    """
-    Return (current_streak, longest_streak) for consecutive days meeting the goal.
-
-    Assumes at most one row per day and uses activity_date.
-    """
-    if not rows:
-        return 0, 0
-
-    sorted_rows = sorted(rows, key=lambda row: row["activity_date"])
-    qualifying_dates = [
-        row["activity_date"]
-        for row in sorted_rows
-        if row["steps"] >= goal_steps
-    ]
-
-    if not qualifying_dates:
-        return 0, 0
-
-    longest_streak = 0
-    current_run = 0
-    previous_date = None
-
-    for activity_date in qualifying_dates:
-        if previous_date is None:
-            current_run = 1
-        elif (activity_date - previous_date).days == 1:
-            current_run += 1
-        else:
-            current_run = 1
-
-        longest_streak = max(longest_streak, current_run)
-        previous_date = activity_date
-
-    latest_date = sorted_rows[-1]["activity_date"]
-    current_streak = 0
-    qualifying_set = set(qualifying_dates)
-
-    check_date = latest_date
-    while check_date in qualifying_set:
-        current_streak += 1
-        check_date = check_date - timedelta(days=1)
-
-    return current_streak, longest_streak
 
 
 def format_relative_timestamp(timestamp: datetime, now: datetime | None = None) -> str:
@@ -639,6 +590,8 @@ class ActivityTab(QWidget):
             self.longest_streak_label,
         ]
 
+        self.summary_cards = cards
+
         summary_layout.addStretch()
         for card in cards:
             summary_layout.addWidget(card)
@@ -700,77 +653,18 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            self.goal_days_label.set_content("0")
-            self.goal_adherence_label.set_content("-")
-            self.avg_steps_label.set_content("-")
-            self.best_day_label.set_content("-")
-            self.current_streak_label.set_content("0")
-            self.longest_streak_label.set_content("0")
-            self.change_label.set_content("-")
-
-            self.goal_adherence_label.setStyleSheet("")
-            self.change_label.setStyleSheet("")
-            self.current_streak_label.setStyleSheet("")
-            self.longest_streak_label.setStyleSheet("")
+            for card in self.summary_cards:
+                card.clear()
             return
 
-        summary = get_activity_summary(target_steps=10000)
+        cards_data = get_activity_summary_cards(rows)
 
-        if summary["has_previous_period"]:
-            if summary["direction"] == "up":
-                self.change_label.set_content(
-                    f"↑ {abs(summary['vs_previous_7_pct']):.1f}%",
-                    "vs previous 7d"
-                )
-            elif summary["direction"] == "down":
-                self.change_label.set_content(
-                    f"↓ {abs(summary['vs_previous_7_pct']):.1f}%",
-                    "vs previous 7d"
-                )
-            else:
-                self.change_label.set_content("No change")
-        else:
-            self.change_label.set_content("-")
-
-        if summary["has_previous_period"]:
-            if summary["direction"] == "up":
-                self.change_label.set_variant("success")
-            elif summary["direction"] == "down":
-                self.change_label.set_variant("danger")
-            else:
-                self.change_label.set_variant("neutral")
-        else:
-            self.change_label.set_variant("neutral")
-
-        _, longest_streak = calculate_step_streaks(rows)
-
-        self.goal_adherence_label.set_content(
-            f"{summary['goal_days']} / 7",
-            f"{summary['goal_adherence_pct']:.0f}%",
-        )
-        self.goal_days_label.set_content(str(summary["goal_days"]))
-        self.avg_steps_label.set_content(f"{summary['avg_steps_last_7']:,}")
-        self.best_day_label.set_content(
-            f"{summary['best_day_steps']:,}",
-            str(summary["best_day_date"]),
-        )
-        self.current_streak_label.set_content(str(summary['streak_days']))
-        self.longest_streak_label.set_content(str(longest_streak))
-
-        if summary["goal_adherence_pct"] >= 70:
-            self.goal_adherence_label.set_variant("success")
-        else:
-            self.goal_adherence_label.set_variant("neutral")
-
-        if summary["streak_days"] > 0:
-            self.current_streak_label.set_variant("success")
-        else:
-            self.current_streak_label.set_variant("neutral")
-
-        if longest_streak >= 7:
-            self.longest_streak_label.set_variant("success")
-        else:
-            self.longest_streak_label.set_variant("neutral")
+        for card, data in zip(self.summary_cards, cards_data):
+            card.set_content(
+                data.get("value", "-"),
+                data.get("subtitle"),
+            )
+            card.set_variant(data.get("variant", "neutral"))
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))

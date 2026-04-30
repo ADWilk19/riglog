@@ -29,7 +29,10 @@ def get_daily_activity() -> list[dict[str, Any]]:
         db.close()
 
 
-def get_activity_summary(target_steps: int = 10000) -> dict[str, Any]:
+def get_activity_summary(
+    rows: list[dict],
+    target_steps: int = 10000,
+) -> dict[str, Any]:
     """
     Return summary metrics derived from daily activity data.
 
@@ -119,3 +122,117 @@ def get_activity_summary(target_steps: int = 10000) -> dict[str, Any]:
         "goal_days": goal_days,
         "goal_adherence_pct": goal_adherence_pct
     }
+
+
+def get_activity_summary_cards(
+    rows: list[dict],
+    target_steps: int = 10000,
+) -> list[dict]:
+
+    summary = get_activity_summary(rows, target_steps)
+
+    if summary["has_previous_period"]:
+        if summary["direction"] == "up":
+            change_value = f"↑ {abs(summary['vs_previous_7_pct']):.1f}%"
+            change_variant = "success"
+        elif summary["direction"] == "down":
+            change_value = f"↓ {abs(summary['vs_previous_7_pct']):.1f}%"
+            change_variant = "danger"
+        else:
+            change_value = "No change"
+            change_variant = "neutral"
+    else:
+        change_value = "-"
+        change_variant = "neutral"
+
+    current_streak, longest_streak = calculate_step_streaks(
+        rows,
+        goal_steps=target_steps,
+    )
+
+    return [
+        {
+            "title": "Goal Days (7d)",
+            "value": str(summary["goal_days"]),
+            "subtitle": f"{summary['goal_days']} / 7",
+        },
+        {
+            "title": "Goal Adherence",
+            "value": f"{summary['goal_adherence_pct']:.0f}%",
+            "variant": "success" if summary["goal_adherence_pct"] >= 70 else "neutral",
+        },
+        {
+            "title": "Average Steps",
+            "value": f"{summary['avg_steps_last_7']:,}",
+        },
+        {
+            "title": "7-Day Change",
+            "value": change_value,   # pre-formatted in service
+            "subtitle": "vs previous 7d" if summary["has_previous_period"] else "",
+            "variant": change_variant,
+        },
+        {
+            "title": "Best Day",
+            "value": f"{summary['best_day_steps']:,}",
+            "subtitle": str(summary["best_day_date"]),
+        },
+        {
+            "title": "Current Streak",
+            "value": str(current_streak),
+            "variant": "success" if current_streak > 0 else "neutral",
+        },
+        {
+            "title": "Longest Streak",
+            "value": str(longest_streak),
+            "variant": "success" if longest_streak >= 7 else "neutral",
+        },
+    ]
+
+
+def calculate_step_streaks(
+    rows: list[dict],
+    goal_steps: int = 10_000,
+) -> tuple[int, int]:
+    """
+    Return (current_streak, longest_streak) for consecutive days meeting the goal.
+
+    Assumes at most one row per day and uses activity_date.
+    """
+    if not rows:
+        return 0, 0
+
+    sorted_rows = sorted(rows, key=lambda row: row["activity_date"])
+    qualifying_dates = [
+        row["activity_date"]
+        for row in sorted_rows
+        if row["steps"] >= goal_steps
+    ]
+
+    if not qualifying_dates:
+        return 0, 0
+
+    longest_streak = 0
+    current_run = 0
+    previous_date = None
+
+    for activity_date in qualifying_dates:
+        if previous_date is None:
+            current_run = 1
+        elif (activity_date - previous_date).days == 1:
+            current_run += 1
+        else:
+            current_run = 1
+
+        longest_streak = max(longest_streak, current_run)
+        previous_date = activity_date
+
+    latest_date = sorted_rows[-1]["activity_date"]
+    current_streak = 0
+    qualifying_set = set(qualifying_dates)
+
+    check_date = latest_date
+    while check_date in qualifying_set:
+        current_streak += 1
+        check_date = check_date - timedelta(days=1)
+
+    return current_streak, longest_streak
