@@ -252,3 +252,6 @@ class HomeTab(QWidget):
             f"{round(avg_steps):,} steps",
             f"7-day avg · Latest activity: {latest_date}"
         )
+
+    def refresh_data(self) -> None:
+        self._refresh_card_data()
