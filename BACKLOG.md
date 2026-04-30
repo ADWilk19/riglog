@@ -64,7 +64,10 @@ This backlog is organised by architectural layer and implementation priority.
   * Glucose and Activity cards display real metrics
 
 * [ ] Auto-refresh on Activity Sync
-  * Update Home cards when new data is imported
+
+  * Update Home cards when new activity data is imported
+  * Trigger Home refresh from Activity tab `data_updated` signal
+  * Ensure Home glucose/activity cards remain current after sync
 
 ### System
 
@@ -128,16 +131,40 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### 🩸 Glucose — UI Layer
 
-* [ ] Range-Based Meal Event Breakdown
+> Phase 3 glucose interaction work is ahead of schedule. Return focus to Phase 1–2 Activity completion before expanding further interaction features.
 
-  * When a glucose range card is selected (e.g. Low, High, Hyper):
-    * Display count of readings grouped by meal event
+* [x] Range-Based Meal Event Breakdown
+
+  * When a glucose range card is selected:
+    * Display horizontal bar chart of readings grouped by meal event
     * Sorted chronologically (Pre → Post events)
-  * Only visible when a range filter is active
-  * Initial version:
-    * simple table (meal event → count)
-  * Future:
-    * percentage breakdown by meal event
+  * Bars styled using TIR-aligned colour system
+  * Values displayed on bars with proportional spacing
+  * Chart only visible when a range filter is active
+
+* [x] Meal Event Drilldown (Chart Interaction)
+
+  * Clicking a bar:
+    * Applies meal event filter via dropdown
+    * Triggers full UI refresh (charts, stats, table)
+  * Clicking same bar again:
+    * Resets meal event filter to "All" (toggle behaviour)
+
+* [x] Unified Filter State Display
+
+  * Toolbar label reflects active filters:
+    * Range only
+    * Meal event only
+    * Combined state (e.g. `Low • Pre-Lunch`)
+  * Updated centrally via `load_readings()`
+
+* [ ] Clear Filters Control
+
+  * Add UI control to reset:
+    * range filter
+    * meal event filter
+  * Option:
+    * button or clickable toolbar label
 
 ---
 

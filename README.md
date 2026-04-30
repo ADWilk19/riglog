@@ -22,6 +22,9 @@ The goal is to combine multiple health data sources into a single application fo
 - Interactive glucose dashboard with:
   - Ambulatory Glucose Profile (AGP)
   - Time-in-range metrics
+  - Clickable glucose range filters
+  - Meal-event drilldown chart
+  - Unified active-filter state display
   - Daily average trends
   - Meal-event glucose distribution
 - Glucose variability metrics:
@@ -72,6 +75,10 @@ Future modules will expand into nutrition, training, and cross-metric insights.
 
 Glucose module complete (v1)
 
+- Interactive range filtering
+- Meal-event drilldowns
+- PDF export
+
 Activity module MVP complete
 
 Current capabilities:
@@ -83,9 +90,9 @@ Current capabilities:
 
 Next focus:
 
-- Background sync for activity data
-- Home dashboard auto-refresh
+- Home dashboard auto-refresh after activity sync
 - Refactor activity summary cards
+- Rolling goal adherence metrics
 
 ## Roadmap
 
