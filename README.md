@@ -13,6 +13,8 @@ It transforms raw health data into structured insights through:
 
 Built with a service-layer architecture, RigLog separates data processing from UI, enabling scalable and consistent analytics across features.
 
+> ⚠️ No external services required to run RigLog locally.
+
 ## Contents
 
 - [Demo Data](#demo-data)
@@ -22,7 +24,8 @@ Built with a service-layer architecture, RigLog separates data processing from U
 - [Architecture Overview](#architecture-overview)
 - [Design Decisions](#design-decisions)
 - [Project Status](#project-status)
-- [Getting Started](#getting-started)
+- [Quick Start](#-quick-start)
+- [Optional: Connect Fitbit](#-optional-connect-fitbit)
 
 ## Demo Data
 
@@ -365,9 +368,38 @@ RigLog is currently in active development, with two core modules implemented:
 - Live summary cards powered by shared service layer
 - Navigation entry point into each module
 
-## Getting Started
+## 🚀 Quick Start
+
+Clone the repository and run the app locally:
 
 ```bash
+git clone https://github.com/ADWilk19/riglog
+cd riglog
 pip install -r requirements.txt
 python -m app.main
 ```
+
+## 🔗 Optional: Connect Fitbit
+
+RigLog supports activity tracking via Fitbit. This step is optional — the app runs without it.
+
+### 1. Create a Fitbit App
+
+- Go to https://dev.fitbit.com/apps
+- Create a new application
+- Set the Redirect URI to:
+
+http://127.0.0.1:8080/
+
+### 2. Configure environment variables
+
+Create a `.env` file in the project root:
+
+FITBIT_CLIENT_ID=your_client_id
+FITBIT_REDIRECT_URI=http://127.0.0.1:8080/
+
+### 3. Authenticate in RigLog
+
+- Open the **Activity** tab
+- Click **Connect Fitbit**
+- Complete the OAuth flow
