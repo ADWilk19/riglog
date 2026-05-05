@@ -853,6 +853,13 @@ class ActivityTab(QWidget):
         )
 
     def _on_refresh_unexpected_error(self, message: str) -> None:
+        if getattr(self, "is_auto_refresh", False):
+            if "FITBIT_CLIENT_ID" in message:
+                self._set_sync_status("Fitbit not configured", "#FB8C00")
+            else:
+                self._set_sync_status("Sync unavailable", "#FB8C00")
+            return
+
         self._set_sync_status("Sync failed", "#E53935")
         QMessageBox.critical(
             self,
