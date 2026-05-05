@@ -33,3 +33,5 @@ data/riglog_demo.db
 # --- Demo / generated data ---
 data/demo/
 *.csv
+.venv/
+.venv-test/
