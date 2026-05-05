@@ -31,7 +31,7 @@ This backlog is organised by architectural layer and implementation priority.
     * green if ≥ 70%
     * neutral otherwise
 
-* [~] Refactor Summary Cards
+* [X] Refactor Summary Cards
 
   * Home cards now implemented
   * Activity Summary Refactor ✅ COMPLETE

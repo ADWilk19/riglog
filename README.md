@@ -71,36 +71,115 @@ Future modules will expand into nutrition, training, and cross-metric insights.
 - SQLite (local database)
 - ReportLab (PDF export)
 
+## Architecture Overview
+
+High-level flow of data and responsibilities across UI, service, and data layers.
+
+![Architecture Diagram](assets/docs/architecture.png)
+
+<details>
+
+<summary>View Mermaid source</summary>
+
+```mermaid
+flowchart TD
+    main["app/main.py"]
+    window["app/ui/main_window.py"]
+
+    subgraph ui["app/ui"]
+        home["tabs/home_tab.py"]
+        glucose_ui["tabs/glucose_tab.py"]
+        activity_ui["tabs/activity_tab.py"]
+        card["widgets/summary_card.py"]
+    end
+
+    subgraph services["app/services"]
+        glucose_analysis["glucose/analysis.py"]
+        glucose_importer["glucose/importer.py"]
+        activity_analysis["activity/analysis.py"]
+        fitbit_importer["activity/fitbit_importer.py"]
+        fitbit_client["activity/fitbit_client.py"]
+        fitbit_auth["activity/fitbit_auth.py"]
+    end
+
+    subgraph db["app/db"]
+        models["models.py"]
+        database["database.py"]
+        base["base.py"]
+    end
+
+    diabetes["Diabetes:M CSV"]
+    fitbit["Fitbit API"]
+    sqlite["data/riglog.db"]
+
+    main --> window
+    main --> database
+    main --> base
+
+    window --> home
+    window --> glucose_ui
+    window --> activity_ui
+
+    home --> card
+    glucose_ui --> card
+    activity_ui --> card
+
+    diabetes --> glucose_importer
+    glucose_ui --> glucose_importer
+    glucose_ui --> glucose_analysis
+    glucose_importer --> database
+    glucose_analysis --> database
+
+    fitbit --> fitbit_client
+    fitbit_auth --> fitbit_client
+    fitbit_client --> fitbit_importer
+    activity_ui --> fitbit_importer
+    activity_ui --> activity_analysis
+    home --> activity_analysis
+    fitbit_importer --> database
+    activity_analysis --> database
+
+    models --> database
+    database --> sqlite
+```
+
+</details>
+
+
 ## Project Status
 
-Glucose module complete (v1)
+RigLog is currently in active development, with two core modules implemented:
 
-- Interactive range filtering
-- Meal-event drilldowns
-- PDF export
+### 🩸 Glucose Module (v1 — Complete)
 
-Activity module MVP complete
+- End-to-end data pipeline (Diabetes:M CSV → SQLite)
+- Interactive dashboard:
+  - AGP (Ambulatory Glucose Profile)
+  - Time-in-range analysis
+  - Meal-event drilldowns
+  - Range-based filtering
+- Variability metrics (SD, CV, GMI)
+- Insulin effectiveness analysis
+- PDF report generation
 
-Current capabilities:
+---
 
-- Full glucose data ingestion pipeline
-- Advanced analytics (AGP, variability, dose effectiveness)
-- Interactive desktop dashboard
-- PDF report generation with charts
+### 🚶 Activity Module (MVP — Complete)
 
-Next focus:
+- Fitbit API integration (OAuth + sync)
+- Daily activity ingestion
+- 7-day rolling averages and trends
+- Goal adherence tracking (10k steps)
+- Streak analysis
+- Interactive charts (daily + weekly)
 
-- Home dashboard auto-refresh after activity sync
-- Refactor activity summary cards
-- Rolling goal adherence metrics
+---
 
-## Roadmap
+### 🏠 Home Dashboard
 
-- Activity integration (steps, workouts)
-- Idempotent data imports
-- Food tracking
-- Enhanced PDF reporting (tables, trends)
-- Cross-metric insights (glucose vs activity)
+- Unified summary view across modules
+- Live summary cards powered by shared service layer
+- Navigation entry point into each module
 
 ## Getting Started
 
