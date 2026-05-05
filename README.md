@@ -1,22 +1,44 @@
-# RigLog 🩸💪
+# RigLog
 
 ![RigLog Logo](assets/branding/logo_full.png)
 
-> One app. Multiple health signals. Clearer decisions.
+RigLog is a desktop health analytics application for analysing glucose and activity data.
 
-RigLog is a personal health analytics desktop application built in Python,
-designed to turn raw health data into actionable insights.
+It transforms raw health data into structured insights through:
 
-It currently supports glucose and activity analysis, with future modules planned for nutrition and training.
+- Time-in-range analysis
+- Variability metrics (SD, CV, GMI)
+- Meal-event breakdowns
+- Interactive filtering and drill-down
 
-The goal is to combine multiple health data sources into a single application for analysis and visualisation, including:
+Built with a service-layer architecture, RigLog separates data processing from UI, enabling scalable and consistent analytics across features.
 
-- Glucose data
-- Activity data
-- Workout data
-- Nutrition data
+## Contents
 
-## Features
+- [Demo Data](#demo-data)
+- [Features](#️features)
+- [Why RigLog?](#why-riglog)
+- [Tech Stack](#tech-stack)
+- [Architecture Overview](#architecture-overview)
+- [Design Decisions](#design-decisions)
+- [Project Status](#project-status)
+- [Getting Started](#getting-started)
+
+## Demo Data
+
+Screenshots in this README use synthetically generated glucose data.
+
+This allows the application to demonstrate:
+
+- Realistic variability and patterns
+- Time-in-range distribution
+- Meal-event behaviour
+
+without exposing personal health data.
+
+The demo pipeline uses a separate SQLite database and reproducible data generation scripts.
+
+## ⚙️ Features
 
 - Import glucose data from Diabetes:M (CSV)
 - Interactive glucose dashboard with:
@@ -49,20 +71,92 @@ The goal is to combine multiple health data sources into a single application fo
   - Live summary cards for glucose and activity
   - Quick navigation between modules
 
+### 📊 Overview Dashboard
+
+![Dashboard Overview](assets/docs/overview_dashboard.png)
+
+RigLog provides a high-level summary of glucose behaviour, including:
+
+- Total readings and average glucose
+- Time-in-range distribution (Hypo, Low, Target, High, Hyper)
+- Variability metrics (SD, CV, GMI)
+
+Designed for quick clinical insight at a glance.
+
+### 🎯 Range-Based Filtering
+
+![Interactive Filtering](assets/docs/interactive_filtering.png)
+
+Click any range card to filter the dataset instantly.
+
+This enables:
+
+- Focused analysis (e.g. only high readings)
+- Context-aware statistics and charts
+- Seamless cross-component interaction
+
+### 🍽️ Meal Event Distribution
+
+![Meal Event Distribution](assets/docs/meal_event_distribution.png)
+
+Analyse how glucose varies across the day:
+
+- Pre/Post meal comparisons
+- Variability by meal timing
+- Outlier detection
+
+Built on service-layer aggregation for consistency across charts.
+
+### 🔍 Range Breakdown by Meal Event
+
+![Range Breakdown by Meal Event](assets/docs/range_breakdown_interaction.png)
+
+Drill into specific ranges (e.g. High) to understand:
+
+- When issues occur
+- Which meals contribute most
+- Target areas for intervention
+
+### 📈 Ambulatory Glucose Profile (AGP)
+
+![AGP](assets/docs/agp_chart.png)
+
+Visualise glucose trends across the day:
+
+- Median glucose curve
+- Interquartile (25–75%) range
+- Wider variability bands (10–90%)
+
+Highlights daily patterns such as:
+
+- Morning spikes
+- Evening variability
+- Overnight stability
+
 ## Why RigLog?
 
-RigLog was built to centralise and analyse personal health data,
-starting with glucose monitoring.
+Most health apps focus on tracking.
 
-The goal is to move beyond raw readings and provide:
+RigLog focuses on turning health data into actionable analysis.
 
-- actionable insights
-- trend analysis
-- decision support for insulin dosing
+It is designed to:
 
-Future modules will expand into nutrition, training, and cross-metric insights.
+- Move beyond raw readings
+- Identify patterns across time and context
+- Support better day-to-day decision making
+
+Future modules will extend this into cross-metric insights across nutrition, activity, and training.
+
+## Key Concepts
+
+- **Time in Range (TIR):** Percentage of readings within target glucose range
+- **CV (Coefficient of Variation):** Measure of glucose variability
+- **GMI (Glucose Management Indicator):** Estimated HbA1c based on glucose data
+- **AGP:** Standardised visualisation of glucose trends across the day
 
 ## Tech Stack
+
+RigLog is built as a modular desktop application with a clear separation between UI, services, and data layers.
 
 - Python
 - PySide6 (desktop UI)
@@ -74,6 +168,12 @@ Future modules will expand into nutrition, training, and cross-metric insights.
 ## Architecture Overview
 
 High-level flow of data and responsibilities across UI, service, and data layers.
+
+This architecture ensures that:
+
+- separation of concerns between UI and analytics
+- reusable data transformations across features
+- consistent outputs across charts and summaries
 
 ![Architecture Diagram](assets/docs/architecture.png)
 
@@ -145,6 +245,90 @@ flowchart TD
 
 </details>
 
+## Design Decisions
+
+RigLog was built with a few key design principles in mind.
+
+### 🧱 Service-Layer Architecture
+
+All data processing and aggregation logic lives in a dedicated service layer (`app/services`), rather than in the UI.
+
+This ensures:
+
+- Consistent calculations across charts and summaries
+- Reusable analytics logic
+- Easier testing and future extension
+
+The UI is responsible only for rendering and user interaction.
+
+---
+
+### 🖥️ Desktop-First Approach (PySide6)
+
+RigLog is designed as a desktop application rather than a web app.
+
+This allows:
+
+- Fast local performance with no network dependency
+- Secure handling of sensitive health data (stored locally)
+- Full control over UI behaviour and interactivity
+
+---
+
+### 🗃️ Local SQLite Database
+
+All data is stored locally using SQLite.
+
+This provides:
+
+- Simplicity (no external infrastructure required)
+- Data ownership and privacy
+- Easy portability
+
+---
+
+### 🧪 Synthetic Demo Data Pipeline
+
+A dedicated demo data workflow was implemented to support:
+
+- README screenshots
+- testing and development
+- sharing the project without exposing personal data
+
+This uses:
+
+- A separate database (`riglog_demo.db`)
+- Reproducible synthetic data generation scripts
+
+---
+
+### 🔗 Unified Filter State
+
+Filtering (e.g. by glucose range) is handled centrally and propagated across components.
+
+This ensures:
+
+- Consistent state across charts and summaries
+- Predictable user interactions
+- Clear mental model for users
+
+---
+
+### 📊 Focus on Analysis, Not Just Tracking
+
+Many health apps prioritise data collection.
+
+RigLog prioritises:
+
+- Interpretation
+- Pattern detection
+- Actionable insights
+
+This principle drives the design of features such as:
+
+- Time-in-range analysis
+- Meal-event breakdowns
+- AGP visualisation
 
 ## Project Status
 

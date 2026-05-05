@@ -24,3 +24,12 @@ data/activity_sync.json
 
 # Environment
 .env
+
+
+# --- Databases ---
+data/riglog.db
+data/riglog_demo.db
+
+# --- Demo / generated data ---
+data/demo/
+*.csv

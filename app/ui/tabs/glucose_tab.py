@@ -329,21 +329,38 @@ class MealEventBoxPlotChart(FigureCanvasQTAgg):
             self.draw()
             return
 
-        labels = [
-            row.get("meal_event_label") or row.get("label", "")
-            for row in boxplot_data
-            ]
-        series = [
-            row.get("values", [])
-            for row in boxplot_data
-            if row.get("values")
-        ]
+        labels = []
+        series = []
+
+        for row in boxplot_data:
+            values = row.get("values", [])
+            if not values:
+                continue
+
+            label = (
+                row.get("meal_event_label")
+                or row.get("meal_event")
+                or row.get("label")
+                or ""
+            )
+
+            labels.append(label)
+            series.append(values)
 
         if not series:
             self.draw()
             return
 
         bp = self.ax.boxplot(series, patch_artist=True, labels=labels)
+
+        self.ax.set_xticks(range(1, len(labels) + 1))
+        self.ax.set_xticklabels(
+            labels,
+            rotation=20,
+            ha="right",
+            color=CHART_TEXT,
+        )
+        self.ax.tick_params(axis="x", colors=CHART_TEXT, labelsize=9)
 
         for box in bp["boxes"]:
             box.set(facecolor="#303030", edgecolor=WHITE)

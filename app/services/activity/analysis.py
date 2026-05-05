@@ -201,7 +201,8 @@ def get_activity_summary_cards(
             "variant": "success" if longest_streak >= 7 else "neutral",
         },
     ]
-    
+
+
 def calculate_step_streaks(
     rows: list[dict],
     goal_steps: int = 10_000,
