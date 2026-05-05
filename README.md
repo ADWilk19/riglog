@@ -16,7 +16,7 @@ Built with a service-layer architecture, RigLog separates data processing from U
 ## Contents
 
 - [Demo Data](#demo-data)
-- [Features](#️features)
+- [Features](#️-features)
 - [Why RigLog?](#why-riglog)
 - [Tech Stack](#tech-stack)
 - [Architecture Overview](#architecture-overview)
