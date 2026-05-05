@@ -291,6 +291,117 @@ def calculate_glucose_variability_metrics(df: pd.DataFrame) -> Dict[str, float |
     }
 
 
+def get_glucose_summary_cards(readings: list[dict]) -> list[dict]:
+    """Return formatted glucose summary card data for UI rendering."""
+    if not readings:
+        return []
+
+    values = [reading["glucose_value"] for reading in readings]
+    df = pd.DataFrame(readings)
+
+    breakdown = calculate_time_in_range_breakdown(df)
+    variability = calculate_glucose_variability_metrics(df)
+
+    cv = variability["cv_pct"]
+    gmi = variability["gmi"]
+
+    if cv is None:
+        cv_variant = "neutral"
+    elif cv < 36:
+        cv_variant = "success"
+    elif cv < 50:
+        cv_variant = "warning"
+    else:
+        cv_variant = "danger"
+
+    if gmi is None:
+        gmi_variant = "neutral"
+    elif gmi < 7:
+        gmi_variant = "success"
+    elif gmi < 8:
+        gmi_variant = "warning"
+    else:
+        gmi_variant = "danger"
+
+    return [
+        {
+            "key": "count",
+            "title": "Readings",
+            "value": str(len(values)),
+            "variant": "neutral",
+        },
+        {
+            "key": "average",
+            "title": "Average",
+            "value": f"{sum(values) / len(values):.1f}",
+            "subtitle": "mmol/L",
+            "variant": "neutral",
+        },
+        {
+            "key": "minimum",
+            "title": "Lowest",
+            "value": f"{min(values):.1f}",
+            "subtitle": "mmol/L",
+            "variant": "neutral",
+        },
+        {
+            "key": "maximum",
+            "title": "Highest",
+            "value": f"{max(values):.1f}",
+            "subtitle": "mmol/L",
+            "variant": "neutral",
+        },
+        {
+            "key": "hypo",
+            "title": "Hypo",
+            "value": f"{breakdown['hypo']['pct']:.1f}%",
+            "variant": "danger",
+        },
+        {
+            "key": "low",
+            "title": "Low",
+            "value": f"{breakdown['low']['pct']:.1f}%",
+            "variant": "warning",
+        },
+        {
+            "key": "target",
+            "title": "In Range",
+            "value": f"{breakdown['target']['pct']:.1f}%",
+            "variant": "success",
+        },
+        {
+            "key": "high",
+            "title": "High",
+            "value": f"{breakdown['high']['pct']:.1f}%",
+            "variant": "warning",
+        },
+        {
+            "key": "hyper",
+            "title": "Hyper",
+            "value": f"{breakdown['hyper']['pct']:.1f}%",
+            "variant": "danger",
+        },
+        {
+            "key": "sd",
+            "title": "SD",
+            "value": f"{variability['sd']:.2f}",
+            "variant": "neutral",
+        },
+        {
+            "key": "cv",
+            "title": "CV",
+            "value": f"{cv:.1f}%" if cv is not None else "-",
+            "variant": cv_variant,
+        },
+        {
+            "key": "gmi",
+            "title": "GMI",
+            "value": f"{gmi:.1f}%" if gmi is not None else "-",
+            "variant": gmi_variant,
+        },
+    ]
+
+
 def calculate_insulin_effectiveness(readings: list[dict]) -> pd.DataFrame:
     """
     Summarise dose effectiveness by previous meal event.

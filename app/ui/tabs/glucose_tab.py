@@ -43,6 +43,7 @@ from app.services.glucose.analysis import (
     calculate_time_in_range_breakdown,
     get_all_glucose_readings_with_meal_event,
     get_daily_average_glucose,
+    get_glucose_summary_cards,
     get_meal_event_boxplot_data,
     get_time_in_range_metrics,
     get_time_of_day_profile,
@@ -635,7 +636,7 @@ class GlucoseTab(QWidget):
         self.avg_label = SummaryCard(title="Average", value="-")
         self.min_label = SummaryCard(title="Lowest", value="-")
         self.max_label = SummaryCard(title="Highest", value="-")
-        self.tir_label = SummaryCard(title="In Range", value="-")
+        # self.tir_label = SummaryCard(title="In Range", value="-")
 
         self.hypo_label = SummaryCard(
             title="Hypo",
@@ -667,6 +668,21 @@ class GlucoseTab(QWidget):
         self.cv_label = SummaryCard(title="CV", value="-")
         self.gmi_label = SummaryCard(title="GMI", value="-")
 
+        self.summary_cards = {
+            "count": self.count_label,
+            "average": self.avg_label,
+            "minimum": self.min_label,
+            "maximum": self.max_label,
+            "hypo": self.hypo_label,
+            "low": self.low_label,
+            "target": self.tir_label,
+            "high": self.high_label,
+            "hyper": self.hyper_label,
+            "sd": self.sd_label,
+            "cv": self.cv_label,
+            "gmi": self.gmi_label,
+        }
+
         self._add_summary_cards(
             summary_panel,
             "Overview",
@@ -677,7 +693,7 @@ class GlucoseTab(QWidget):
                 self.max_label,
             ],
             columns=4,
-        )
+)
 
         summary_panel.addWidget(self._create_section_title("Time in Range"))
 
@@ -934,69 +950,27 @@ class GlucoseTab(QWidget):
     def _update_summary(self, readings: list[dict]) -> None:
         """Update the summary cards using the currently filtered readings."""
         if not readings:
-            self.count_label.set_content("0")
-            self.avg_label.set_content("-")
-            self.min_label.set_content("-")
-            self.max_label.set_content("-")
-            self.tir_label.set_content("-")
-            self.hypo_label.set_content("-")
-            self.low_label.set_content("-")
-            self.high_label.set_content("-")
-            self.hyper_label.set_content("-")
-            self.sd_label.set_content("-")
-            self.cv_label.set_content("-")
-            self.gmi_label.set_content("-")
+            for card in self.summary_cards.values():
+                card.clear()
 
-            self.hypo_label.set_variant("neutral")
-            self.low_label.set_variant("neutral")
-            self.high_label.set_variant("neutral")
-            self.hyper_label.set_variant("neutral")
-            self.cv_label.set_variant("neutral")
-            self.gmi_label.set_variant("neutral")
+            self.count_label.set_content("0")
             return
 
-        values = [reading["glucose_value"] for reading in readings]
-        tir_metrics = get_time_in_range_metrics(readings)
-        variability = calculate_glucose_variability_metrics(pd.DataFrame(readings))
-        breakdown = calculate_time_in_range_breakdown(pd.DataFrame(readings))
+        cards_data = get_glucose_summary_cards(readings)
+        card_map = {card["key"]: card for card in cards_data}
 
-        self.count_label.set_content(str(len(values)))
-        self.avg_label.set_content(f"{sum(values) / len(values):.1f}", "mmol/L")
-        self.min_label.set_content(f"{min(values):.1f}", "mmol/L")
-        self.max_label.set_content(f"{max(values):.1f}", "mmol/L")
-        self.tir_label.set_content(f"{tir_metrics['target_pct']:.1f}%")
-        self.tir_label.set_variant("success")
-        self.hypo_label.set_content(f"{breakdown['hypo']['pct']:.1f}%")
-        self.low_label.set_content(f"{breakdown['low']['pct']:.1f}%")
-        self.high_label.set_content(f"{breakdown['high']['pct']:.1f}%")
-        self.hyper_label.set_content(f"{breakdown['hyper']['pct']:.1f}%")
+        for key, summary_card in self.summary_cards.items():
+            data = card_map.get(key)
 
-        self.sd_label.set_content(f"{variability['sd']:.2f}")
+            if data is None:
+                summary_card.clear()
+                continue
 
-        cv = variability["cv_pct"]
-        self.cv_label.set_content(f"{cv:.1f}%")
-
-        gmi = variability["gmi"]
-        self.gmi_label.set_content(f"{gmi:.1f}%")
-
-        self.hypo_label.set_variant("danger")
-        self.low_label.set_variant("warning")
-        self.high_label.set_variant("warning")
-        self.hyper_label.set_variant("danger")
-
-        if cv < 36:
-            self.cv_label.set_variant("success")
-        elif cv < 50:
-            self.cv_label.set_variant("warning")
-        else:
-            self.cv_label.set_variant("danger")
-
-        if gmi < 7:
-            self.gmi_label.set_variant("success")
-        elif gmi < 8:
-            self.gmi_label.set_variant("warning")
-        else:
-            self.gmi_label.set_variant("danger")
+            summary_card.set_content(
+                data.get("value", "-"),
+                data.get("subtitle"),
+            )
+            summary_card.set_variant(data.get("variant", "neutral"))
 
     def load_readings(self) -> None:
         """Refresh all charts, tables, and summary cards from filtered readings."""
