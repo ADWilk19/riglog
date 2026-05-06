@@ -18,6 +18,7 @@ Built with a service-layer architecture, RigLog separates data processing from U
 ## Contents
 
 - [Demo Data](#demo-data)
+- [Demo](#-demo)
 - [Features](#️-features)
 - [Why RigLog?](#why-riglog)
 - [Tech Stack](#tech-stack)
@@ -40,6 +41,16 @@ This allows the application to demonstrate:
 without exposing personal health data.
 
 The demo pipeline uses a separate SQLite database and reproducible data generation scripts.
+
+## 🎬 Demo
+
+A quick walkthrough showing navigation and range-based filtering in action.
+
+<video src="assets/docs/riglog_demo.mp4" controls width="800"></video>
+
+<p>
+If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here to view the demo</a>.
+</p>
 
 ## ⚙️ Features
 
