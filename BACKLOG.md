@@ -248,6 +248,32 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
+### 🌡️ Environmental Factors → Glucose (Hypothesis)
+
+* Temperature vs Glucose Analysis
+  * Hypothesis:
+    * Ambient temperature influences glucose behaviour
+    * Potential effects:
+      * insulin sensitivity changes
+      * activity level changes
+      * dehydration effects
+  * Initial implementation:
+    * Ingest daily temperature data (external API or manual import)
+    * Align temperature with glucose readings by date
+  * Return:
+    * Average glucose by temperature bucket (e.g. cold / mild / warm)
+    * Time-in-range by temperature bucket
+  * Visualisations:
+    * Temperature vs average glucose (line or scatter)
+    * Temperature vs TIR%
+  * Future extensions:
+    * Intraday temperature vs glucose (requires intraday weather data)
+    * Interaction with activity (steps × temperature × glucose)
+    * Lagged effects (temperature today vs glucose next day)
+  * Data requirements:
+    * External weather API (e.g. location-based historical temperature)
+    * Or manual CSV import
+
 ## 🧱 Phase 5 — Data Layer Expansion
 
 ### Activity → Database (`app/db/models.py`)
