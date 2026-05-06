@@ -274,6 +274,8 @@ This backlog is organised by architectural layer and implementation priority.
     * External weather API (e.g. location-based historical temperature)
     * Or manual CSV import
 
+---
+
 ## 🧱 Phase 5 — Data Layer Expansion
 
 ### Activity → Database (`app/db/models.py`)
