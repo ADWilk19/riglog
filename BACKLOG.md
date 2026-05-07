@@ -83,10 +83,12 @@ This backlog is organised by architectural layer and implementation priority.
   * Prevent reauthentication on expiry
   * Persist refreshed tokens automatically
 
-* [ ] Background Sync
+* [x] Background Sync ✅ COMPLETE
 
-  * Scheduled Fitbit sync
-  * Update `last_synced` automatically
+  * Scheduled hourly Fitbit sync
+  * Startup sync after app launch
+  * Updates `last_synced` automatically
+  * Refreshes Home activity metrics via `data_updated`
 
 ---
 
