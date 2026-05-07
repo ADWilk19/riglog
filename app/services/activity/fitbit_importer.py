@@ -33,7 +33,7 @@ class FitbitImporter:
 
         own_session = db is None
         db = db or SessionLocal()
-        
+
         rows_written = 0
 
         try:
@@ -66,5 +66,5 @@ class FitbitImporter:
             raise
 
         finally:
-            if db is None:
+            if own_session:
                 db.close()

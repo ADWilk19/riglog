@@ -473,8 +473,12 @@ class ActivityTab(QWidget):
         self.refresh_thread = None
         self.refresh_worker = None
 
+        self.background_sync_timer = QTimer(self)
+        self.background_sync_timer.timeout.connect(self._run_background_sync)
+        self.background_sync_timer.start(60 * 60 * 1000)  # Every 60 minutes
+
         self.load_activity()
-        QTimer.singleShot(1000, lambda: self.handle_refresh_activity(is_auto=True))
+        QTimer.singleShot(1000, self._run_background_sync)
 
     def _create_section_title(self, text: str) -> QLabel:
         label = QLabel(text)
@@ -733,6 +737,10 @@ class ActivityTab(QWidget):
 
         self.refresh_thread.start()
 
+    def _run_background_sync(self) -> None:
+        """Run a silent scheduled Fitbit sync."""
+        self.handle_refresh_activity(is_auto=True)
+
     def _set_last_synced_label(self, timestamp: datetime | None) -> None:
         """Render the last synced label from a timestamp or fallback state."""
         if timestamp is None:
@@ -820,7 +828,11 @@ class ActivityTab(QWidget):
         self._set_last_synced_now()
         self.load_activity()
         self.data_updated.emit()
-        self._set_sync_status("Sync complete", "#43A047")
+
+        if getattr(self, "is_auto_refresh", False):
+            self._set_sync_status("Background sync complete", "#43A047", timeout_ms=6000)
+        else:
+            self._set_sync_status("Sync complete", "#43A047")
 
     def _on_refresh_auth_error(self) -> None:
         self._set_sync_status("Reconnect required", "#FB8C00")
