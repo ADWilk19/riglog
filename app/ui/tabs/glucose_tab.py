@@ -66,6 +66,12 @@ HYPER_DANGER = "#7F1D1D"
 LINE_RED = "#FF4D4D"
 WHITE = "#FFFFFF"
 
+TIME_FILTER_DAYS = {
+    "Last 7 Days": 7,
+    "Last 14 Days": 14,
+    "Last 30 Days": 30,
+    "Last 90 Days": 90,
+}
 
 def apply_chart_theme(fig: Figure, ax) -> None:
     """Apply the shared dark chart theme."""
@@ -614,15 +620,7 @@ class GlucoseTab(QWidget):
         self.meal_event_filter.setFixedWidth(180)
 
         self.time_filter = QComboBox()
-        self.time_filter.addItems(
-            [
-                "All Time",
-                "Last 7 Days",
-                "Last 14 Days",
-                "Last 30 Days",
-                "Last 90 Days",
-            ]
-        )
+        self.time_filter.addItems(["All Time", *TIME_FILTER_DAYS.keys()])
         self.time_filter.currentIndexChanged.connect(self.load_readings)
         self.time_filter.setFixedWidth(140)
 
@@ -943,16 +941,8 @@ class GlucoseTab(QWidget):
         if selected_time_range != "All Time" and readings:
             latest_timestamp = max(reading["recorded_at"] for reading in readings)
 
-            if selected_time_range == "Last 7 Days":
-                cutoff = latest_timestamp - timedelta(days=7)
-            elif selected_time_range == "Last 14 Days":
-                cutoff = latest_timestamp - timedelta(days=14)
-            elif selected_time_range == "Last 30 Days":
-                cutoff = latest_timestamp - timedelta(days=30)
-            elif selected_time_range == "Last 90 Days":
-                cutoff = latest_timestamp - timedelta(days=90)
-            else:
-                cutoff = None
+            days = TIME_FILTER_DAYS.get(selected_time_range)
+            cutoff = latest_timestamp - timedelta(days=days) if days is not None else None
 
             if cutoff is not None:
                 readings = [
