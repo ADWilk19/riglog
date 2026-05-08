@@ -96,7 +96,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → Service Layer
 
-* [ ] Rolling Goal Adherence
+* [x] Rolling Goal Adherence
 
   * e.g. last 7 / 14 days
   * Return:
@@ -104,14 +104,14 @@ This backlog is organised by architectural layer and implementation priority.
     * `goal_adherence_last_7`
     * `goal_adherence_last_14`
 
-* [ ] Weekly Summary Metrics
+* [x] Weekly Summary Metrics
 
   * Return:
 
     * `best_week_steps`
     * `worst_week_steps`
 
-* [ ] Step Consistency Metric
+* [x] Step Consistency Metric
 
   * Std deviation of daily steps
   * Optional:
