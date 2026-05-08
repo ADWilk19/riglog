@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import date, timedelta
 from typing import Any
+from statistics import mean, stdev
 
 from sqlalchemy import select
 
@@ -81,6 +82,50 @@ def calculate_weekly_summary_metrics(rows: list[dict]) -> dict[str, int | str | 
     }
 
 
+def calculate_step_consistency_metrics(rows: list[dict]) -> dict[str, float | str | None]:
+    """
+    Return step consistency metrics from daily activity rows.
+
+    Uses standard deviation and coefficient of variation to describe how
+    variable daily step counts are.
+    """
+    if not rows:
+        return {
+            "step_mean": None,
+            "step_sd": None,
+            "step_cv_pct": None,
+            "consistency_label": "No data",
+        }
+
+    step_values = [row["steps"] for row in rows]
+
+    if len(step_values) == 1:
+        return {
+            "step_mean": float(step_values[0]),
+            "step_sd": 0.0,
+            "step_cv_pct": 0.0,
+            "consistency_label": "Consistent",
+        }
+
+    step_mean = mean(step_values)
+    step_sd = stdev(step_values)
+    step_cv_pct = (step_sd / step_mean) * 100 if step_mean > 0 else 0.0
+
+    if step_cv_pct < 25:
+        consistency_label = "Consistent"
+    elif step_cv_pct < 50:
+        consistency_label = "Variable"
+    else:
+        consistency_label = "Highly variable"
+
+    return {
+        "step_mean": round(step_mean, 1),
+        "step_sd": round(step_sd, 1),
+        "step_cv_pct": round(step_cv_pct, 1),
+        "consistency_label": consistency_label,
+    }
+
+
 def calculate_goal_adherence(
     rows: list[dict],
     days: int,
@@ -142,6 +187,8 @@ def get_activity_insight_metrics(
 
     weekly_summary = calculate_weekly_summary_metrics(rows)
 
+    consistency = calculate_step_consistency_metrics(rows)
+
     return {
         "goal_adherence_last_7": adherence_last_7["goal_adherence_pct"],
         "goal_days_last_7": adherence_last_7["goal_days"],
@@ -153,6 +200,10 @@ def get_activity_insight_metrics(
         "best_week_start": weekly_summary["best_week_start"],
         "worst_week_steps": weekly_summary["worst_week_steps"],
         "worst_week_start": weekly_summary["worst_week_start"],
+        "step_mean": consistency["step_mean"],
+        "step_sd": consistency["step_sd"],
+        "step_cv_pct": consistency["step_cv_pct"],
+        "consistency_label": consistency["consistency_label"],
     }
 
 

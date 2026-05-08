@@ -2,6 +2,7 @@ from datetime import date, timedelta
 
 from app.services.activity.analysis import (
     calculate_goal_adherence,
+    calculate_step_consistency_metrics,
     calculate_weekly_summary_metrics,
     get_activity_insight_metrics,
 )
@@ -100,6 +101,17 @@ def test_get_activity_insight_metrics_returns_7_and_14_day_adherence():
     assert result["worst_week_steps"] == 55000
     assert result["worst_week_start"] == "2026-04-13"
 
+    assert result["step_mean"] is not None
+    assert result["step_sd"] is not None
+    assert result["step_cv_pct"] is not None
+    assert result["consistency_label"] in {
+        "Consistent",
+        "Variable",
+        "Highly variable",
+        "No data",
+    }
+
+
 def test_calculate_weekly_summary_metrics_returns_best_and_worst_week():
     rows = make_rows(
         [
@@ -130,6 +142,7 @@ def test_calculate_weekly_summary_metrics_returns_best_and_worst_week():
         "worst_week_start": "2026-04-13",
     }
 
+
 def test_calculate_weekly_summary_metrics_handles_empty_rows():
     result = calculate_weekly_summary_metrics([])
 
@@ -138,4 +151,70 @@ def test_calculate_weekly_summary_metrics_handles_empty_rows():
         "best_week_start": None,
         "worst_week_steps": 0,
         "worst_week_start": None,
+    }
+
+
+def test_calculate_step_consistency_metrics_for_consistent_steps():
+    rows = make_rows(
+        [
+            9800,
+            10000,
+            10200,
+            9900,
+            10100,
+            10050,
+            9950,
+        ],
+        start_date=date(2026, 4, 6),
+    )
+
+    result = calculate_step_consistency_metrics(rows)
+
+    assert result["step_mean"] == 10000.0
+    assert result["step_sd"] == 132.3
+    assert result["step_cv_pct"] == 1.3
+    assert result["consistency_label"] == "Consistent"
+
+
+def test_calculate_step_consistency_metrics_for_variable_steps():
+    rows = make_rows(
+        [
+            2000,
+            15000,
+            3000,
+            14000,
+            4000,
+            16000,
+            5000,
+        ],
+        start_date=date(2026, 4, 6),
+    )
+
+    result = calculate_step_consistency_metrics(rows)
+
+    assert result["consistency_label"] in {"Variable", "Highly variable"}
+    assert result["step_cv_pct"] >= 25.0
+
+
+def test_calculate_step_consistency_metrics_handles_empty_rows():
+    result = calculate_step_consistency_metrics([])
+
+    assert result == {
+        "step_mean": None,
+        "step_sd": None,
+        "step_cv_pct": None,
+        "consistency_label": "No data",
+    }
+
+
+def test_calculate_step_consistency_metrics_handles_single_day():
+    rows = make_rows([12000], start_date=date(2026, 4, 6))
+
+    result = calculate_step_consistency_metrics(rows)
+
+    assert result == {
+        "step_mean": 12000.0,
+        "step_sd": 0.0,
+        "step_cv_pct": 0.0,
+        "consistency_label": "Consistent",
     }
