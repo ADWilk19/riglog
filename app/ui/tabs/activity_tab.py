@@ -22,6 +22,7 @@ import json
 
 from app.services.activity.analysis import (
     aggregate_weekly_steps,
+    get_activity_insight_metrics,
     get_activity_summary_cards,
     get_daily_activity,
 )
@@ -517,9 +518,15 @@ class ActivityTab(QWidget):
         self.layout.addLayout(toolbar)
 
     def _build_summary_panel(self) -> None:
-        summary_layout = QHBoxLayout()
-        summary_layout.setSpacing(16)
-        summary_layout.setContentsMargins(0, 8, 0, 8)
+        summary_panel = QVBoxLayout()
+        summary_panel.setSpacing(12)
+        summary_panel.setContentsMargins(0, 8, 0, 8)
+
+        summary_row = QHBoxLayout()
+        summary_row.setSpacing(16)
+
+        insight_row = QHBoxLayout()
+        insight_row.setSpacing(16)
 
         self.goal_days_label = SummaryCard(title="Goal Days (7d)", value="-")
         self.goal_days_label.setToolTip(
@@ -556,7 +563,22 @@ class ActivityTab(QWidget):
             "Longest run of consecutive recorded days where steps met or exceeded the 10,000-step target."
         )
 
-        cards = [
+        self.best_week_label = SummaryCard(title="Best Week", value="-")
+        self.best_week_label.setToolTip(
+            "Highest weekly step total in the current filtered activity dataset."
+        )
+
+        self.worst_week_label = SummaryCard(title="Worst Week", value="-")
+        self.worst_week_label.setToolTip(
+            "Lowest weekly step total in the current filtered activity dataset."
+        )
+
+        self.consistency_label = SummaryCard(title="Consistency", value="-")
+        self.consistency_label.setToolTip(
+            "Step consistency based on the coefficient of variation across the current filtered activity dataset."
+            )
+
+        self.summary_cards = [
             self.goal_days_label,
             self.goal_adherence_label,
             self.avg_steps_label,
@@ -566,14 +588,26 @@ class ActivityTab(QWidget):
             self.longest_streak_label,
         ]
 
-        self.summary_cards = cards
+        self.insight_cards = [
+            self.best_week_label,
+            self.worst_week_label,
+            self.consistency_label,
+        ]
 
-        summary_layout.addStretch()
-        for card in cards:
-            summary_layout.addWidget(card)
-        summary_layout.addStretch()
+        summary_row.addStretch()
+        for card in self.summary_cards:
+            summary_row.addWidget(card)
+        summary_row.addStretch()
 
-        self.layout.addLayout(summary_layout)
+        insight_row.addStretch()
+        for card in self.insight_cards:
+            insight_row.addWidget(card)
+        insight_row.addStretch()
+
+        summary_panel.addLayout(summary_row)
+        summary_panel.addLayout(insight_row)
+
+        self.layout.addLayout(summary_panel)
 
     def _build_chart(self) -> None:
         self.chart = ActivityTrendChart()
@@ -629,7 +663,7 @@ class ActivityTab(QWidget):
 
     def _update_summary(self, rows: list[dict]) -> None:
         if not rows:
-            for card in self.summary_cards:
+            for card in self.summary_cards + self.insight_cards:
                 card.clear()
             return
 
@@ -641,6 +675,44 @@ class ActivityTab(QWidget):
                 data.get("subtitle"),
             )
             card.set_variant(data.get("variant", "neutral"))
+
+        insight_metrics = get_activity_insight_metrics(rows)
+
+        best_week_steps = insight_metrics["best_week_steps"]
+        best_week_start = insight_metrics["best_week_start"]
+        worst_week_steps = insight_metrics["worst_week_steps"]
+        worst_week_start = insight_metrics["worst_week_start"]
+
+        self.best_week_label.set_content(
+            f"{best_week_steps:,}",
+            best_week_start or "",
+        )
+        self.best_week_label.set_variant("success" if best_week_steps > 0 else "neutral")
+
+        self.worst_week_label.set_content(
+            f"{worst_week_steps:,}",
+            worst_week_start or "",
+        )
+        self.worst_week_label.set_variant("neutral")
+
+        consistency = insight_metrics["consistency_label"]
+        step_cv_pct = insight_metrics["step_cv_pct"]
+
+        subtitle = f"CV {step_cv_pct:.1f}%" if step_cv_pct is not None else ""
+
+        self.consistency_label.set_content(
+            consistency,
+            subtitle,
+        )
+
+        if consistency == "Consistent":
+            self.consistency_label.set_variant("success")
+        elif consistency == "Variable":
+            self.consistency_label.set_variant("warning")
+        elif consistency == "Highly variable":
+            self.consistency_label.set_variant("danger")
+        else:
+            self.consistency_label.set_variant("neutral")
 
     def _populate_table(self, rows: list[dict]) -> None:
         self.table.setRowCount(len(rows))
