@@ -54,6 +54,33 @@ def aggregate_weekly_steps(rows: list[dict]) -> list[dict]:
     ]
 
 
+def calculate_weekly_summary_metrics(rows: list[dict]) -> dict[str, int | str | None]:
+    """
+    Return best and worst weekly step totals from daily activity rows.
+
+    Weeks are based on Monday start dates, matching aggregate_weekly_steps().
+    """
+    weekly_rows = aggregate_weekly_steps(rows)
+
+    if not weekly_rows:
+        return {
+            "best_week_steps": 0,
+            "best_week_start": None,
+            "worst_week_steps": 0,
+            "worst_week_start": None,
+        }
+
+    best_week = max(weekly_rows, key=lambda row: row["steps"])
+    worst_week = min(weekly_rows, key=lambda row: row["steps"])
+
+    return {
+        "best_week_steps": best_week["steps"],
+        "best_week_start": best_week["week_start"].isoformat(),
+        "worst_week_steps": worst_week["steps"],
+        "worst_week_start": worst_week["week_start"].isoformat(),
+    }
+
+
 def calculate_goal_adherence(
     rows: list[dict],
     days: int,
@@ -113,6 +140,8 @@ def get_activity_insight_metrics(
         target_steps=target_steps,
     )
 
+    weekly_summary = calculate_weekly_summary_metrics(rows)
+
     return {
         "goal_adherence_last_7": adherence_last_7["goal_adherence_pct"],
         "goal_days_last_7": adherence_last_7["goal_days"],
@@ -120,6 +149,10 @@ def get_activity_insight_metrics(
         "goal_adherence_last_14": adherence_last_14["goal_adherence_pct"],
         "goal_days_last_14": adherence_last_14["goal_days"],
         "total_days_last_14": adherence_last_14["total_days"],
+        "best_week_steps": weekly_summary["best_week_steps"],
+        "best_week_start": weekly_summary["best_week_start"],
+        "worst_week_steps": weekly_summary["worst_week_steps"],
+        "worst_week_start": weekly_summary["worst_week_start"],
     }
 
 
