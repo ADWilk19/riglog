@@ -92,7 +92,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🧠 Phase 2 — Insight Layer Expansion
+## 🧠 Phase 2 — Insight Layer Expansion ✅ COMPLETE
 
 ### Activity → Service Layer
 
@@ -122,12 +122,12 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → UI Layer
 
-* [ ] Weekly Summary Card(s)
+* [x] Weekly Summary Card(s)
 
   * Best week
   * Worst week
 
-* [ ] Consistency Indicator
+* [x] Consistency Indicator
 
   * Label:
 
