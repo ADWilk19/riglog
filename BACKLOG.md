@@ -356,7 +356,37 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🧪 Phase 7 — Advanced Features
+---
+
+## 🧪 Phase 7 — Testing & Quality Assurance
+
+### UI Layer
+
+* [ ] Add lightweight GlucoseTab interaction tests
+  * Clear Filters resets range filter and meal-event dropdown
+  * Range card click toggles selected range state
+  * Meal-event breakdown click updates dropdown selection
+
+* [ ] Add lightweight ActivityTab interaction tests
+  * Chart mode toggle updates visible chart state
+  * Refresh action updates summary cards
+  * Selected-day interaction updates detail panel once implemented
+
+* [ ] Add HomeTab navigation tests
+  * Glucose card navigates to Glucose tab
+  * Activity card navigates to Activity tab
+  * Home cards render live service-layer summaries
+
+### Test Infrastructure
+
+* [ ] Add pytest-qt support for UI interaction tests
+  * Provide shared `qapp` / `qtbot` fixtures
+  * Mock service-layer calls to avoid database dependency
+  * Keep tests focused on widget state and signal behaviour
+
+---
+
+## 🧪 Phase 8 — Advanced Features
 
 ### Export / Reporting
 
