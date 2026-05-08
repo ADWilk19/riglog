@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import timedelta
+from datetime import date, timedelta
 from typing import Any
 
 from sqlalchemy import select
@@ -27,6 +27,31 @@ def get_daily_activity() -> list[dict[str, Any]]:
         ]
     finally:
         db.close()
+
+
+def aggregate_weekly_steps(rows: list[dict]) -> list[dict]:
+    """
+    Aggregate daily activity rows into weekly totals.
+
+    Weeks are labelled by their Monday start date.
+    """
+    if not rows:
+        return []
+
+    weekly_totals: dict[date, int] = {}
+
+    for row in rows:
+        activity_date = row["activity_date"]
+        week_start = activity_date - timedelta(days=activity_date.weekday())
+        weekly_totals[week_start] = weekly_totals.get(week_start, 0) + row["steps"]
+
+    return [
+        {
+            "week_start": week_start,
+            "steps": weekly_totals[week_start],
+        }
+        for week_start in sorted(weekly_totals)
+    ]
 
 
 def get_activity_summary(

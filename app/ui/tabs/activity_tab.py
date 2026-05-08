@@ -20,13 +20,10 @@ from statistics import mean
 from pathlib import Path
 import json
 
-from app.services.activity.analysis import get_daily_activity, get_activity_summary_cards
-
-from app.services.activity.fitbit_exceptions import (
-    FitbitAuthError,
-    FitbitAPIError,
-    FitbitNetworkError,
-    FitbitRateLimitError,
+from app.services.activity.analysis import (
+    aggregate_weekly_steps,
+    get_activity_summary_cards,
+    get_daily_activity,
 )
 
 from app.ui.widgets.summary_card import SummaryCard
@@ -117,31 +114,6 @@ def format_relative_timestamp(timestamp: datetime, now: datetime | None = None) 
         return f"{days} day{'s' if days != 1 else ''} ago"
 
     return timestamp.strftime("%Y-%m-%d")
-
-
-def aggregate_weekly_steps(rows: list[dict]) -> list[dict]:
-    """
-    Aggregate daily activity rows into weekly totals.
-
-    Weeks are labelled by their Monday start date.
-    """
-    if not rows:
-        return []
-
-    weekly_totals: dict[date, int] = {}
-
-    for row in rows:
-        activity_date = row["activity_date"]
-        week_start = activity_date - timedelta(days=activity_date.weekday())
-        weekly_totals[week_start] = weekly_totals.get(week_start, 0) + row["steps"]
-
-    return [
-        {
-            "week_start": week_start,
-            "steps": weekly_totals[week_start],
-        }
-        for week_start in sorted(weekly_totals)
-    ]
 
 
 class ActivityRefreshWorker(QObject):
