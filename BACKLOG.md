@@ -167,7 +167,7 @@ This backlog is organised by architectural layer and implementation priority.
     * Combined state (e.g. `Low • Pre-Lunch`)
   * Updated centrally via `load_readings()`
 
-* [ ] Clear Filters Control
+* [x] Clear Filters Control
 
   * Add UI control to reset:
     * range filter

@@ -598,6 +598,10 @@ class GlucoseTab(QWidget):
         self.refresh_button.setObjectName("secondaryAction")
         self.refresh_button.clicked.connect(self.load_readings)
 
+        self.clear_filters_button = QPushButton("Clear Filters")
+        self.clear_filters_button.setObjectName("secondaryAction")
+        self.clear_filters_button.clicked.connect(self.handle_clear_filters)
+
         self.export_pdf_button = QPushButton("Export PDF")
         self.export_pdf_button.setObjectName("secondaryAction")
         self.export_pdf_button.clicked.connect(self.handle_export_pdf)
@@ -630,6 +634,7 @@ class GlucoseTab(QWidget):
         toolbar.addStretch()
         toolbar.addWidget(self.import_button)
         toolbar.addWidget(self.refresh_button)
+        toolbar.addWidget(self.clear_filters_button)
         toolbar.addWidget(self.export_pdf_button)
         toolbar.addSpacing(12)
         toolbar.addWidget(self._create_toolbar_label("Meal Event"))
@@ -1468,6 +1473,17 @@ class GlucoseTab(QWidget):
             )
         else:
             self.active_filter_label.setText("")
+        self.load_readings()
+
+    def handle_clear_filters(self) -> None:
+        """Clear active glucose filters and refresh the tab."""
+        self.selected_range_filter = None
+
+        self.meal_event_filter.blockSignals(True)
+        self.meal_event_filter.setCurrentIndex(0)  # All
+        self.meal_event_filter.blockSignals(False)
+
+        self._update_range_card_selection_state()
         self.load_readings()
 
     def _update_range_card_selection_state(self) -> None:
