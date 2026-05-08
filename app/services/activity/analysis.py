@@ -54,6 +54,75 @@ def aggregate_weekly_steps(rows: list[dict]) -> list[dict]:
     ]
 
 
+def calculate_goal_adherence(
+    rows: list[dict],
+    days: int,
+    target_steps: int = 10_000,
+) -> dict[str, int | float]:
+    """
+    Calculate goal adherence for the latest N-day window in the supplied rows.
+
+    The window is based on the latest recorded activity date, not today's date.
+    """
+    if not rows:
+        return {
+            "goal_days": 0,
+            "total_days": 0,
+            "goal_adherence_pct": 0.0,
+        }
+
+    sorted_rows = sorted(rows, key=lambda row: row["activity_date"])
+    latest_date = sorted_rows[-1]["activity_date"]
+    start_date = latest_date - timedelta(days=days - 1)
+
+    window_rows = [
+        row
+        for row in sorted_rows
+        if start_date <= row["activity_date"] <= latest_date
+    ]
+
+    if not window_rows:
+        return {
+            "goal_days": 0,
+            "total_days": 0,
+            "goal_adherence_pct": 0.0,
+        }
+
+    goal_days = sum(1 for row in window_rows if row["steps"] >= target_steps)
+
+    return {
+        "goal_days": goal_days,
+        "total_days": len(window_rows),
+        "goal_adherence_pct": round((goal_days / len(window_rows)) * 100, 1),
+    }
+
+
+def get_activity_insight_metrics(
+    rows: list[dict],
+    target_steps: int = 10_000,
+) -> dict[str, Any]:
+    """Return Phase 2 activity insight metrics."""
+    adherence_last_7 = calculate_goal_adherence(
+        rows,
+        days=7,
+        target_steps=target_steps,
+    )
+    adherence_last_14 = calculate_goal_adherence(
+        rows,
+        days=14,
+        target_steps=target_steps,
+    )
+
+    return {
+        "goal_adherence_last_7": adherence_last_7["goal_adherence_pct"],
+        "goal_days_last_7": adherence_last_7["goal_days"],
+        "total_days_last_7": adherence_last_7["total_days"],
+        "goal_adherence_last_14": adherence_last_14["goal_adherence_pct"],
+        "goal_days_last_14": adherence_last_14["goal_days"],
+        "total_days_last_14": adherence_last_14["total_days"],
+    }
+
+
 def get_activity_summary(
     rows: list[dict],
     target_steps: int = 10000,
