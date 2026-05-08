@@ -77,8 +77,10 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
 - Export professional PDF reports with charts
 - Activity tracking via Fitbit integration:
   - Daily step import and sync
-  - 7-day rolling averages
-  - Goal adherence tracking (10k steps)
+  - Background sync and token refresh
+  - 7-day and 14-day rolling goal adherence
+  - Best/worst weekly step summaries
+  - Step consistency analysis using coefficient of variation (CV)
   - Streak and trend analysis
   - Daily and weekly charts with hover insights
 - Unified home dashboard:
@@ -130,6 +132,20 @@ Drill into specific ranges (e.g. High) to understand:
 - When issues occur
 - Which meals contribute most
 - Target areas for intervention
+
+### 🚶 Activity Insights
+
+![Activity Insights](assets/docs/activity_insights.png)
+
+Analyse daily and weekly activity patterns using Fitbit step data:
+
+- 7-day goal adherence
+- Best and worst weekly step totals
+- Step consistency using coefficient of variation (CV)
+- Current and longest goal streaks
+- Daily and weekly trend charts
+
+The Activity tab uses service-layer metrics so summary cards, charts, and dashboard views remain consistent.
 
 ### 📈 Ambulatory Glucose Profile (AGP)
 
