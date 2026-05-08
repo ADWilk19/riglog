@@ -43,7 +43,7 @@ def get_activity_summary(
     - current streak of days meeting the target
     - change in total steps vs the previous 7-day window
     """
-    daily_activity = get_daily_activity()
+    daily_activity = sorted(rows, key=lambda row: row["activity_date"])
 
     if not daily_activity:
         return {
@@ -55,6 +55,7 @@ def get_activity_summary(
             "vs_previous_7_abs": 0,
             "vs_previous_7_pct": 0.0,
             "direction": "flat",
+            "has_previous_period": False,
             "goal_days": 0,
             "goal_adherence_pct": 0.0,
         }
@@ -124,11 +125,19 @@ def get_activity_summary(
     }
 
 
+def get_activity_summary_from_db(
+    target_steps: int = 10000,
+) -> dict[str, Any]:
+    """Load daily activity rows from the database and return summary metrics."""
+    rows = get_daily_activity()
+    return get_activity_summary(rows, target_steps=target_steps)
+
+
 def get_activity_summary_cards(
     rows: list[dict],
     target_steps: int = 10000,
 ) -> list[dict]:
-    summary = get_activity_summary(rows, target_steps)
+    summary = get_activity_summary(rows, target_steps=target_steps)
 
     if summary["has_previous_period"]:
         if summary["direction"] == "up":

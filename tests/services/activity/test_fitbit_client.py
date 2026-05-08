@@ -41,21 +41,29 @@ def test_retries_once_on_401_then_succeeds(mocker):
         ]
     }
 
-    first_session = mocker.Mock()
-    first_session.get.return_value = first_response
-
-    second_session = mocker.Mock()
-    second_session.get.return_value = second_response
+    session = mocker.Mock()
+    session.get.side_effect = [first_response, second_response]
+    session.client_id = "test-client-id"
+    session.refresh_token.return_value = None
 
     mocker.patch(
         "app.services.activity.fitbit_client.get_fitbit_session",
-        side_effect=[first_session, second_session],
+        return_value=session,
+    )
+
+    mocker.patch.dict(
+        "app.services.activity.fitbit_client.os.environ",
+        {"FITBIT_CLIENT_SECRET": "test-client-secret"},
     )
 
     client = FitbitClient()
     rows = client.get_daily_steps("2026-04-01", "2026-04-01")
 
-    assert rows == [{"dateTime": "2026-04-01", "value": "9000"}]
+    assert rows == [
+        {"dateTime": "2026-04-01", "value": "9000"},
+    ]
+    assert session.get.call_count == 2
+    session.refresh_token.assert_called_once()
 
 
 def test_raises_fitbit_auth_error_after_second_401(mocker):
