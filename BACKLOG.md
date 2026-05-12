@@ -136,7 +136,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 📊 Phase 3 — Interaction Enhancements
+## 📊 Phase 3 — Interaction Enhancements ✅ COMPLETE
 
 ### 🩸 Glucose — UI Layer
 
@@ -197,7 +197,7 @@ This backlog is organised by architectural layer and implementation priority.
     * goal hit (yes/no)
     * delta vs 7-day average
 
-* [ ] Persist Selection State
+* [x] Persist Selection State
 
   * Maintain selected day on refresh
 
@@ -353,6 +353,19 @@ This backlog is organised by architectural layer and implementation priority.
 
     * lines
     * points
+
+---
+
+* [ ] Restore Daily Selection After Weekly Toggle
+
+  * When a daily activity point is selected:
+    * Preserve the selected date internally when switching to Weekly view
+    * Hide or clear the visible selected-day panel while Weekly view is active
+    * Restore the selected-day panel when switching back to Daily view, if the date is still present in the current filtered dataset
+  * If the selected date is excluded by the active time range:
+    * Clear the stored selection
+  * Goal:
+    * Improve chart-mode toggle UX without confusing daily selection with weekly aggregation
 
 ---
 

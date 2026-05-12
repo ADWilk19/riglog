@@ -707,6 +707,19 @@ class ActivityTab(QWidget):
         self.selected_day_goal_label.setText("Goal: -")
         self.selected_day_delta_label.setText("vs 7-day avg: -")
 
+    def _restore_selected_day_panel(self) -> None:
+        """Restore selected-day details after activity data reloads."""
+        if self.selected_activity_date is None:
+            self._clear_selected_day_panel()
+            return
+
+        for index, row in enumerate(self.current_activity_rows):
+            if row["activity_date"] == self.selected_activity_date:
+                self._handle_day_selected(index, self.selected_activity_date)
+                return
+
+        self._clear_selected_day_panel()
+
     def _build_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Daily Activity"))
 
@@ -832,7 +845,11 @@ class ActivityTab(QWidget):
 
         chart_view = self.chart_view_filter.currentText()
         self.chart.plot_steps(rows, chart_view=chart_view)
-        self._clear_selected_day_panel()
+
+        if chart_view == "Daily":
+            self._restore_selected_day_panel()
+        else:
+            self._clear_selected_day_panel()
 
         self._populate_table(rows)
 
