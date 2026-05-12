@@ -451,6 +451,7 @@ class ActivityTab(QWidget):
 
         self.selected_activity_index: int | None = None
         self.selected_activity_date: date | None = None
+        self.current_activity_rows: list[dict] = []
 
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(20)
@@ -639,10 +640,72 @@ class ActivityTab(QWidget):
         self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
 
+        self.selected_day_panel = QHBoxLayout()
+        self.selected_day_panel.setSpacing(16)
+
+        self.selected_day_date_label = QLabel("Selected day: -")
+        self.selected_day_steps_label = QLabel("Steps: -")
+        self.selected_day_goal_label = QLabel("Goal: -")
+        self.selected_day_delta_label = QLabel("vs 7-day avg: -")
+
+        for label in (
+            self.selected_day_date_label,
+            self.selected_day_steps_label,
+            self.selected_day_goal_label,
+            self.selected_day_delta_label,
+        ):
+            label.setObjectName("statusLabel")
+            label.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        self.selected_day_panel.addStretch()
+        self.selected_day_panel.addWidget(self.selected_day_date_label)
+        self.selected_day_panel.addWidget(self.selected_day_steps_label)
+        self.selected_day_panel.addWidget(self.selected_day_goal_label)
+        self.selected_day_panel.addWidget(self.selected_day_delta_label)
+        self.selected_day_panel.addStretch()
+
+        self.layout.addLayout(self.selected_day_panel)
+
     def _handle_day_selected(self, index: int, selected_date: date) -> None:
-        """Store the currently selected daily activity point."""
+        """Update the selected-day panel from a clicked activity chart point."""
         self.selected_activity_index = index
         self.selected_activity_date = selected_date
+
+        if index < 0 or index >= len(self.current_activity_rows):
+            return
+
+        selected_row = self.current_activity_rows[index]
+        selected_steps = selected_row["steps"]
+
+        rolling_avg = rolling_average(
+            [row["steps"] for row in self.current_activity_rows],
+            window=7,
+        )
+        selected_rolling_avg = rolling_avg[index]
+
+        delta_vs_avg = selected_steps - selected_rolling_avg
+        goal_hit = selected_steps >= 10_000
+
+        self.selected_day_date_label.setText(
+            f"Selected day: {selected_date.strftime('%Y-%m-%d')}"
+        )
+        self.selected_day_steps_label.setText(f"Steps: {selected_steps:,}")
+        self.selected_day_goal_label.setText(
+            f"Goal: {'Yes' if goal_hit else 'No'}"
+        )
+        self.selected_day_delta_label.setText(
+            f"vs 7-day avg: {delta_vs_avg:+,.0f}"
+        )
+
+    def _clear_selected_day_panel(self) -> None:
+        """Reset the selected-day panel to its default empty state."""
+        self.selected_activity_index = None
+        self.selected_activity_date = None
+
+        self.selected_day_date_label.setText("Selected day: -")
+        self.selected_day_steps_label.setText("Steps: -")
+        self.selected_day_goal_label.setText("Goal: -")
+        self.selected_day_delta_label.setText("vs 7-day avg: -")
 
     def _build_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Daily Activity"))
@@ -763,11 +826,13 @@ class ActivityTab(QWidget):
     def load_activity(self) -> None:
         rows = self._get_activity_rows()
         rows = self._filter_activity_rows(rows)
+        self.current_activity_rows = rows
 
         self._update_summary(rows)
 
         chart_view = self.chart_view_filter.currentText()
         self.chart.plot_steps(rows, chart_view=chart_view)
+        self._clear_selected_day_panel()
 
         self._populate_table(rows)
 

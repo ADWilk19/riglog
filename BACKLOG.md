@@ -188,7 +188,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → UI Layer
 
-* [ ] Selected Day Detail Panel
+* [x] Selected Day Detail Panel
 
   * Display:
 
