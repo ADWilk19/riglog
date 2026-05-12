@@ -354,7 +354,6 @@ This backlog is organised by architectural layer and implementation priority.
     * lines
     * points
 
----
 
 * [ ] Restore Daily Selection After Weekly Toggle
 
