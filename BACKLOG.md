@@ -179,7 +179,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → Chart Layer
 
-* [ ] Click-to-Select Day
+* [x] Click-to-Select Day
 
   * Click event on scatter points
   * Emit selected index/date

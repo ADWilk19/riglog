@@ -164,6 +164,8 @@ class ActivityRefreshWorker(QObject):
 
 
 class ActivityTrendChart(FigureCanvasQTAgg):
+    day_selected = Signal(int, date)
+
     def __init__(self) -> None:
         self.figure = Figure(figsize=(6, 4.5))
         self.ax = self.figure.add_subplot(111)
@@ -177,6 +179,25 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.week_labels: list = []
         self.weekly_steps: list[int] = []
         self.hover_cid = self.mpl_connect("motion_notify_event", self._on_hover)
+        self.click_cid = self.mpl_connect("button_press_event", self._on_click)
+
+    def _on_click(self, event) -> None:
+        """Emit the selected daily activity point when a scatter point is clicked."""
+        if event.inaxes != self.ax:
+            return
+
+        if self.scatter is None:
+            return
+
+        contains, index_data = self.scatter.contains(event)
+
+        if not contains:
+            return
+
+        index = index_data["ind"][0]
+        selected_date = self.dates[index]
+
+        self.day_selected.emit(index, selected_date)
 
     def _on_hover(self, event) -> None:
         if self.annot is None:
@@ -428,6 +449,9 @@ class ActivityTab(QWidget):
     def __init__(self) -> None:
         super().__init__()
 
+        self.selected_activity_index: int | None = None
+        self.selected_activity_date: date | None = None
+
         self.layout = QVBoxLayout(self)
         self.layout.setSpacing(20)
         self.layout.setContentsMargins(16, 16, 16, 24)
@@ -611,8 +635,14 @@ class ActivityTab(QWidget):
 
     def _build_chart(self) -> None:
         self.chart = ActivityTrendChart()
+        self.chart.day_selected.connect(self._handle_day_selected)
         self.chart.setMinimumHeight(320)
         self.layout.addWidget(self.chart)
+
+    def _handle_day_selected(self, index: int, selected_date: date) -> None:
+        """Store the currently selected daily activity point."""
+        self.selected_activity_index = index
+        self.selected_activity_date = selected_date
 
     def _build_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Daily Activity"))
