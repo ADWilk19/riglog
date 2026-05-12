@@ -356,9 +356,63 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
----
+## 🏋️ Phase 7 — Workout Module
 
-## 🧪 Phase 7 — Testing & Quality Assurance
+### Workout → Database Layer
+
+* [ ] Add workout/session model
+  * Fields:
+    * date
+    * workout_type
+    * duration_minutes
+    * notes
+    * perceived_effort
+
+### Workout → Service Layer
+
+* [ ] Add workout summary metrics
+  * total sessions
+  * weekly sessions
+  * average duration
+  * most recent workout
+
+### Workout → UI Layer
+
+* [ ] Build Workout tab
+  * Add workout entry form
+  * Add workout history table
+  * Add summary cards
+  * Add basic trend chart
+
+## 🍽️ Phase 8 — Nutrition Module
+
+### Nutrition → Database Layer
+
+* [ ] Add nutrition / meal model
+  * Fields:
+    * recorded_at
+    * meal_event
+    * carbs_g
+    * calories
+    * notes
+
+### Nutrition → Service Layer
+
+* [ ] Add nutrition summary metrics
+  * total carbs by day
+  * carbs by meal event
+  * average daily carbs
+  * calorie totals where available
+
+### Nutrition → UI Layer
+
+* [ ] Build Nutrition tab
+  * Add meal entry form
+  * Add meal history table
+  * Add summary cards
+  * Add carbs-by-meal-event chart
+
+## 🧪 Phase 9 — Testing & Quality Assurance
 
 ### UI Layer
 
@@ -386,7 +440,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🧪 Phase 8 — Advanced Features
+## 🧠 Phase 10 — Advanced Features
 
 ### Export / Reporting
 
@@ -416,7 +470,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🧭 Notes
+## 🧭 Implementation Notes
 
 * Prioritise features that:
 
@@ -432,3 +486,26 @@ This backlog is organised by architectural layer and implementation priority.
   * Importers → data ingestion
   * Services → calculations
   * UI → rendering only
+
+---
+
+## 🚀 Final Phase: macOS App Packaging & Distribution
+
+Package RigLog as a double-clickable macOS application once the core modules are complete.
+
+### Goals
+
+- Package RigLog as a native `.app` bundle
+- Allow the app to be launched from Finder and the Applications folder
+- Add a proper app icon and bundle metadata
+- Ensure bundled assets load correctly, including branding and QSS theme files
+- Move writable app data out of the project directory
+- Store the SQLite database in a user-safe macOS location, such as:
+  - `~/Library/Application Support/RigLog/`
+- Confirm Fitbit tokens and future settings persist correctly outside the repo
+- Test CSV import, PDF export, charts, and tab navigation from the packaged app
+- Document the packaged-app launch workflow in the README
+
+### Notes
+
+This phase should happen after the Glucose, Activity, Workout, and Nutrition panels are functionally complete.
