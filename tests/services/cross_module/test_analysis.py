@@ -147,6 +147,32 @@ def test_activity_glucose_correlations_returns_empty_contract_without_rows():
         "calories_vs_avg_next_glucose": None,
         "steps_vs_glucose_delta": None,
         "calories_vs_glucose_delta": None,
+        "interpretations": {
+            "steps_vs_avg_next_glucose": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "calories_vs_avg_next_glucose": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "steps_vs_glucose_delta": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "calories_vs_glucose_delta": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+        },
     }
 
 
@@ -169,6 +195,32 @@ def test_activity_glucose_correlations_requires_at_least_two_paired_rows():
         "calories_vs_avg_next_glucose": None,
         "steps_vs_glucose_delta": None,
         "calories_vs_glucose_delta": None,
+        "interpretations": {
+            "steps_vs_avg_next_glucose": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "calories_vs_avg_next_glucose": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "steps_vs_glucose_delta": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+            "calories_vs_glucose_delta": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+        },
     }
 
 
@@ -203,4 +255,34 @@ def test_activity_glucose_correlations_calculates_paired_metrics():
         "calories_vs_avg_next_glucose": -1.0,
         "steps_vs_glucose_delta": -1.0,
         "calories_vs_glucose_delta": -1.0,
+        "interpretations": {
+            "steps_vs_avg_next_glucose": {
+                "correlation": -1.0,
+                "strength": "very_strong",
+                "direction": "negative",
+                "summary": "Higher steps values tend to align with lower glucose outcomes.",
+            },
+            "calories_vs_avg_next_glucose": {
+                "correlation": -1.0,
+                "strength": "very_strong",
+                "direction": "negative",
+                "summary": (
+                    "Higher calories burned values tend to align with lower glucose outcomes."
+                ),
+            },
+            "steps_vs_glucose_delta": {
+                "correlation": -1.0,
+                "strength": "very_strong",
+                "direction": "negative",
+                "summary": "Higher steps values tend to align with lower glucose outcomes.",
+            },
+            "calories_vs_glucose_delta": {
+                "correlation": -1.0,
+                "strength": "very_strong",
+                "direction": "negative",
+                "summary": (
+                    "Higher calories burned values tend to align with lower glucose outcomes."
+                ),
+            },
+        },
     }

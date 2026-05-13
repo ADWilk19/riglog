@@ -289,6 +289,86 @@ def get_activity_glucose_event_summary(
     )
 
 
+def classify_correlation_strength(correlation: float | None) -> str:
+    """Return a simple strength label for a correlation coefficient."""
+    if correlation is None:
+        return "insufficient_data"
+
+    absolute_value = abs(correlation)
+
+    if absolute_value < 0.2:
+        return "very_weak"
+    if absolute_value < 0.4:
+        return "weak"
+    if absolute_value < 0.6:
+        return "moderate"
+    if absolute_value < 0.8:
+        return "strong"
+
+    return "very_strong"
+
+
+def classify_correlation_direction(correlation: float | None) -> str:
+    """Return the direction label for a correlation coefficient."""
+    if correlation is None:
+        return "insufficient_data"
+
+    if correlation > 0:
+        return "positive"
+    if correlation < 0:
+        return "negative"
+
+    return "none"
+
+
+def describe_correlation(
+    label: str,
+    correlation: float | None,
+) -> dict[str, Any]:
+    """Return a UI-ready interpretation for one correlation metric."""
+    strength = classify_correlation_strength(correlation)
+    direction = classify_correlation_direction(correlation)
+
+    if correlation is None:
+        summary = "Not enough paired activity and glucose data yet."
+    elif correlation > 0:
+        summary = f"Higher {label} tends to align with higher glucose outcomes."
+    elif correlation > 0:
+        summary = f"Higher {label} values tend to align with higher glucose outcomes."
+    elif correlation < 0:
+        summary = f"Higher {label} values tend to align with lower glucose outcomes."
+
+    return {
+        "correlation": correlation,
+        "strength": strength,
+        "direction": direction,
+        "summary": summary,
+    }
+
+
+def _empty_correlation_contract(row_count: int = 0) -> dict[str, Any]:
+    """Return the empty/default correlation metrics contract."""
+    return {
+        "row_count": row_count,
+        "steps_vs_avg_next_glucose": None,
+        "calories_vs_avg_next_glucose": None,
+        "steps_vs_glucose_delta": None,
+        "calories_vs_glucose_delta": None,
+        "interpretations": {
+            "steps_vs_avg_next_glucose": describe_correlation("steps", None),
+            "calories_vs_avg_next_glucose": describe_correlation(
+                "calories burned",
+                None,
+            ),
+            "steps_vs_glucose_delta": describe_correlation("steps", None),
+            "calories_vs_glucose_delta": describe_correlation(
+                "calories burned",
+                None,
+            ),
+        },
+    }
+
+
 def calculate_activity_glucose_correlations(
     event_summary_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -298,13 +378,7 @@ def calculate_activity_glucose_correlations(
     Uses only rows with enough paired activity and glucose outcome data.
     """
     if not event_summary_rows:
-        return {
-            "row_count": 0,
-            "steps_vs_avg_next_glucose": None,
-            "calories_vs_avg_next_glucose": None,
-            "steps_vs_glucose_delta": None,
-            "calories_vs_glucose_delta": None,
-        }
+        return _empty_correlation_contract()
 
     df = pd.DataFrame(event_summary_rows).copy()
 
@@ -317,13 +391,7 @@ def calculate_activity_glucose_correlations(
 
     for column in required_columns:
         if column not in df.columns:
-            return {
-                "row_count": 0,
-                "steps_vs_avg_next_glucose": None,
-                "calories_vs_avg_next_glucose": None,
-                "steps_vs_glucose_delta": None,
-                "calories_vs_glucose_delta": None,
-            }
+            return _empty_correlation_contract()
 
     for column in required_columns:
         df[column] = pd.to_numeric(df[column], errors="coerce")
@@ -331,34 +399,51 @@ def calculate_activity_glucose_correlations(
     paired_df = df.dropna(subset=required_columns).copy()
 
     if len(paired_df) < 2:
-        return {
-            "row_count": len(paired_df),
-            "steps_vs_avg_next_glucose": None,
-            "calories_vs_avg_next_glucose": None,
-            "steps_vs_glucose_delta": None,
-            "calories_vs_glucose_delta": None,
-        }
+        return _empty_correlation_contract(row_count=len(paired_df))
+
+    steps_vs_avg_next_glucose = round(
+        paired_df["steps"].corr(paired_df["avg_next_glucose"]),
+        3,
+    )
+    calories_vs_avg_next_glucose = round(
+        paired_df["calories_burned"].corr(paired_df["avg_next_glucose"]),
+        3,
+    )
+    steps_vs_glucose_delta = round(
+        paired_df["steps"].corr(paired_df["avg_glucose_delta_to_next"]),
+        3,
+    )
+    calories_vs_glucose_delta = round(
+        paired_df["calories_burned"].corr(
+            paired_df["avg_glucose_delta_to_next"]
+        ),
+        3,
+    )
 
     return {
         "row_count": len(paired_df),
-        "steps_vs_avg_next_glucose": round(
-            paired_df["steps"].corr(paired_df["avg_next_glucose"]),
-            3,
-        ),
-        "calories_vs_avg_next_glucose": round(
-            paired_df["calories_burned"].corr(paired_df["avg_next_glucose"]),
-            3,
-        ),
-        "steps_vs_glucose_delta": round(
-            paired_df["steps"].corr(paired_df["avg_glucose_delta_to_next"]),
-            3,
-        ),
-        "calories_vs_glucose_delta": round(
-            paired_df["calories_burned"].corr(
-                paired_df["avg_glucose_delta_to_next"]
+        "steps_vs_avg_next_glucose": steps_vs_avg_next_glucose,
+        "calories_vs_avg_next_glucose": calories_vs_avg_next_glucose,
+        "steps_vs_glucose_delta": steps_vs_glucose_delta,
+        "calories_vs_glucose_delta": calories_vs_glucose_delta,
+        "interpretations": {
+            "steps_vs_avg_next_glucose": describe_correlation(
+                "steps",
+                steps_vs_avg_next_glucose,
             ),
-            3,
-        ),
+            "calories_vs_avg_next_glucose": describe_correlation(
+                "calories burned",
+                calories_vs_avg_next_glucose,
+            ),
+            "steps_vs_glucose_delta": describe_correlation(
+                "steps",
+                steps_vs_glucose_delta,
+            ),
+            "calories_vs_glucose_delta": describe_correlation(
+                "calories burned",
+                calories_vs_glucose_delta,
+            ),
+        },
     }
 
 
