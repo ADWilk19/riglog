@@ -219,7 +219,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-* [ ] Calories Burned by Meal Event
+* [x] Calories Burned by Meal Event
 
   * Aggregate activity calories by glucose meal-event window
   * Compare calories burned against subsequent glucose trajectory
@@ -234,7 +234,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Event-Based Activity Analysis (Backlog)
 
-* [ ] Introduce Activity Event Classification
+* [x] Introduce Activity Event Classification
 
   * Align with glucose event windows:
 
@@ -242,7 +242,7 @@ This backlog is organised by architectural layer and implementation priority.
     * Post-Breakfast
     * etc.
 
-* [ ] Aggregate Steps by Event Window
+* [x] Aggregate Steps by Event Window
 
 ⚠️ Requires:
 
