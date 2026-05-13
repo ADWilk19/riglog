@@ -278,7 +278,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🧱 Phase 5 — Data Layer Expansion
+## 🧱 Phase 5 — Data Layer Expansion ✅ COMPLETE
 
 ### Activity → Database (`app/db/models.py`)
 
@@ -320,7 +320,7 @@ This backlog is organised by architectural layer and implementation priority.
 
   * Steps by hour
 
-* [ ] Event Window Aggregation Functions
+* [x] Event Window Aggregation Functions
 
   * Steps by event window
 
