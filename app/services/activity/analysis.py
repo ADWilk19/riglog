@@ -4,10 +4,12 @@ from datetime import date, timedelta
 from typing import Any
 from statistics import mean, stdev
 
+import pandas as pd
+
 from sqlalchemy import select
 
 from app.db.database import SessionLocal
-from app.db.models import DailyActivity
+from app.db.models import DailyActivity, IntradayActivity
 
 
 def get_daily_activity() -> list[dict[str, Any]]:
@@ -437,3 +439,93 @@ def calculate_step_streaks(
         check_date = check_date - timedelta(days=1)
 
     return current_streak, longest_streak
+
+
+def get_intraday_activity_rows(
+    start_date=None,
+    end_date=None,
+) -> list[dict]:
+    """
+    Return intraday activity rows ordered by timestamp.
+
+    Args:
+        start_date: Optional datetime/date lower bound.
+        end_date: Optional datetime/date upper bound.
+
+    Returns:
+        List of dictionaries for service/UI consumption.
+    """
+    session = SessionLocal()
+
+    try:
+        query = session.query(IntradayActivity)
+
+        if start_date is not None:
+            query = query.filter(IntradayActivity.recorded_at >= start_date)
+
+        if end_date is not None:
+            query = query.filter(IntradayActivity.recorded_at <= end_date)
+
+        rows = query.order_by(IntradayActivity.recorded_at.asc()).all()
+
+        return [
+            {
+                "id": row.id,
+                "recorded_at": row.recorded_at,
+                "steps": row.steps,
+                "calories_burned": row.calories_burned,
+                "distance_km": row.distance_km,
+                "source": row.source,
+            }
+            for row in rows
+        ]
+
+    finally:
+        session.close()
+
+
+def get_steps_by_hour(
+    start_date=None,
+    end_date=None,
+) -> list[dict]:
+    """
+    Aggregate intraday activity into hourly step totals.
+
+    Args:
+        start_date: Optional datetime/date lower bound.
+        end_date: Optional datetime/date upper bound.
+
+    Returns:
+        List of dictionaries containing date, hour, steps, and calories_burned.
+    """
+    rows = get_intraday_activity_rows(
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    if not rows:
+        return []
+
+    df = pd.DataFrame(rows)
+
+    df["recorded_at"] = pd.to_datetime(df["recorded_at"], errors="coerce")
+    df["steps"] = pd.to_numeric(df["steps"], errors="coerce").fillna(0)
+    df["calories_burned"] = pd.to_numeric(
+        df["calories_burned"],
+        errors="coerce",
+    ).fillna(0)
+
+    df = df.dropna(subset=["recorded_at"]).copy()
+    df["date"] = df["recorded_at"].dt.date
+    df["hour"] = df["recorded_at"].dt.hour
+
+    grouped = (
+        df.groupby(["date", "hour"], as_index=False)
+        .agg(
+            steps=("steps", "sum"),
+            calories_burned=("calories_burned", "sum"),
+        )
+        .sort_values(["date", "hour"])
+    )
+
+    return grouped.to_dict(orient="records")

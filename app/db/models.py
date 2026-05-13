@@ -31,9 +31,13 @@ class DailyActivity(Base):
 
 
 class IntradayActivity(Base):
-    __tablename__ = "intraday_activity"
+    __tablename__ = "activity_intraday"
     __table_args__ = (
-        UniqueConstraint("recorded_at", "source", name="uq_intraday_activity_time_source"),
+        UniqueConstraint(
+            "recorded_at",
+            "source",
+            name="uq_intraday_activity_time_source"
+            ),
     )
 
     id = Column(Integer, primary_key=True, index=True)
