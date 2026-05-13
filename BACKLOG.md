@@ -282,7 +282,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → Database (`app/db/models.py`)
 
-* [ ] Add `activity_intraday` table
+* [x] Add `activity_intraday` table
 
   * Fields:
 
@@ -290,7 +290,7 @@ This backlog is organised by architectural layer and implementation priority.
     * `steps`
     * `source`
 
-* [ ] Add calorie fields to `activity_intraday`
+* [x] Add calorie fields to `activity_intraday`
 
   * Fields:
     * `calories_burned`
@@ -299,12 +299,12 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → Importer (`app/services/activity/fitbit_importer.py`)
 
-* [ ] Add Intraday Import
+* [x] Add Intraday Import
 
   * Pull minute / interval data from Fitbit API
   * Persist to `activity_intraday`
 
-* [ ] Add Calorie Burn Import
+* [x] Add Calorie Burn Import
 
   * Pull calorie expenditure from Fitbit API
   * Support:
@@ -316,9 +316,12 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity → Service Layer
 
-* [ ] Intraday Aggregation Functions
+* [x] Intraday Aggregation Functions
 
   * Steps by hour
+
+* [ ] Event Window Aggregation Functions
+
   * Steps by event window
 
 ---
