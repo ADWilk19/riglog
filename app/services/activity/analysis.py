@@ -10,7 +10,29 @@ from sqlalchemy import select
 
 from app.db.database import SessionLocal
 from app.db.models import DailyActivity, IntradayActivity
+from app.services.event_classifier import classify_meal_event
 
+ACTIVITY_EVENT_LABELS = {
+    "pre_breakfast": "Pre-Breakfast",
+    "post_breakfast": "Post-Breakfast",
+    "pre_lunch": "Pre-Lunch",
+    "post_lunch": "Post-Lunch",
+    "pre_dinner": "Pre-Dinner",
+    "post_dinner": "Post-Dinner",
+    "before_bed": "Before Bed",
+    "night": "Night",
+}
+
+ACTIVITY_EVENT_ORDER = [
+    "Pre-Breakfast",
+    "Post-Breakfast",
+    "Pre-Lunch",
+    "Post-Lunch",
+    "Pre-Dinner",
+    "Post-Dinner",
+    "Before Bed",
+    "Night",
+]
 
 def get_daily_activity() -> list[dict[str, Any]]:
     """Return daily activity rows ordered by activity_date ascending."""
@@ -528,4 +550,76 @@ def get_steps_by_hour(
         .sort_values(["date", "hour"])
     )
 
+    grouped["calories_burned"] = grouped["calories_burned"].round(2)
+
     return grouped.to_dict(orient="records")
+
+
+def get_steps_by_event_window(
+    start_date=None,
+    end_date=None,
+) -> list[dict]:
+    """
+    Aggregate intraday activity into glucose-style event windows.
+
+    Uses the shared meal-event classifier so activity and glucose can be
+    aligned by the same time windows.
+
+    Args:
+        start_date: Optional datetime/date lower bound.
+        end_date: Optional datetime/date upper bound.
+
+    Returns:
+        List of dictionaries containing date, event window, steps,
+        calories_burned, and interval count.
+    """
+    rows = get_intraday_activity_rows(
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    if not rows:
+        return []
+
+    df = pd.DataFrame(rows)
+
+    df["recorded_at"] = pd.to_datetime(df["recorded_at"], errors="coerce")
+    df["steps"] = pd.to_numeric(df["steps"], errors="coerce").fillna(0)
+    df["calories_burned"] = pd.to_numeric(
+        df["calories_burned"],
+        errors="coerce",
+    ).fillna(0)
+
+    df = df.dropna(subset=["recorded_at"]).copy()
+
+    df["date"] = df["recorded_at"].dt.date
+    df["event_key"] = df["recorded_at"].apply(classify_meal_event)
+    df["event_window"] = df["event_key"].map(ACTIVITY_EVENT_LABELS)
+
+    grouped = (
+        df.groupby(["date", "event_key", "event_window"], as_index=False)
+        .agg(
+            steps=("steps", "sum"),
+            calories_burned=("calories_burned", "sum"),
+            interval_count=("id", "count"),
+        )
+    )
+
+    grouped["event_order"] = grouped["event_window"].map(
+        {label: index for index, label in enumerate(ACTIVITY_EVENT_ORDER)}
+    )
+
+    grouped = grouped.sort_values(["date", "event_order"])
+
+    grouped["calories_burned"] = grouped["calories_burned"].round(2)
+
+    return grouped[
+        [
+            "date",
+            "event_key",
+            "event_window",
+            "steps",
+            "calories_burned",
+            "interval_count",
+        ]
+    ].to_dict(orient="records")
