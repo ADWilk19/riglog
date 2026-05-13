@@ -295,6 +295,144 @@ def get_activity_glucose_event_summary(
     )
 
 
+def calculate_daily_activity_glucose_overlay(
+    activity_rows: list[dict[str, Any]],
+    glucose_rows: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    """
+    Join daily activity totals with daily average glucose.
+
+    Returns one row per date where activity data exists. Glucose metrics are
+    nullable so activity-only days can still be displayed safely.
+    """
+    if not activity_rows:
+        return []
+
+    activity_df = pd.DataFrame(activity_rows).copy()
+
+    activity_df["date"] = pd.to_datetime(
+        activity_df["activity_date"],
+        errors="coerce",
+    ).dt.date
+    activity_df["steps"] = pd.to_numeric(
+        activity_df["steps"],
+        errors="coerce",
+    ).fillna(0)
+    if "calories_burned" not in activity_df.columns:
+        activity_df["calories_burned"] = 0
+
+    activity_df["calories_burned"] = pd.to_numeric(
+        activity_df["calories_burned"],
+        errors="coerce",
+    ).fillna(0)
+
+    activity_df = activity_df.dropna(subset=["date"]).copy()
+
+    if activity_df.empty:
+        return []
+
+    glucose_df = pd.DataFrame(glucose_rows).copy()
+
+    if glucose_df.empty:
+        glucose_daily_df = pd.DataFrame(
+            columns=[
+                "date",
+                "avg_glucose",
+                "glucose_count",
+                "min_glucose",
+                "max_glucose",
+            ]
+        )
+    else:
+        glucose_df["recorded_at"] = pd.to_datetime(
+            glucose_df["recorded_at"],
+            errors="coerce",
+        )
+        glucose_df["glucose_value"] = pd.to_numeric(
+            glucose_df["glucose_value"],
+            errors="coerce",
+        )
+
+        glucose_df = glucose_df.dropna(
+            subset=["recorded_at", "glucose_value"],
+        ).copy()
+
+        glucose_df["date"] = glucose_df["recorded_at"].dt.date
+
+        glucose_daily_df = (
+            glucose_df.groupby("date", as_index=False)
+            .agg(
+                avg_glucose=("glucose_value", "mean"),
+                glucose_count=("glucose_value", "count"),
+                min_glucose=("glucose_value", "min"),
+                max_glucose=("glucose_value", "max"),
+            )
+        )
+
+        glucose_daily_df["avg_glucose"] = glucose_daily_df["avg_glucose"].round(2)
+        glucose_daily_df["min_glucose"] = glucose_daily_df["min_glucose"].round(2)
+        glucose_daily_df["max_glucose"] = glucose_daily_df["max_glucose"].round(2)
+
+    result = activity_df.merge(
+        glucose_daily_df,
+        on="date",
+        how="left",
+    )
+
+    count_columns = ["glucose_count"]
+    nullable_metric_columns = [
+        "avg_glucose",
+        "min_glucose",
+        "max_glucose",
+    ]
+
+    for column in count_columns:
+        if column not in result.columns:
+            result[column] = 0
+        result[column] = result[column].fillna(0).astype(int)
+
+    for column in nullable_metric_columns:
+        if column not in result.columns:
+            result[column] = None
+        else:
+            result[column] = result[column].astype(object)
+            result[column] = result[column].where(
+                pd.notna(result[column]),
+                None,
+            )
+
+    result = result.sort_values("date").reset_index(drop=True)
+
+    output_columns = [
+        "date",
+        "avg_glucose",
+        "glucose_count",
+        "min_glucose",
+        "max_glucose",
+        "steps",
+        "calories_burned",
+    ]
+
+    return result[output_columns].to_dict(orient="records")
+
+
+def get_daily_activity_glucose_overlay(
+    glucose_days: int | None = 365,
+) -> list[dict[str, Any]]:
+    """
+    DB-backed daily overlay contract for glucose/activity charting.
+    """
+    from app.services.activity.analysis import get_daily_activity
+
+    activity_rows = get_daily_activity()
+    glucose_rows = get_all_glucose_readings_with_meal_event(days=glucose_days)
+
+    return calculate_daily_activity_glucose_overlay(
+        activity_rows=activity_rows,
+        glucose_rows=glucose_rows,
+    )
+
+
 def classify_correlation_strength(correlation: float | None) -> str:
     """Return a simple strength label for a correlation coefficient."""
     if correlation is None:
@@ -338,11 +476,11 @@ def describe_correlation(
     if correlation is None:
         summary = "Not enough paired activity and glucose data yet."
     elif correlation > 0:
-        summary = f"Higher {label} tends to align with higher glucose outcomes."
-    elif correlation > 0:
         summary = f"Higher {label} values tend to align with higher glucose outcomes."
     elif correlation < 0:
         summary = f"Higher {label} values tend to align with lower glucose outcomes."
+    else:
+        summary = f"{label.title()} values do not show a clear directional relationship."
 
     return {
         "correlation": correlation,

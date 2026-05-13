@@ -3,6 +3,7 @@ from datetime import datetime, date
 from app.services.cross_module.analysis import (
     calculate_activity_glucose_correlations,
     calculate_activity_glucose_event_summary,
+    calculate_daily_activity_glucose_overlay,
     get_ranked_correlation_insights,
 )
 
@@ -330,3 +331,48 @@ def test_ranked_correlation_insights_orders_by_absolute_strength():
         "direction": "positive",
         "summary": "Strong positive relationship.",
     }
+
+
+def test_daily_activity_glucose_overlay_handles_missing_calories_column():
+    """Default daily calories to zero when activity rows do not include calories."""
+    activity_rows = [
+        {
+            "activity_date": date(2026, 5, 12),
+            "steps": 5000,
+            "source": "fitbit",
+        }
+    ]
+
+    glucose_rows = [
+        {
+            "id": 1,
+            "recorded_at": datetime(2026, 5, 12, 8, 0),
+            "glucose_value": 6.0,
+            "meal_event": "pre_breakfast",
+            "meal_event_label": "Pre-Breakfast",
+        },
+        {
+            "id": 2,
+            "recorded_at": datetime(2026, 5, 12, 12, 0),
+            "glucose_value": 8.0,
+            "meal_event": "pre_lunch",
+            "meal_event_label": "Pre-Lunch",
+        },
+    ]
+
+    result = calculate_daily_activity_glucose_overlay(
+        activity_rows=activity_rows,
+        glucose_rows=glucose_rows,
+    )
+
+    assert result == [
+        {
+            "date": date(2026, 5, 12),
+            "avg_glucose": 7.0,
+            "glucose_count": 2,
+            "min_glucose": 6.0,
+            "max_glucose": 8.0,
+            "steps": 5000,
+            "calories_burned": 0,
+        }
+    ]
