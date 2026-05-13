@@ -212,10 +212,17 @@ This backlog is organised by architectural layer and implementation priority.
   * Align on timestamp
   * Show step density vs glucose
 
-* [ ] Correlation Metrics
+* [x] Correlation Metrics
 
-  * Steps vs glucose variability
-  * Steps vs time-in-range
+  * Service-layer contract complete
+  * Steps vs average next glucose
+  * Calories burned vs average next glucose
+  * Steps vs glucose delta
+  * Calories burned vs glucose delta
+  * Tested with pure-function coverage
+  * Future:
+    * Steps vs glucose variability
+    * Steps vs time-in-range
 
 ---
 
