@@ -1,9 +1,9 @@
 from datetime import datetime, date
 
 from app.services.cross_module.analysis import (
+    calculate_activity_glucose_correlations,
     calculate_activity_glucose_event_summary,
 )
-
 
 def test_activity_glucose_event_summary_handles_missing_glucose_rows():
     """Return activity rows with zero/null glucose metrics when no glucose exists."""
@@ -135,3 +135,72 @@ def test_activity_glucose_event_summary_preserves_meal_event_order():
         "Pre-Lunch",
         "Post-Lunch",
     ]
+
+
+def test_activity_glucose_correlations_returns_empty_contract_without_rows():
+    """Return a stable empty correlation contract when no rows are supplied."""
+    result = calculate_activity_glucose_correlations([])
+
+    assert result == {
+        "row_count": 0,
+        "steps_vs_avg_next_glucose": None,
+        "calories_vs_avg_next_glucose": None,
+        "steps_vs_glucose_delta": None,
+        "calories_vs_glucose_delta": None,
+    }
+
+
+def test_activity_glucose_correlations_requires_at_least_two_paired_rows():
+    """Return null correlations when fewer than two paired rows are available."""
+    rows = [
+        {
+            "steps": 100,
+            "calories_burned": 25.0,
+            "avg_next_glucose": 8.0,
+            "avg_glucose_delta_to_next": 1.0,
+        }
+    ]
+
+    result = calculate_activity_glucose_correlations(rows)
+
+    assert result == {
+        "row_count": 1,
+        "steps_vs_avg_next_glucose": None,
+        "calories_vs_avg_next_glucose": None,
+        "steps_vs_glucose_delta": None,
+        "calories_vs_glucose_delta": None,
+    }
+
+
+def test_activity_glucose_correlations_calculates_paired_metrics():
+    """Calculate correlations from paired activity and glucose outcome rows."""
+    rows = [
+        {
+            "steps": 100,
+            "calories_burned": 20.0,
+            "avg_next_glucose": 9.0,
+            "avg_glucose_delta_to_next": 2.0,
+        },
+        {
+            "steps": 200,
+            "calories_burned": 40.0,
+            "avg_next_glucose": 8.0,
+            "avg_glucose_delta_to_next": 1.0,
+        },
+        {
+            "steps": 300,
+            "calories_burned": 60.0,
+            "avg_next_glucose": 7.0,
+            "avg_glucose_delta_to_next": 0.0,
+        },
+    ]
+
+    result = calculate_activity_glucose_correlations(rows)
+
+    assert result == {
+        "row_count": 3,
+        "steps_vs_avg_next_glucose": -1.0,
+        "calories_vs_avg_next_glucose": -1.0,
+        "steps_vs_glucose_delta": -1.0,
+        "calories_vs_glucose_delta": -1.0,
+    }

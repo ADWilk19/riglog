@@ -287,3 +287,93 @@ def get_activity_glucose_event_summary(
         activity_rows=activity_rows,
         glucose_rows=glucose_rows,
     )
+
+
+def calculate_activity_glucose_correlations(
+    event_summary_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """
+    Calculate simple correlation metrics from activity/glucose event summaries.
+
+    Uses only rows with enough paired activity and glucose outcome data.
+    """
+    if not event_summary_rows:
+        return {
+            "row_count": 0,
+            "steps_vs_avg_next_glucose": None,
+            "calories_vs_avg_next_glucose": None,
+            "steps_vs_glucose_delta": None,
+            "calories_vs_glucose_delta": None,
+        }
+
+    df = pd.DataFrame(event_summary_rows).copy()
+
+    required_columns = [
+        "steps",
+        "calories_burned",
+        "avg_next_glucose",
+        "avg_glucose_delta_to_next",
+    ]
+
+    for column in required_columns:
+        if column not in df.columns:
+            return {
+                "row_count": 0,
+                "steps_vs_avg_next_glucose": None,
+                "calories_vs_avg_next_glucose": None,
+                "steps_vs_glucose_delta": None,
+                "calories_vs_glucose_delta": None,
+            }
+
+    for column in required_columns:
+        df[column] = pd.to_numeric(df[column], errors="coerce")
+
+    paired_df = df.dropna(subset=required_columns).copy()
+
+    if len(paired_df) < 2:
+        return {
+            "row_count": len(paired_df),
+            "steps_vs_avg_next_glucose": None,
+            "calories_vs_avg_next_glucose": None,
+            "steps_vs_glucose_delta": None,
+            "calories_vs_glucose_delta": None,
+        }
+
+    return {
+        "row_count": len(paired_df),
+        "steps_vs_avg_next_glucose": round(
+            paired_df["steps"].corr(paired_df["avg_next_glucose"]),
+            3,
+        ),
+        "calories_vs_avg_next_glucose": round(
+            paired_df["calories_burned"].corr(paired_df["avg_next_glucose"]),
+            3,
+        ),
+        "steps_vs_glucose_delta": round(
+            paired_df["steps"].corr(paired_df["avg_glucose_delta_to_next"]),
+            3,
+        ),
+        "calories_vs_glucose_delta": round(
+            paired_df["calories_burned"].corr(
+                paired_df["avg_glucose_delta_to_next"]
+            ),
+            3,
+        ),
+    }
+
+
+def get_activity_glucose_correlations(
+    start_date=None,
+    end_date=None,
+    glucose_days: int | None = 365,
+) -> dict[str, Any]:
+    """
+    DB-backed correlation metrics for Activity ↔ Glucose analysis.
+    """
+    event_summary_rows = get_activity_glucose_event_summary(
+        start_date=start_date,
+        end_date=end_date,
+        glucose_days=glucose_days,
+    )
+
+    return calculate_activity_glucose_correlations(event_summary_rows)
