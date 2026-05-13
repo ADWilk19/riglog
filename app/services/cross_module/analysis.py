@@ -13,6 +13,12 @@ from app.services.glucose.analysis import (
     get_time_in_range_metrics,
 )
 
+CORRELATION_METRIC_LABELS = {
+    "steps_vs_avg_next_glucose": "Steps vs average next glucose",
+    "calories_vs_avg_next_glucose": "Calories burned vs average next glucose",
+    "steps_vs_glucose_delta": "Steps vs glucose change",
+    "calories_vs_glucose_delta": "Calories burned vs glucose change",
+}
 
 def _empty_cross_module_rows() -> list[dict[str, Any]]:
     return []
@@ -369,6 +375,43 @@ def _empty_correlation_contract(row_count: int = 0) -> dict[str, Any]:
     }
 
 
+def get_ranked_correlation_insights(
+    correlation_metrics: dict[str, Any],
+) -> list[dict[str, Any]]:
+    """
+    Return correlation interpretations ordered by strongest absolute relationship.
+
+    This produces a UI-ready list while keeping analytical formatting in the
+    service layer.
+    """
+    interpretations = correlation_metrics.get("interpretations", {})
+
+    insight_rows = []
+
+    for key, interpretation in interpretations.items():
+        correlation = interpretation.get("correlation")
+
+        insight_rows.append(
+            {
+                "key": key,
+                "title": CORRELATION_METRIC_LABELS.get(key, key),
+                "correlation": correlation,
+                "strength": interpretation.get("strength"),
+                "direction": interpretation.get("direction"),
+                "summary": interpretation.get("summary"),
+            }
+        )
+
+    return sorted(
+        insight_rows,
+        key=lambda row: (
+            row["correlation"] is None,
+            -abs(row["correlation"]) if row["correlation"] is not None else 0,
+            row["title"],
+        ),
+    )
+
+
 def calculate_activity_glucose_correlations(
     event_summary_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
@@ -461,4 +504,7 @@ def get_activity_glucose_correlations(
         glucose_days=glucose_days,
     )
 
-    return calculate_activity_glucose_correlations(event_summary_rows)
+    metrics = calculate_activity_glucose_correlations(event_summary_rows)
+    metrics["ranked_insights"] = get_ranked_correlation_insights(metrics)
+
+    return metrics

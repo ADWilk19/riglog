@@ -3,6 +3,7 @@ from datetime import datetime, date
 from app.services.cross_module.analysis import (
     calculate_activity_glucose_correlations,
     calculate_activity_glucose_event_summary,
+    get_ranked_correlation_insights,
 )
 
 def test_activity_glucose_event_summary_handles_missing_glucose_rows():
@@ -285,4 +286,47 @@ def test_activity_glucose_correlations_calculates_paired_metrics():
                 ),
             },
         },
+    }
+
+
+def test_ranked_correlation_insights_orders_by_absolute_strength():
+    """Return correlation insights ordered by strongest absolute coefficient."""
+    metrics = {
+        "interpretations": {
+            "steps_vs_avg_next_glucose": {
+                "correlation": -0.25,
+                "strength": "weak",
+                "direction": "negative",
+                "summary": "Weak negative relationship.",
+            },
+            "calories_vs_glucose_delta": {
+                "correlation": 0.75,
+                "strength": "strong",
+                "direction": "positive",
+                "summary": "Strong positive relationship.",
+            },
+            "steps_vs_glucose_delta": {
+                "correlation": None,
+                "strength": "insufficient_data",
+                "direction": "insufficient_data",
+                "summary": "Not enough paired activity and glucose data yet.",
+            },
+        }
+    }
+
+    result = get_ranked_correlation_insights(metrics)
+
+    assert [row["key"] for row in result] == [
+        "calories_vs_glucose_delta",
+        "steps_vs_avg_next_glucose",
+        "steps_vs_glucose_delta",
+    ]
+
+    assert result[0] == {
+        "key": "calories_vs_glucose_delta",
+        "title": "Calories burned vs glucose change",
+        "correlation": 0.75,
+        "strength": "strong",
+        "direction": "positive",
+        "summary": "Strong positive relationship.",
     }
