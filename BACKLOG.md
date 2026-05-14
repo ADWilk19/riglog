@@ -214,7 +214,7 @@ This backlog is organised by architectural layer and implementation priority.
     * Bottom: daily steps
     * Shared date axis
     * Service-backed via daily overlay contract
-  * [ ] Align activity and glucose on timestamp / intraday grain
+  * [x] Align activity and glucose on timestamp / intraday grain
   * [ ] Show step density vs glucose where visually useful
   * [ ] Decide whether intraday overlay belongs in Glucose tab or separate insight view
 
