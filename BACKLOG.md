@@ -216,6 +216,12 @@ This backlog is organised by architectural layer and implementation priority.
     * Service-backed via daily overlay contract
   * [x] Align activity and glucose on timestamp / intraday grain
   * [ ] Show step density vs glucose where visually useful
+    * [ ] Add intraday Activity ↔ Glucose stacked chart
+      * Top: glucose by time bucket
+      * Bottom: steps by same time bucket
+      * Powered by `get_intraday_activity_glucose_alignment()`
+    * [ ] Keep chart separate from AGP
+    * [ ] Avoid dual-axis overlay unless later justified
   * [ ] Decide whether intraday overlay belongs in Glucose tab or separate insight view
 
 * [x] Correlation Metrics
