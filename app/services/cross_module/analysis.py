@@ -593,6 +593,21 @@ def calculate_intraday_activity_glucose_alignment(
     return result[output_columns].to_dict(orient="records")
 
 
+def get_available_intraday_activity_dates() -> list:
+    """Return available intraday activity dates ordered ascending."""
+    rows = get_intraday_activity_rows()
+
+    dates = sorted(
+        {
+            row["recorded_at"].date()
+            for row in rows
+            if row.get("recorded_at") is not None
+        }
+    )
+
+    return dates
+
+
 def get_intraday_activity_glucose_alignment(
     start_date=None,
     end_date=None,

@@ -141,11 +141,22 @@ class ActivityRefreshWorker(QObject):
 
         try:
             importer = FitbitImporter()
-            rows_written = importer.import_daily_steps(
-                self.start_date,
-                self.end_date,
+            daily_rows_written = importer.import_daily_steps(
+                self.start_date.isoformat(),
+                self.end_date.isoformat(),
             )
-            self.finished.emit(rows_written)
+
+            intraday_start_date = max(
+                self.end_date - timedelta(days=6),
+                self.start_date,
+            )
+
+            intraday_rows_written = importer.import_intraday_activity(
+                intraday_start_date.isoformat(),
+                self.end_date.isoformat(),
+            )
+
+            self.finished.emit(daily_rows_written + intraday_rows_written)
 
         except FitbitAuthError:
             self.auth_error.emit()

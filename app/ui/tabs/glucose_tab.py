@@ -1,5 +1,5 @@
 from pathlib import Path
-from datetime import timedelta
+from datetime import datetime, timedelta
 from statistics import mean
 import tempfile
 
@@ -36,6 +36,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.services.cross_module.analysis import (
+    get_available_intraday_activity_dates,
     get_daily_activity_glucose_overlay,
     get_intraday_activity_glucose_alignment
 )
@@ -748,6 +749,7 @@ class GlucoseTab(QWidget):
         self._build_agp_chart()
         self._build_chart()
         self._build_daily_activity_glucose_overlay_chart()
+        self._build_intraday_activity_date_selector()
         self._build_intraday_activity_glucose_alignment_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
@@ -1172,6 +1174,39 @@ class GlucoseTab(QWidget):
             alignment=Qt.AlignmentFlag.AlignRight,
         )
 
+    def _build_intraday_activity_date_selector(self) -> None:
+        """Build date selector for the intraday activity/glucose chart."""
+        selector_layout = QHBoxLayout()
+        selector_layout.setSpacing(12)
+
+        selector_layout.addStretch()
+        selector_layout.addWidget(self._create_toolbar_label("Intraday Date"))
+
+        self.intraday_activity_date_filter = QComboBox()
+        self.intraday_activity_date_filter.setFixedWidth(140)
+
+        available_dates = get_available_intraday_activity_dates()
+
+        for activity_date in available_dates:
+            self.intraday_activity_date_filter.addItem(
+                activity_date.isoformat(),
+                activity_date,
+            )
+
+        if available_dates:
+            self.intraday_activity_date_filter.setCurrentIndex(
+                len(available_dates) - 1
+            )
+
+        self.intraday_activity_date_filter.currentIndexChanged.connect(
+            self.load_readings
+        )
+
+        selector_layout.addWidget(self.intraday_activity_date_filter)
+        selector_layout.addStretch()
+
+        self.layout.addLayout(selector_layout)
+
     def _get_filtered_readings(self) -> list[dict]:
         """Return readings filtered by the selected meal event and time range."""
         readings = get_all_glucose_readings_with_meal_event(days=365)
@@ -1244,10 +1279,25 @@ class GlucoseTab(QWidget):
         overlay_rows = get_daily_activity_glucose_overlay(glucose_days=365)
         self.daily_activity_glucose_overlay_chart.plot_overlay(overlay_rows)
 
-        alignment_rows = get_intraday_activity_glucose_alignment(
-            glucose_days=365,
-            bucket_minutes=30,
-        )
+        selected_date = self.intraday_activity_date_filter.currentData()
+
+        if selected_date is not None:
+            start_datetime = datetime.combine(selected_date, datetime.min.time())
+            end_datetime = (
+                start_datetime
+                + timedelta(days=1)
+                - timedelta(microseconds=1)
+            )
+
+            alignment_rows = get_intraday_activity_glucose_alignment(
+                start_date=start_datetime,
+                end_date=end_datetime,
+                glucose_days=365,
+                bucket_minutes=30,
+            )
+        else:
+            alignment_rows = []
+
         self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
 
         profile_data = get_time_of_day_profile(readings)
