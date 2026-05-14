@@ -209,8 +209,14 @@ This backlog is organised by architectural layer and implementation priority.
 
 * [ ] Overlay Activity on Glucose Charts
 
-  * Align on timestamp
-  * Show step density vs glucose
+  * [x] Add daily Activity ↔ Glucose comparison chart
+    * Top: daily average glucose
+    * Bottom: daily steps
+    * Shared date axis
+    * Service-backed via daily overlay contract
+  * [ ] Align activity and glucose on timestamp / intraday grain
+  * [ ] Show step density vs glucose where visually useful
+  * [ ] Decide whether intraday overlay belongs in Glucose tab or separate insight view
 
 * [x] Correlation Metrics
 
@@ -375,6 +381,25 @@ This backlog is organised by architectural layer and implementation priority.
     * Clear the stored selection
   * Goal:
     * Improve chart-mode toggle UX without confusing daily selection with weekly aggregation
+
+---
+
+### Glucose → Chart Layer
+
+* [ ] Add Chart Tooltips
+
+  * Add hover tooltips for glucose charts:
+    * Daily Average Glucose
+    * Daily Glucose vs Steps
+    * Time-of-Day Profile
+    * Meal Event Boxplot, if feasible
+  * Tooltip content:
+    * date / time bucket
+    * glucose value or average
+    * reading count where relevant
+    * steps for activity overlay chart
+  * Keep tooltip styling aligned with dark theme
+  * Avoid adding tooltips to AGP unless a clear interaction model emerges
 
 ---
 
