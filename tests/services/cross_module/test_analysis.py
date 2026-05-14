@@ -4,6 +4,7 @@ from app.services.cross_module.analysis import (
     calculate_activity_glucose_correlations,
     calculate_activity_glucose_event_summary,
     calculate_daily_activity_glucose_overlay,
+    calculate_intraday_activity_glucose_alignment,
     get_ranked_correlation_insights,
 )
 
@@ -374,5 +375,106 @@ def test_daily_activity_glucose_overlay_handles_missing_calories_column():
             "max_glucose": 8.0,
             "steps": 5000,
             "calories_burned": 0,
+        }
+    ]
+
+
+def test_intraday_activity_glucose_alignment_groups_into_time_buckets():
+    """Aggregate activity and glucose into shared intraday time buckets."""
+    activity_rows = [
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 5),
+            "steps": 100,
+            "calories_burned": 10.0,
+        },
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 20),
+            "steps": 150,
+            "calories_burned": 12.0,
+        },
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 45),
+            "steps": 200,
+            "calories_burned": 15.0,
+        },
+    ]
+
+    glucose_rows = [
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 10),
+            "glucose_value": 7.0,
+        },
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 25),
+            "glucose_value": 8.0,
+        },
+        {
+            "recorded_at": datetime(2026, 5, 12, 8, 50),
+            "glucose_value": 9.0,
+        },
+    ]
+
+    result = calculate_intraday_activity_glucose_alignment(
+        activity_rows=activity_rows,
+        glucose_rows=glucose_rows,
+        bucket_minutes=30,
+    )
+
+    assert result == [
+        {
+            "date": date(2026, 5, 12),
+            "bucket_start": datetime(2026, 5, 12, 8, 0),
+            "bucket_label": "08:00",
+            "steps": 250,
+            "calories_burned": 22.0,
+            "activity_interval_count": 2,
+            "glucose_count": 2,
+            "avg_glucose": 7.5,
+            "min_glucose": 7.0,
+            "max_glucose": 8.0,
+        },
+        {
+            "date": date(2026, 5, 12),
+            "bucket_start": datetime(2026, 5, 12, 8, 30),
+            "bucket_label": "08:30",
+            "steps": 200,
+            "calories_burned": 15.0,
+            "activity_interval_count": 1,
+            "glucose_count": 1,
+            "avg_glucose": 9.0,
+            "min_glucose": 9.0,
+            "max_glucose": 9.0,
+        },
+    ]
+
+
+def test_intraday_activity_glucose_alignment_handles_missing_glucose_rows():
+    """Return activity buckets with zero/null glucose metrics when glucose is absent."""
+    activity_rows = [
+        {
+            "recorded_at": datetime(2026, 5, 12, 9, 10),
+            "steps": 300,
+            "calories_burned": 20.0,
+        }
+    ]
+
+    result = calculate_intraday_activity_glucose_alignment(
+        activity_rows=activity_rows,
+        glucose_rows=[],
+        bucket_minutes=30,
+    )
+
+    assert result == [
+        {
+            "date": date(2026, 5, 12),
+            "bucket_start": datetime(2026, 5, 12, 9, 0),
+            "bucket_label": "09:00",
+            "steps": 300,
+            "calories_burned": 20.0,
+            "activity_interval_count": 1,
+            "glucose_count": 0,
+            "avg_glucose": None,
+            "min_glucose": None,
+            "max_glucose": None,
         }
     ]

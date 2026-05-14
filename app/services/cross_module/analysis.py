@@ -6,6 +6,7 @@ import pandas as pd
 
 from app.services.activity.analysis import (
     ACTIVITY_EVENT_ORDER,
+    get_intraday_activity_rows,
     get_steps_by_event_window,
 )
 from app.services.glucose.analysis import (
@@ -416,6 +417,204 @@ def calculate_daily_activity_glucose_overlay(
     return result[output_columns].to_dict(orient="records")
 
 
+def calculate_intraday_activity_glucose_alignment(
+    activity_rows: list[dict[str, Any]],
+    glucose_rows: list[dict[str, Any]],
+    bucket_minutes: int = 30,
+) -> list[dict[str, Any]]:
+    """
+    Align intraday activity and glucose readings into shared time buckets.
+
+    Returns one row per activity bucket. Glucose metrics are nullable so
+    activity-only buckets can still be displayed safely.
+    """
+    if not activity_rows:
+        return []
+
+    activity_df = pd.DataFrame(activity_rows).copy()
+
+    activity_df["recorded_at"] = pd.to_datetime(
+        activity_df["recorded_at"],
+        errors="coerce",
+    )
+    activity_df["steps"] = pd.to_numeric(
+        activity_df["steps"],
+        errors="coerce",
+    ).fillna(0)
+
+    if "calories_burned" not in activity_df.columns:
+        activity_df["calories_burned"] = 0
+
+    activity_df["calories_burned"] = pd.to_numeric(
+        activity_df["calories_burned"],
+        errors="coerce",
+    ).fillna(0)
+
+    activity_df = activity_df.dropna(subset=["recorded_at"]).copy()
+
+    if activity_df.empty:
+        return []
+
+    activity_df["bucket_start"] = activity_df["recorded_at"].apply(
+        lambda timestamp: _floor_timestamp_to_bucket(
+            timestamp,
+            bucket_minutes=bucket_minutes,
+        )
+    )
+
+    activity_bucket_df = (
+        activity_df.groupby("bucket_start", as_index=False)
+        .agg(
+            steps=("steps", "sum"),
+            calories_burned=("calories_burned", "sum"),
+            activity_interval_count=("recorded_at", "count"),
+        )
+    )
+
+    glucose_df = pd.DataFrame(glucose_rows).copy()
+
+    if glucose_df.empty:
+        glucose_bucket_df = pd.DataFrame(
+            columns=[
+                "bucket_start",
+                "glucose_count",
+                "avg_glucose",
+                "min_glucose",
+                "max_glucose",
+            ]
+        )
+    else:
+        glucose_df["recorded_at"] = pd.to_datetime(
+            glucose_df["recorded_at"],
+            errors="coerce",
+        )
+        glucose_df["glucose_value"] = pd.to_numeric(
+            glucose_df["glucose_value"],
+            errors="coerce",
+        )
+
+        glucose_df = glucose_df.dropna(
+            subset=["recorded_at", "glucose_value"],
+        ).copy()
+
+        if glucose_df.empty:
+            glucose_bucket_df = pd.DataFrame(
+                columns=[
+                    "bucket_start",
+                    "glucose_count",
+                    "avg_glucose",
+                    "min_glucose",
+                    "max_glucose",
+                ]
+            )
+        else:
+            glucose_df["bucket_start"] = glucose_df["recorded_at"].apply(
+                lambda timestamp: _floor_timestamp_to_bucket(
+                    timestamp,
+                    bucket_minutes=bucket_minutes,
+                )
+            )
+
+            glucose_bucket_df = (
+                glucose_df.groupby("bucket_start", as_index=False)
+                .agg(
+                    glucose_count=("glucose_value", "count"),
+                    avg_glucose=("glucose_value", "mean"),
+                    min_glucose=("glucose_value", "min"),
+                    max_glucose=("glucose_value", "max"),
+                )
+            )
+
+            glucose_bucket_df["avg_glucose"] = glucose_bucket_df[
+                "avg_glucose"
+            ].round(2)
+            glucose_bucket_df["min_glucose"] = glucose_bucket_df[
+                "min_glucose"
+            ].round(2)
+            glucose_bucket_df["max_glucose"] = glucose_bucket_df[
+                "max_glucose"
+            ].round(2)
+
+    result = activity_bucket_df.merge(
+        glucose_bucket_df,
+        on="bucket_start",
+        how="left",
+    )
+
+    result["date"] = pd.to_datetime(result["bucket_start"]).dt.date
+    result["bucket_label"] = pd.to_datetime(
+        result["bucket_start"]
+    ).dt.strftime("%H:%M")
+
+    count_columns = ["glucose_count"]
+    nullable_metric_columns = [
+        "avg_glucose",
+        "min_glucose",
+        "max_glucose",
+    ]
+
+    for column in count_columns:
+        if column not in result.columns:
+            result[column] = 0
+        result[column] = result[column].fillna(0).astype(int)
+
+    for column in nullable_metric_columns:
+        if column not in result.columns:
+            result[column] = None
+        else:
+            result[column] = result[column].astype(object)
+            result[column] = result[column].where(
+                pd.notna(result[column]),
+                None,
+            )
+
+    result["calories_burned"] = result["calories_burned"].round(2)
+
+    result = result.sort_values("bucket_start").reset_index(drop=True)
+
+    output_columns = [
+        "date",
+        "bucket_start",
+        "bucket_label",
+        "steps",
+        "calories_burned",
+        "activity_interval_count",
+        "glucose_count",
+        "avg_glucose",
+        "min_glucose",
+        "max_glucose",
+    ]
+
+    result["bucket_start"] = pd.to_datetime(
+        result["bucket_start"],
+        errors="coerce",
+    ).dt.to_pydatetime()
+
+    return result[output_columns].to_dict(orient="records")
+
+
+def get_intraday_activity_glucose_alignment(
+    start_date=None,
+    end_date=None,
+    glucose_days: int | None = 365,
+    bucket_minutes: int = 30,
+) -> list[dict[str, Any]]:
+    """
+    DB-backed intraday activity/glucose alignment contract.
+    """
+    activity_rows = get_intraday_activity_rows(
+        start_date=start_date,
+        end_date=end_date,
+    )
+    glucose_rows = get_all_glucose_readings_with_meal_event(days=glucose_days)
+
+    return calculate_intraday_activity_glucose_alignment(
+        activity_rows=activity_rows,
+        glucose_rows=glucose_rows,
+        bucket_minutes=bucket_minutes,
+    )
+
+
 def get_daily_activity_glucose_overlay(
     glucose_days: int | None = 365,
 ) -> list[dict[str, Any]]:
@@ -431,6 +630,24 @@ def get_daily_activity_glucose_overlay(
         activity_rows=activity_rows,
         glucose_rows=glucose_rows,
     )
+
+
+def _floor_timestamp_to_bucket(
+    timestamp,
+    bucket_minutes: int,
+):
+    """Floor a timestamp to the nearest lower time bucket."""
+    ts = pd.Timestamp(timestamp)
+
+    total_minutes = ts.hour * 60 + ts.minute
+    bucket_start_minutes = (total_minutes // bucket_minutes) * bucket_minutes
+
+    return ts.replace(
+        hour=bucket_start_minutes // 60,
+        minute=bucket_start_minutes % 60,
+        second=0,
+        microsecond=0,
+    ).to_pydatetime()
 
 
 def classify_correlation_strength(correlation: float | None) -> str:
