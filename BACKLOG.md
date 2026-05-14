@@ -207,7 +207,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Activity ↔ Glucose Integration
 
-* [ ] Overlay Activity on Glucose Charts
+* [x] Overlay Activity on Glucose Charts
 
   * [x] Add daily Activity ↔ Glucose comparison chart
     * Top: daily average glucose
@@ -215,14 +215,22 @@ This backlog is organised by architectural layer and implementation priority.
     * Shared date axis
     * Service-backed via daily overlay contract
   * [x] Align activity and glucose on timestamp / intraday grain
-  * [ ] Show step density vs glucose where visually useful
-    * [ ] Add intraday Activity ↔ Glucose stacked chart
+  * [x] Show step density vs glucose where visually useful
+    * [x] Add intraday Activity ↔ Glucose stacked chart
       * Top: glucose by time bucket
       * Bottom: steps by same time bucket
       * Powered by `get_intraday_activity_glucose_alignment()`
-    * [ ] Keep chart separate from AGP
-    * [ ] Avoid dual-axis overlay unless later justified
-  * [ ] Decide whether intraday overlay belongs in Glucose tab or separate insight view
+    * [x] Keep chart separate from AGP
+    * [x] Avoid dual-axis overlay unless later justified
+  * [x] Decide whether intraday overlay belongs in Glucose tab or separate insight view
+    * Decision:
+      * Keep the first version in the Glucose tab
+    * Reason:
+      * The chart directly contextualises glucose readings against same-day step density
+      * It is service-backed and date-selectable
+      * It avoids misleading AGP overlays
+    * Future:
+      * Consider moving cross-module charts into a dedicated Insights tab if the Glucose tab becomes too crowded
 
 * [x] Correlation Metrics
 
