@@ -2,13 +2,15 @@
 
 ![RigLog Logo](assets/branding/logo_full.png)
 
-RigLog is a desktop health analytics application for analysing glucose and activity data.
+RigLog is a desktop health analytics application for analysing glucose, activity, and cross-module health patterns.
 
 It transforms raw health data into structured insights through:
 
 - Time-in-range analysis
 - Variability metrics (SD, CV, GMI)
 - Meal-event breakdowns
+- Fitbit activity analysis
+- Daily and intraday glucose/activity comparisons
 - Interactive filtering and drill-down
 
 Built with a service-layer architecture, RigLog separates data processing from UI, enabling scalable and consistent analytics across features.
@@ -63,6 +65,8 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Unified active-filter state display
   - Daily average trends
   - Meal-event glucose distribution
+  - Daily glucose vs steps comparison chart
+  - Intraday glucose readings vs step-density chart
 - Glucose variability metrics:
   - Mean, SD, CV, GMI
 - Insulin dose effectiveness analysis:
@@ -77,6 +81,7 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
 - Export professional PDF reports with charts
 - Activity tracking via Fitbit integration:
   - Daily step import and sync
+  - Intraday steps and calorie burn import
   - Background sync and token refresh
   - 7-day and 14-day rolling goal adherence
   - Best/worst weekly step summaries
@@ -86,6 +91,11 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
 - Unified home dashboard:
   - Live summary cards for glucose and activity
   - Quick navigation between modules
+- Cross-module activity/glucose intelligence:
+  - Daily average glucose compared with daily steps
+  - Intraday glucose readings aligned with step-density buckets
+  - Date-selectable intraday comparison chart
+  - Service-layer correlation contracts for glucose/activity outcomes
 
 ### 📊 Overview Dashboard
 
@@ -146,6 +156,24 @@ Analyse daily and weekly activity patterns using Fitbit step data:
 - Daily and weekly trend charts
 
 The Activity tab uses service-layer metrics so summary cards, charts, and dashboard views remain consistent.
+
+### 🔗 Activity ↔ Glucose Insights
+
+RigLog now supports cross-module analysis between glucose and Fitbit activity data.
+
+The Glucose tab includes service-backed comparison charts for:
+
+- Daily average glucose vs daily steps
+- Intraday glucose readings vs step-density buckets
+- Date-selectable intraday activity/glucose review
+
+This helps answer questions such as:
+
+- Do higher-step days appear alongside lower or higher glucose averages?
+- What was activity density around specific glucose readings?
+- Are glucose readings occurring before, during, or after active periods?
+
+The implementation keeps analytical logic in the service layer, so charting remains separate from data preparation.
 
 ### 📈 Ambulatory Glucose Profile (AGP)
 
@@ -362,7 +390,7 @@ This principle drives the design of features such as:
 
 ## Project Status
 
-RigLog is currently in active development, with two core modules implemented:
+RigLog is currently in active development, with glucose, activity, and early cross-module insight workflows implemented:
 
 ### 🩸 Glucose Module (v1 — Complete)
 
@@ -382,10 +410,27 @@ RigLog is currently in active development, with two core modules implemented:
 
 - Fitbit API integration (OAuth + sync)
 - Daily activity ingestion
+- Intraday steps and calorie burn ingestion
+- Background sync and token refresh
 - 7-day rolling averages and trends
 - Goal adherence tracking (10k steps)
 - Streak analysis
 - Interactive charts (daily + weekly)
+
+---
+
+### 🔗 Cross-Module Intelligence (Phase 4 — In Progress)
+
+- Daily Activity ↔ Glucose comparison chart
+- Intraday glucose readings aligned with step-density buckets
+- Date-selectable intraday activity review
+- Service-layer contracts for:
+  - event-window activity/glucose summaries
+  - glucose outcome comparisons
+  - activity/glucose correlation metrics
+  - ranked correlation insight outputs
+
+Future work will expand this into broader insight views as additional modules are added.
 
 ---
 
@@ -394,6 +439,9 @@ RigLog is currently in active development, with two core modules implemented:
 - Unified summary view across modules
 - Live summary cards powered by shared service layer
 - Navigation entry point into each module
+
+
+  
 
 ## 🚀 Quick Start
 
