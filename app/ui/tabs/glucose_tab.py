@@ -35,7 +35,10 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
-from app.services.cross_module.analysis import get_daily_activity_glucose_overlay
+from app.services.cross_module.analysis import (
+    get_daily_activity_glucose_overlay,
+    get_intraday_activity_glucose_alignment
+)
 
 from app.services.glucose.analysis import (
     calculate_agp,
@@ -424,6 +427,116 @@ class GlucoseProfileChart(FigureCanvasQTAgg):
         self.draw()
 
 
+class IntradayActivityGlucoseAlignmentChart(FigureCanvasQTAgg):
+    """Stacked intraday chart comparing glucose with step density."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 5.2))
+        self.glucose_ax = self.figure.add_subplot(211)
+        self.steps_ax = self.figure.add_subplot(212, sharex=self.glucose_ax)
+        super().__init__(self.figure)
+
+    def plot_alignment(self, alignment_rows: list[dict]) -> None:
+        """Plot glucose and steps using shared intraday time buckets."""
+        self.figure.clear()
+
+        self.glucose_ax = self.figure.add_subplot(211)
+        self.steps_ax = self.figure.add_subplot(212, sharex=self.glucose_ax)
+
+        apply_chart_theme(self.figure, self.glucose_ax)
+        apply_chart_theme(self.figure, self.steps_ax)
+
+        self.glucose_ax.set_title(
+            "Intraday Glucose Readings vs Step Density",
+            color=CHART_TEXT,
+        )
+        self.glucose_ax.set_ylabel("Glucose (mmol/L)", color=CHART_TEXT)
+        self.steps_ax.set_ylabel("Steps", color=CHART_TEXT)
+
+        self.glucose_ax.axhspan(4.0, 10.0, color=TARGET_GREEN, alpha=0.25)
+        self.glucose_ax.axhline(4.0, color="#66BB6A", linestyle=":", linewidth=1)
+        self.glucose_ax.axhline(10.0, color="#66BB6A", linestyle=":", linewidth=1)
+        self.glucose_ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
+        self.glucose_ax.axhline(15.0, color=HYPER_DANGER, linestyle="--", linewidth=1)
+
+        if not alignment_rows:
+            self.glucose_ax.text(
+                0.5,
+                0.5,
+                "No intraday glucose/activity data available",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+                transform=self.glucose_ax.transAxes,
+            )
+            self.steps_ax.set_axis_off()
+            self.figure.tight_layout()
+            self.draw()
+            return
+
+        rows_with_glucose = [
+            row for row in alignment_rows
+            if row.get("avg_glucose") is not None
+        ]
+
+        bucket_starts = [row["bucket_start"] for row in alignment_rows]
+        steps = [row["steps"] for row in alignment_rows]
+
+        if rows_with_glucose:
+            glucose_bucket_starts = [
+                row["bucket_start"] for row in rows_with_glucose
+            ]
+            avg_glucose = [
+                row["avg_glucose"] for row in rows_with_glucose
+            ]
+
+            self.glucose_ax.scatter(
+                glucose_bucket_starts,
+                avg_glucose,
+                s=36,
+                color=LINE_RED,
+                label="Avg glucose",
+                zorder=3,
+            )
+        else:
+            self.glucose_ax.text(
+                0.5,
+                0.5,
+                "No glucose readings in matched activity buckets",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+                transform=self.glucose_ax.transAxes,
+            )
+
+        self.steps_ax.bar(
+            bucket_starts,
+            steps,
+            width=0.018,
+            color=ACTIVITY_TEAL,
+            alpha=0.60,
+            label="Steps",
+        )
+        self.steps_ax.legend(
+            facecolor=CHART_BG,
+            edgecolor=CHART_SPINE,
+            labelcolor=CHART_TEXT,
+        )
+        self.steps_ax.set_xlabel("Time bucket", color=CHART_TEXT, labelpad=2)
+
+        if len(bucket_starts) == 1:
+            self.glucose_ax.set_xlim(
+                bucket_starts[0] - timedelta(hours=1),
+                bucket_starts[0] + timedelta(hours=1),
+            )
+        else:
+            self.glucose_ax.set_xlim(min(bucket_starts), max(bucket_starts))
+
+        self.figure.autofmt_xdate()
+        self.figure.subplots_adjust(hspace=0.30, bottom=0.22)
+        self.draw()
+
+
 class MealEventBoxPlotChart(FigureCanvasQTAgg):
     """Matplotlib canvas for glucose distribution by meal event."""
 
@@ -635,6 +748,7 @@ class GlucoseTab(QWidget):
         self._build_agp_chart()
         self._build_chart()
         self._build_daily_activity_glucose_overlay_chart()
+        self._build_intraday_activity_glucose_alignment_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
         self._build_insulin_effectiveness_table()
@@ -912,6 +1026,13 @@ class GlucoseTab(QWidget):
         self.daily_activity_glucose_overlay_chart.setMinimumHeight(420)
         self.layout.addWidget(self.daily_activity_glucose_overlay_chart)
 
+    def _build_intraday_activity_glucose_alignment_chart(self) -> None:
+        self.intraday_activity_glucose_alignment_chart = (
+            IntradayActivityGlucoseAlignmentChart()
+        )
+        self.intraday_activity_glucose_alignment_chart.setMinimumHeight(420)
+        self.layout.addWidget(self.intraday_activity_glucose_alignment_chart)
+
     def _build_insulin_effectiveness_table(self) -> None:
         self.layout.addWidget(
             self._create_section_title("Dose Effectiveness by Previous Meal Event")
@@ -1122,6 +1243,12 @@ class GlucoseTab(QWidget):
 
         overlay_rows = get_daily_activity_glucose_overlay(glucose_days=365)
         self.daily_activity_glucose_overlay_chart.plot_overlay(overlay_rows)
+
+        alignment_rows = get_intraday_activity_glucose_alignment(
+            glucose_days=365,
+            bucket_minutes=30,
+        )
+        self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
 
         profile_data = get_time_of_day_profile(readings)
         self.profile_chart.plot_profile(profile_data)
