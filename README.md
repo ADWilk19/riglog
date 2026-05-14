@@ -227,9 +227,9 @@ RigLog is built as a modular desktop application with a clear separation between
 
 High-level flow of data and responsibilities across UI, service, and data layers.
 
-This architecture ensures that:
+This architecture ensures:
 
-- separation of concerns between UI and analytics
+- clear separation of concerns between UI and analytics
 - reusable data transformations across features
 - consistent outputs across charts and summaries
 
@@ -255,6 +255,7 @@ flowchart TD
         glucose_analysis["glucose/analysis.py"]
         glucose_importer["glucose/importer.py"]
         activity_analysis["activity/analysis.py"]
+        cross_module_analysis["cross_module/analysis.py"]
         fitbit_importer["activity/fitbit_importer.py"]
         fitbit_client["activity/fitbit_client.py"]
         fitbit_auth["activity/fitbit_auth.py"]
@@ -285,6 +286,7 @@ flowchart TD
     diabetes --> glucose_importer
     glucose_ui --> glucose_importer
     glucose_ui --> glucose_analysis
+    glucose_ui --> cross_module_analysis
     glucose_importer --> database
     glucose_analysis --> database
 
@@ -296,6 +298,10 @@ flowchart TD
     home --> activity_analysis
     fitbit_importer --> database
     activity_analysis --> database
+
+    cross_module_analysis --> activity_analysis
+    cross_module_analysis --> glucose_analysis
+    cross_module_analysis --> database
 
     models --> database
     database --> sqlite
@@ -439,9 +445,6 @@ Future work will expand this into broader insight views as additional modules ar
 - Unified summary view across modules
 - Live summary cards powered by shared service layer
 - Navigation entry point into each module
-
-
-  
 
 ## 🚀 Quick Start
 
