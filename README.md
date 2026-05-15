@@ -96,6 +96,11 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Intraday glucose readings aligned with step-density buckets
   - Date-selectable intraday comparison chart
   - Service-layer correlation contracts for glucose/activity outcomes
+- Environmental glucose analysis:
+  - Daily temperature data can be imported manually from CSV
+  - Weather rows are location-aware, supporting multiple regular locations
+  - The Glucose tab includes a Temperature vs Glucose summary table
+  - Temperature buckets show average glucose and time-in-range distribution
 
 ### 📊 Overview Dashboard
 
@@ -437,6 +442,16 @@ RigLog is currently in active development, with glucose, activity, and early cro
   - ranked correlation insight outputs
 
 Future work will expand this into broader insight views as additional modules are added.
+
+---
+
+### 🌡️ Environmental Factors → Glucose
+
+- Daily temperature records persisted in `daily_environment`
+- Location-aware weather data model
+- Manual weather CSV import
+- Temperature bucket summary in the Glucose tab
+- Open-Meteo historical import planned next
 
 ---
 

@@ -338,6 +338,23 @@ This backlog is organised by architectural layer and implementation priority.
       * hot
     * Handles empty buckets cleanly with `0` / `-`
 
+* [x] Location-Aware Environmental Data
+
+  * Implemented:
+    * Extended `daily_environment` to support multiple locations
+    * Added:
+      * `location_label`
+      * `latitude`
+      * `longitude`
+    * Updated uniqueness rule to:
+      * date + location + source
+    * Updated manual CSV importer to support optional location fields
+    * Preserved backwards compatibility:
+      * missing location defaults to `default`
+    * Updated service-layer functions to accept `location_label`
+    * Prevents double-counting glucose readings when weather exists for multiple locations on the same date
+    * Added importer test coverage for multiple locations
+
 * [ ] Temperature vs Glucose — Chart Visualisation
 
   * Visualisations:
@@ -347,14 +364,30 @@ This backlog is organised by architectural layer and implementation priority.
   * Decision:
     * Defer charting until more weather rows are available
 
-* [ ] Temperature Import Hardening
+* [x] Temperature Import Hardening — Initial
 
-  * Add importer tests once DB test fixtures are formalised
-  * Validate required CSV columns:
-    * `date`
-    * `avg_temperature_c`
-  * Optional:
-    * add friendly error messages for malformed CSV files
+  * Implemented:
+    * Added importer tests with isolated SQLite test database
+    * Confirmed duplicate-skipping behaviour
+    * Confirmed optional fields default cleanly
+    * Confirmed same-date imports are allowed for different locations
+
+* [ ] Weather Data Expansion
+
+  * Add Open-Meteo historical weather import
+  * Fetch daily weather by:
+    * location label
+    * latitude
+    * longitude
+    * start date
+    * end date
+  * Persist:
+    * mean daily temperature
+    * min daily temperature
+    * max daily temperature
+    * source = `open_meteo`
+  * Support two primary user locations without storing coordinates in Git
+  * Load location config from environment variables
 
 * [ ] Future Environmental Extensions
 
