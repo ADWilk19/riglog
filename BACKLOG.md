@@ -279,29 +279,74 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### 🌡️ Environmental Factors → Glucose (Hypothesis)
 
-* Temperature vs Glucose Analysis
+* [x] Temperature vs Glucose Analysis — Service Layer
+
   * Hypothesis:
-    * Ambient temperature influences glucose behaviour
+    * Ambient temperature may influence glucose behaviour
     * Potential effects:
       * insulin sensitivity changes
       * activity level changes
       * dehydration effects
-  * Initial implementation:
-    * Ingest daily temperature data (external API or manual import)
-    * Align temperature with glucose readings by date
-  * Return:
-    * Average glucose by temperature bucket (e.g. cold / mild / warm)
-    * Time-in-range by temperature bucket
+
+  * Implemented:
+    * Added `daily_environment` database model
+    * Added manual daily weather CSV importer
+    * Added daily temperature ↔ glucose alignment by date
+    * Added temperature buckets:
+      * cold
+      * mild
+      * warm
+      * hot
+    * Added average glucose by temperature bucket
+    * Added time-in-range by temperature bucket
+    * Added pure service-layer tests
+    * Confirmed duplicate-skipping for manual CSV import
+
+  * Current return contract:
+    * `temperature_bucket`
+    * `temperature_bucket_label`
+    * `day_count`
+    * `glucose_count`
+    * `avg_temperature_c`
+    * `avg_glucose`
+    * `hypo_pct`
+    * `low_pct`
+    * `target_pct`
+    * `high_pct`
+    * `hyper_pct`
+
+* [ ] Temperature vs Glucose — UI / Visualisation
+
   * Visualisations:
-    * Temperature vs average glucose (line or scatter)
-    * Temperature vs TIR%
-  * Future extensions:
-    * Intraday temperature vs glucose (requires intraday weather data)
-    * Interaction with activity (steps × temperature × glucose)
-    * Lagged effects (temperature today vs glucose next day)
-  * Data requirements:
-    * External weather API (e.g. location-based historical temperature)
-    * Or manual CSV import
+    * Temperature bucket summary table or cards
+    * Temperature vs average glucose chart
+    * Temperature vs TIR% chart
+
+  * Decision:
+    * Defer UI until the service-layer output has been tested with more weather rows
+
+* [ ] Temperature Import Hardening
+
+  * Add importer tests once DB test fixtures are formalised
+  * Validate required CSV columns:
+    * `date`
+    * `avg_temperature_c`
+  * Optional:
+    * add friendly error messages for malformed CSV files
+
+* [ ] Future Environmental Extensions
+
+  * Intraday temperature vs glucose
+    * Requires intraday weather data
+  * Interaction with activity:
+    * steps × temperature × glucose
+  * Lagged effects:
+    * temperature today vs glucose next day
+  * Additional environmental variables:
+    * humidity
+    * pollen
+    * air pressure
+    * weather condition
 
 ---
 
