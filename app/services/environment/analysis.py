@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 
 from app.db.database import SessionLocal
 from app.db.models import DailyEnvironment
