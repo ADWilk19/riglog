@@ -60,3 +60,22 @@ class WorkoutSession(Base):
     weight_kg = Column(Float, nullable=True)
     notes = Column(String, nullable=True)
     source = Column(String, nullable=True)
+
+
+class DailyEnvironment(Base):
+    __tablename__ = "daily_environment"
+    __table_args__ = (
+        UniqueConstraint(
+            "environment_date",
+            "source",
+            name="uq_daily_environment_date_source",
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    environment_date = Column(Date, nullable=False, index=True)
+    avg_temperature_c = Column(Float, nullable=False)
+    min_temperature_c = Column(Float, nullable=True)
+    max_temperature_c = Column(Float, nullable=True)
+    source = Column(String, nullable=True)
+    notes = Column(String, nullable=True)
