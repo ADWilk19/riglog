@@ -41,6 +41,8 @@ from app.services.cross_module.analysis import (
     get_intraday_activity_glucose_alignment
 )
 
+from app.services.environment.analysis import get_temperature_glucose_bucket_summary
+
 from app.services.glucose.analysis import (
     calculate_agp,
     calculate_glucose_variability_metrics,
@@ -56,6 +58,7 @@ from app.services.glucose.analysis import (
     update_glucose_field,
     update_glucose_note,
 )
+
 from app.services.glucose.importer import import_diabetes_m_csv
 
 from app.ui.widgets.summary_card import SummaryCard
@@ -751,6 +754,7 @@ class GlucoseTab(QWidget):
         self._build_daily_activity_glucose_overlay_chart()
         self._build_intraday_activity_date_selector()
         self._build_intraday_activity_glucose_alignment_chart()
+        self._build_temperature_glucose_table()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
         self._build_insulin_effectiveness_table()
@@ -1207,6 +1211,38 @@ class GlucoseTab(QWidget):
 
         self.layout.addLayout(selector_layout)
 
+    def _build_temperature_glucose_table(self) -> None:
+        """Build environmental temperature vs glucose summary table."""
+        self.layout.addWidget(
+            self._create_section_title("Temperature vs Glucose")
+        )
+
+        self.temperature_glucose_table = self._create_analysis_table(
+            8,
+            [
+                "Bucket",
+                "Days",
+                "Readings",
+                "Avg Temp",
+                "Avg Glucose",
+                "Target %",
+                "Hypo %",
+                "Hyper %",
+            ],
+        )
+
+        header = self.temperature_glucose_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.temperature_glucose_table)
+
     def _get_filtered_readings(self) -> list[dict]:
         """Return readings filtered by the selected meal event and time range."""
         readings = get_all_glucose_readings_with_meal_event(days=365)
@@ -1299,6 +1335,8 @@ class GlucoseTab(QWidget):
             alignment_rows = []
 
         self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
+
+        self._update_temperature_glucose_table()
 
         profile_data = get_time_of_day_profile(readings)
         self.profile_chart.plot_profile(profile_data)
@@ -1829,6 +1867,74 @@ class GlucoseTab(QWidget):
             sorted_items,
             self.selected_range_filter,
         )
+
+    def _update_temperature_glucose_table(self) -> None:
+        """Populate the temperature vs glucose summary table."""
+        summary_rows = get_temperature_glucose_bucket_summary(days=365)
+
+        self.temperature_glucose_table.setRowCount(len(summary_rows))
+
+        for row_index, row in enumerate(summary_rows):
+            bucket_item = QTableWidgetItem(row["temperature_bucket_label"])
+            days_item = QTableWidgetItem(str(row["day_count"]))
+            readings_item = QTableWidgetItem(str(row["glucose_count"]))
+
+            avg_temp = row["avg_temperature_c"]
+            avg_glucose = row["avg_glucose"]
+
+            avg_temp_item = QTableWidgetItem(
+                f"{avg_temp:.1f} °C" if avg_temp is not None else "-"
+            )
+            avg_glucose_item = QTableWidgetItem(
+                f"{avg_glucose:.1f}" if avg_glucose is not None else "-"
+            )
+            target_item = QTableWidgetItem(f"{row['target_pct']:.1f}%")
+            hypo_item = QTableWidgetItem(f"{row['hypo_pct']:.1f}%")
+            hyper_item = QTableWidgetItem(f"{row['hyper_pct']:.1f}%")
+
+            items = [
+                bucket_item,
+                days_item,
+                readings_item,
+                avg_temp_item,
+                avg_glucose_item,
+                target_item,
+                hypo_item,
+                hyper_item,
+            ]
+
+            for item in items:
+                item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+            if avg_glucose is not None:
+                if avg_glucose < 4:
+                    avg_glucose_item.setForeground(QColor(220, 80, 80))
+                elif avg_glucose <= 10:
+                    avg_glucose_item.setForeground(QColor(102, 204, 102))
+                elif avg_glucose <= 15:
+                    avg_glucose_item.setForeground(QColor(255, 210, 80))
+                else:
+                    avg_glucose_item.setForeground(QColor(200, 140, 255))
+
+            if row["target_pct"] >= 70:
+                target_item.setForeground(QColor(102, 204, 102))
+            elif row["target_pct"] > 0:
+                target_item.setForeground(QColor(255, 210, 80))
+
+            if row["hypo_pct"] > 0:
+                hypo_item.setForeground(QColor(220, 80, 80))
+
+            if row["hyper_pct"] > 0:
+                hyper_item.setForeground(QColor(200, 140, 255))
+
+            self.temperature_glucose_table.setItem(row_index, 0, bucket_item)
+            self.temperature_glucose_table.setItem(row_index, 1, days_item)
+            self.temperature_glucose_table.setItem(row_index, 2, readings_item)
+            self.temperature_glucose_table.setItem(row_index, 3, avg_temp_item)
+            self.temperature_glucose_table.setItem(row_index, 4, avg_glucose_item)
+            self.temperature_glucose_table.setItem(row_index, 5, target_item)
+            self.temperature_glucose_table.setItem(row_index, 6, hypo_item)
+            self.temperature_glucose_table.setItem(row_index, 7, hyper_item)
 
     def handle_breakdown_meal_event_click(self, meal_event_label: str) -> None:
         """Toggle the clicked meal event filter from the breakdown chart."""
