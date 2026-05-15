@@ -192,7 +192,10 @@ def calculate_glucose_by_temperature_bucket(
     return results
 
 
-def get_daily_environment_rows(days: int | None = None) -> list[dict[str, Any]]:
+def get_daily_environment_rows(
+    days: int | None = None,
+    location_label: str = "default",
+) -> list[dict[str, Any]]:
     """
     Return persisted daily environment rows ordered by date.
 
@@ -207,6 +210,7 @@ def get_daily_environment_rows(days: int | None = None) -> list[dict[str, Any]]:
 
     try:
         query = session.query(DailyEnvironment)
+        query = query.filter(DailyEnvironment.location_label == location_label)
 
         if days is not None:
             cutoff = (datetime.now() - timedelta(days=days)).date()
@@ -218,6 +222,9 @@ def get_daily_environment_rows(days: int | None = None) -> list[dict[str, Any]]:
             {
                 "id": row.id,
                 "environment_date": row.environment_date,
+                "location_label": row.location_label,
+                "latitude": row.latitude,
+                "longitude": row.longitude,
                 "avg_temperature_c": row.avg_temperature_c,
                 "min_temperature_c": row.min_temperature_c,
                 "max_temperature_c": row.max_temperature_c,
@@ -233,13 +240,17 @@ def get_daily_environment_rows(days: int | None = None) -> list[dict[str, Any]]:
 
 def get_temperature_glucose_bucket_summary(
     days: int | None = 365,
+    location_label: str = "default",
 ) -> list[dict[str, Any]]:
     """
     Return glucose metrics grouped by daily temperature bucket.
 
     This is the database-backed entry point for the UI/reporting layer.
     """
-    temperature_rows = get_daily_environment_rows(days=days)
+    temperature_rows = get_daily_environment_rows(
+        days=days,
+        location_label=location_label,
+    )
     glucose_rows = get_all_glucose_readings_with_meal_event(days=days)
 
     aligned_rows = calculate_daily_temperature_glucose_alignment(
@@ -252,6 +263,7 @@ def get_temperature_glucose_bucket_summary(
 
 def get_daily_temperature_glucose_alignment(
     days: int | None = 365,
+    location_label: str = "default",
 ) -> list[dict[str, Any]]:
     """
     Return daily temperature rows aligned with same-date glucose readings.
@@ -259,7 +271,10 @@ def get_daily_temperature_glucose_alignment(
     This is useful for future charting/debugging where the UI needs the
     day-level aligned rows rather than bucket-level aggregates.
     """
-    temperature_rows = get_daily_environment_rows(days=days)
+    temperature_rows = get_daily_environment_rows(
+        days=days,
+        location_label=location_label,
+    )
     glucose_rows = get_all_glucose_readings_with_meal_event(days=days)
 
     return calculate_daily_temperature_glucose_alignment(

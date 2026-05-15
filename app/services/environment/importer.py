@@ -51,6 +51,9 @@ def import_daily_environment_csv(file_path: str) -> int:
                     row.get("max_temperature_c")
                 )
 
+                location_label = (row.get("location_label") or "default").strip() or "default"
+                latitude = _parse_optional_float(row.get("latitude"))
+                longitude = _parse_optional_float(row.get("longitude"))
                 source = (row.get("source") or "manual").strip() or "manual"
                 notes = (row.get("notes") or "").strip() or None
 
@@ -58,6 +61,7 @@ def import_daily_environment_csv(file_path: str) -> int:
                     session.query(DailyEnvironment)
                     .filter(
                         DailyEnvironment.environment_date == environment_date,
+                        DailyEnvironment.location_label == location_label,
                         DailyEnvironment.source == source,
                     )
                     .first()
@@ -68,6 +72,9 @@ def import_daily_environment_csv(file_path: str) -> int:
 
                 environment_row = DailyEnvironment(
                     environment_date=environment_date,
+                    location_label=location_label,
+                    latitude=latitude,
+                    longitude=longitude,
                     avg_temperature_c=avg_temperature_c,
                     min_temperature_c=min_temperature_c,
                     max_temperature_c=max_temperature_c,
@@ -77,6 +84,8 @@ def import_daily_environment_csv(file_path: str) -> int:
 
                 session.add(environment_row)
                 imported_count += 1
+
+
 
         session.commit()
         return imported_count

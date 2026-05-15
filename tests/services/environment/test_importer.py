@@ -70,6 +70,10 @@ def test_import_daily_environment_csv_imports_valid_rows(tmp_path, monkeypatch):
         assert rows[1].source == "manual"
         assert rows[1].notes == "Warm afternoon"
 
+        assert rows[0].location_label == "default"
+        assert rows[0].latitude is None
+        assert rows[0].longitude is None
+
     finally:
         session.close()
 
@@ -181,4 +185,49 @@ def test_import_daily_environment_csv_skips_rows_missing_required_values(
 
     finally:
         session.close()
-        
+
+
+def test_import_daily_environment_csv_allows_same_date_for_different_locations(
+    tmp_path,
+    monkeypatch,
+):
+    """Allow same date/source rows when location labels differ."""
+    TestSessionLocal = _build_test_session_factory(tmp_path)
+    monkeypatch.setattr(importer, "SessionLocal", TestSessionLocal)
+
+    csv_path = tmp_path / "weather.csv"
+    csv_path.write_text(
+        "\n".join(
+            [
+                "date,location_label,latitude,longitude,avg_temperature_c,min_temperature_c,max_temperature_c,source,notes",
+                "2026-05-01,home,50.1,-0.1,12.4,8.2,16.1,manual,Home row",
+                "2026-05-01,partner,51.2,-0.2,11.0,7.5,15.0,manual,Partner row",
+            ]
+        ),
+        encoding="utf-8",
+    )
+
+    imported_count = import_daily_environment_csv(str(csv_path))
+
+    assert imported_count == 2
+
+    session = TestSessionLocal()
+
+    try:
+        rows = (
+            session.query(DailyEnvironment)
+            .order_by(DailyEnvironment.location_label.asc())
+            .all()
+        )
+
+        assert len(rows) == 2
+        assert [row.location_label for row in rows] == ["home", "partner"]
+        assert rows[0].environment_date.isoformat() == "2026-05-01"
+        assert rows[0].latitude == 50.1
+        assert rows[0].longitude == -0.1
+        assert rows[1].environment_date.isoformat() == "2026-05-01"
+        assert rows[1].latitude == 51.2
+        assert rows[1].longitude == -0.2
+
+    finally:
+        session.close()
