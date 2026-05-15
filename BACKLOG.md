@@ -315,15 +315,37 @@ This backlog is organised by architectural layer and implementation priority.
     * `high_pct`
     * `hyper_pct`
 
-* [ ] Temperature vs Glucose — UI / Visualisation
+* [x] Temperature vs Glucose — UI / Visualisation — Table
+
+  * Implemented:
+    * Added read-only Temperature vs Glucose section to the Glucose tab
+    * Added temperature bucket summary table
+    * Displays:
+      * bucket
+      * day count
+      * glucose reading count
+      * average temperature
+      * average glucose
+      * target %
+      * hypo %
+      * hyper %
+    * Uses existing service-layer contract:
+      * `get_temperature_glucose_bucket_summary()`
+    * Preserves bucket order:
+      * cold
+      * mild
+      * warm
+      * hot
+    * Handles empty buckets cleanly with `0` / `-`
+
+* [ ] Temperature vs Glucose — Chart Visualisation
 
   * Visualisations:
-    * Temperature bucket summary table or cards
-    * Temperature vs average glucose chart
-    * Temperature vs TIR% chart
+    * Temperature bucket vs average glucose chart
+    * Temperature bucket vs TIR% chart
 
   * Decision:
-    * Defer UI until the service-layer output has been tested with more weather rows
+    * Defer charting until more weather rows are available
 
 * [ ] Temperature Import Hardening
 
