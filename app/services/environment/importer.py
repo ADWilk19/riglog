@@ -107,6 +107,14 @@ def _parse_optional_float(value: str | None) -> float | None:
     return float(value)
 
 
+def _get_optional_list_value(values: list, index: int):
+    """Return a list value by index, or None when the index is missing."""
+    if index >= len(values):
+        return None
+
+    return values[index]
+
+
 def normalise_open_meteo_daily_json(
     payload: dict,
     location_label: str,
@@ -137,8 +145,14 @@ def normalise_open_meteo_daily_json(
                 "latitude": latitude,
                 "longitude": longitude,
                 "avg_temperature_c": avg_temperature_c,
-                "min_temperature_c": min_temperatures[index],
-                "max_temperature_c": max_temperatures[index],
+                "min_temperature_c": _get_optional_list_value(
+                    min_temperatures,
+                    index
+                ),
+                "max_temperature_c": _get_optional_list_value(
+                    max_temperatures,
+                    index
+                ),
                 "source": "open_meteo",
             }
         )
