@@ -6,6 +6,7 @@ from app.db.models import DailyEnvironment
 from app.services.environment import importer
 from app.services.environment.importer import (
     import_daily_environment_csv,
+    import_open_meteo_daily_rows,
     normalise_open_meteo_daily_json,
 )
 
@@ -364,3 +365,92 @@ def test_normalise_open_meteo_daily_json_defaults_missing_min_max_to_none():
             "source": "open_meteo",
         },
     ]
+
+
+def test_import_open_meteo_daily_rows_persists_normalised_rows(
+    tmp_path,
+    monkeypatch,
+):
+    """Persist normalised Open-Meteo rows into DailyEnvironment."""
+    TestSessionLocal = _build_test_session_factory(tmp_path)
+    monkeypatch.setattr(importer, "SessionLocal", TestSessionLocal)
+
+    normalised_rows = normalise_open_meteo_daily_json(
+        OPEN_METEO_SAMPLE_JSON,
+        location_label="home",
+    )
+
+    imported_count = import_open_meteo_daily_rows(normalised_rows)
+
+    assert imported_count == 2
+
+    session = TestSessionLocal()
+
+    try:
+        rows = (
+            session.query(DailyEnvironment)
+            .order_by(DailyEnvironment.environment_date.asc())
+            .all()
+        )
+
+        assert len(rows) == 2
+
+        assert rows[0].environment_date.isoformat() == "2026-05-01"
+        assert rows[0].location_label == "home"
+        assert rows[0].latitude == 51.76
+        assert rows[0].longitude == 0.10
+        assert rows[0].avg_temperature_c == 14.2
+        assert rows[0].min_temperature_c == 8.7
+        assert rows[0].max_temperature_c == 19.6
+        assert rows[0].source == "open_meteo"
+        assert rows[0].notes is None
+
+        assert rows[1].environment_date.isoformat() == "2026-05-02"
+        assert rows[1].location_label == "home"
+        assert rows[1].latitude == 51.76
+        assert rows[1].longitude == 0.10
+        assert rows[1].avg_temperature_c == 16.8
+        assert rows[1].min_temperature_c == 10.1
+        assert rows[1].max_temperature_c == 22.4
+        assert rows[1].source == "open_meteo"
+        assert rows[1].notes is None
+
+    finally:
+        session.close()
+
+
+def test_import_open_meteo_daily_rows_skips_duplicates(
+    tmp_path,
+    monkeypatch,
+):
+    """Skip duplicate Open-Meteo rows by date, location, and source."""
+    TestSessionLocal = _build_test_session_factory(tmp_path)
+    monkeypatch.setattr(importer, "SessionLocal", TestSessionLocal)
+
+    normalised_rows = normalise_open_meteo_daily_json(
+        OPEN_METEO_SAMPLE_JSON,
+        location_label="home",
+    )
+
+    first_import_count = import_open_meteo_daily_rows(normalised_rows)
+    second_import_count = import_open_meteo_daily_rows(normalised_rows)
+
+    assert first_import_count == 2
+    assert second_import_count == 0
+
+    session = TestSessionLocal()
+
+    try:
+        rows = session.query(DailyEnvironment).all()
+
+        assert len(rows) == 2
+        assert {row.environment_date.isoformat() for row in rows} == {
+            "2026-05-01",
+            "2026-05-02",
+        }
+        assert {row.location_label for row in rows} == {"home"}
+        assert {row.source for row in rows} == {"open_meteo"}
+
+    finally:
+        session.close()
+        

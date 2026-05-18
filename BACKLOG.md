@@ -374,20 +374,28 @@ This backlog is organised by architectural layer and implementation priority.
 
 * [ ] Weather Data Expansion
 
-  * Add Open-Meteo historical weather import
-  * Fetch daily weather by:
+  * [x] Add Open-Meteo parser/normaliser tests using static sample JSON
+    * Proves JSON → DailyEnvironment-shaped row contract
+    * No live API dependency
+    * Handles:
+      * required date + mean temperature
+      * missing required values by skipping incomplete rows
+      * missing optional min/max values as `None`
+
+  * [ ] Add Open-Meteo historical weather import
+  * [ ] Fetch daily weather by:
     * location label
     * latitude
     * longitude
     * start date
     * end date
-  * Persist:
+  * [ ] Persist:
     * mean daily temperature
     * min daily temperature
     * max daily temperature
     * source = `open_meteo`
-  * Support two primary user locations without storing coordinates in Git
-  * Load location config from environment variables
+  * [ ] Support two primary user locations without storing coordinates in Git
+  * [ ] Load location config from environment variables
 
 * [ ] Future Environmental Extensions
 

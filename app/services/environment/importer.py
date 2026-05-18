@@ -158,3 +158,49 @@ def normalise_open_meteo_daily_json(
         )
 
     return rows
+
+
+def import_open_meteo_daily_rows(rows: list[dict]) -> int:
+    """Persist normalised Open-Meteo daily rows into DailyEnvironment."""
+    session = SessionLocal()
+    imported_count = 0
+
+    try:
+        for row in rows:
+            environment_date = row["date"]
+            location_label = row.get("location_label") or "default"
+            source = row.get("source") or "open_meteo"
+
+            existing = (
+                session.query(DailyEnvironment)
+                .filter(
+                    DailyEnvironment.environment_date == environment_date,
+                    DailyEnvironment.location_label == location_label,
+                    DailyEnvironment.source == source,
+                )
+                .first()
+            )
+
+            if existing:
+                continue
+
+            environment_row = DailyEnvironment(
+                environment_date=environment_date,
+                location_label=location_label,
+                latitude=row.get("latitude"),
+                longitude=row.get("longitude"),
+                avg_temperature_c=row["avg_temperature_c"],
+                min_temperature_c=row.get("min_temperature_c"),
+                max_temperature_c=row.get("max_temperature_c"),
+                source=source,
+                notes=None,
+            )
+
+            session.add(environment_row)
+            imported_count += 1
+
+        session.commit()
+        return imported_count
+
+    finally:
+        session.close()
