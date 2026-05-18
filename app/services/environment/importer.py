@@ -125,13 +125,18 @@ def normalise_open_meteo_daily_json(
     rows = []
 
     for index, date_text in enumerate(dates):
+        avg_temperature_c = mean_temperatures[index]
+
+        if not date_text or avg_temperature_c is None:
+            continue
+
         rows.append(
             {
                 "date": datetime.strptime(date_text, "%Y-%m-%d").date(),
                 "location_label": location_label,
                 "latitude": latitude,
                 "longitude": longitude,
-                "avg_temperature_c": mean_temperatures[index],
+                "avg_temperature_c": avg_temperature_c,
                 "min_temperature_c": min_temperatures[index],
                 "max_temperature_c": max_temperatures[index],
                 "source": "open_meteo",
