@@ -298,3 +298,30 @@ def test_normalise_open_meteo_daily_json_returns_daily_environment_rows():
             "source": "open_meteo",
         },
     ]
+
+def test_normalise_open_meteo_daily_json_skips_rows_missing_required_values():
+    payload = {
+        **OPEN_METEO_SAMPLE_JSON,
+        "daily": {
+            **OPEN_METEO_SAMPLE_JSON["daily"],
+            "temperature_2m_mean": [14.2, None],
+        },
+    }
+
+    rows = normalise_open_meteo_daily_json(
+        payload,
+        location_label="home",
+    )
+
+    assert rows == [
+        {
+            "date": date(2026, 5, 1),
+            "location_label": "home",
+            "latitude": 51.76,
+            "longitude": 0.10,
+            "avg_temperature_c": 14.2,
+            "min_temperature_c": 8.7,
+            "max_temperature_c": 19.6,
+            "source": "open_meteo",
+        }
+    ]
