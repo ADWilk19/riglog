@@ -4,8 +4,46 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.models import DailyEnvironment
 from app.services.environment import importer
-from app.services.environment.importer import import_daily_environment_csv
+from app.services.environment.importer import (
+    import_daily_environment_csv,
+    normalise_open_meteo_daily_json,
+)
 
+from datetime import date
+
+OPEN_METEO_SAMPLE_JSON = {
+    "latitude": 51.76,
+    "longitude": 0.10,
+    "generationtime_ms": 0.123,
+    "utc_offset_seconds": 0,
+    "timezone": "GMT",
+    "timezone_abbreviation": "GMT",
+    "elevation": 70.0,
+    "daily_units": {
+        "time": "iso8601",
+        "temperature_2m_mean": "°C",
+        "temperature_2m_min": "°C",
+        "temperature_2m_max": "°C",
+    },
+    "daily": {
+        "time": [
+            "2026-05-01",
+            "2026-05-02",
+        ],
+        "temperature_2m_mean": [
+            14.2,
+            16.8,
+        ],
+        "temperature_2m_min": [
+            8.7,
+            10.1,
+        ],
+        "temperature_2m_max": [
+            19.6,
+            22.4,
+        ],
+    },
+}
 
 def _build_test_session_factory(tmp_path):
     """Create an isolated SQLite database for importer tests."""
@@ -231,3 +269,32 @@ def test_import_daily_environment_csv_allows_same_date_for_different_locations(
 
     finally:
         session.close()
+
+def test_normalise_open_meteo_daily_json_returns_daily_environment_rows():
+    rows = normalise_open_meteo_daily_json(
+        OPEN_METEO_SAMPLE_JSON,
+        location_label="home",
+    )
+
+    assert rows == [
+        {
+            "date": date(2026, 5, 1),
+            "location_label": "home",
+            "latitude": 51.76,
+            "longitude": 0.10,
+            "avg_temperature_c": 14.2,
+            "min_temperature_c": 8.7,
+            "max_temperature_c": 19.6,
+            "source": "open_meteo",
+        },
+        {
+            "date": date(2026, 5, 2),
+            "location_label": "home",
+            "latitude": 51.76,
+            "longitude": 0.10,
+            "avg_temperature_c": 16.8,
+            "min_temperature_c": 10.1,
+            "max_temperature_c": 22.4,
+            "source": "open_meteo",
+        },
+    ]

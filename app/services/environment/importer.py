@@ -105,3 +105,37 @@ def _parse_optional_float(value: str | None) -> float | None:
         return None
 
     return float(value)
+
+
+def normalise_open_meteo_daily_json(
+    payload: dict,
+    location_label: str,
+) -> list[dict]:
+    """Normalise Open-Meteo daily JSON into DailyEnvironment row dictionaries."""
+    daily = payload.get("daily", {})
+
+    dates = daily.get("time", [])
+    mean_temperatures = daily.get("temperature_2m_mean", [])
+    min_temperatures = daily.get("temperature_2m_min", [])
+    max_temperatures = daily.get("temperature_2m_max", [])
+
+    latitude = payload.get("latitude")
+    longitude = payload.get("longitude")
+
+    rows = []
+
+    for index, date_text in enumerate(dates):
+        rows.append(
+            {
+                "date": datetime.strptime(date_text, "%Y-%m-%d").date(),
+                "location_label": location_label,
+                "latitude": latitude,
+                "longitude": longitude,
+                "avg_temperature_c": mean_temperatures[index],
+                "min_temperature_c": min_temperatures[index],
+                "max_temperature_c": max_temperatures[index],
+                "source": "open_meteo",
+            }
+        )
+
+    return rows
