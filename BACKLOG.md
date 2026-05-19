@@ -372,7 +372,7 @@ This backlog is organised by architectural layer and implementation priority.
     * Confirmed optional fields default cleanly
     * Confirmed same-date imports are allowed for different locations
 
-* [ ] Weather Data Expansion
+* [x] Weather Data Expansion
 
   * [x] Add Open-Meteo parser/normaliser tests using static sample JSON
     * Proves JSON → DailyEnvironment-shaped row contract
@@ -381,7 +381,6 @@ This backlog is organised by architectural layer and implementation priority.
       * required date + mean temperature
       * missing required values by skipping incomplete rows
       * missing optional min/max values as `None`
-
   * [x] Add Open-Meteo historical weather import
   * [x ] Fetch daily weather by:
     * location label
@@ -394,8 +393,13 @@ This backlog is organised by architectural layer and implementation priority.
     * min daily temperature
     * max daily temperature
     * source = `open_meteo`
-  * [ ] Support two primary user locations without storing coordinates in Git
-  * [ ] Load location config from environment variables
+  * [x] Support two primary user locations without storing coordinates in Git
+  * [x] Load location config from environment variables
+  * Implemented:
+    * Added environment-backed Open-Meteo location config
+    * Supports named locations such as `home` and `partner-home`
+    * Keeps real coordinates in local `.env`
+    * Added tests for config loading, label normalisation, missing config, and import delegation
 
 * [ ] Future Environmental Extensions
 
