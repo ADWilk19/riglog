@@ -10,9 +10,11 @@ from app.services.environment import importer
 from app.services.environment.importer import (
     build_open_meteo_archive_url,
     fetch_open_meteo_daily_json,
+    get_open_meteo_location_config,
     import_daily_environment_csv,
     import_open_meteo_daily_rows,
     import_open_meteo_historical_weather,
+    import_open_meteo_historical_weather_for_location,
     normalise_open_meteo_daily_json,
 )
 
@@ -610,3 +612,106 @@ def test_normalise_open_meteo_daily_json_skips_rows_when_mean_list_is_shorter():
             "source": "open_meteo",
         }
     ]
+
+
+def test_get_open_meteo_location_config_loads_coordinates_from_environment():
+    """Load a named Open-Meteo location from environment-style config."""
+    environ = {
+        "RIGLOG_OPEN_METEO_HOME_LATITUDE": "51.76",
+        "RIGLOG_OPEN_METEO_HOME_LONGITUDE": "0.10",
+    }
+
+    result = get_open_meteo_location_config(
+        location_label="home",
+        environ=environ,
+    )
+
+    assert result == {
+        "location_label": "home",
+        "latitude": 51.76,
+        "longitude": 0.10,
+    }
+
+
+def test_get_open_meteo_location_config_normalises_label_for_env_keys():
+    """Allow location labels with spaces or hyphens in environment variable names."""
+    environ = {
+        "RIGLOG_OPEN_METEO_PARTNER_HOME_LATITUDE": "52.1",
+        "RIGLOG_OPEN_METEO_PARTNER_HOME_LONGITUDE": "-0.2",
+    }
+
+    result = get_open_meteo_location_config(
+        location_label="partner-home",
+        environ=environ,
+    )
+
+    assert result == {
+        "location_label": "partner-home",
+        "latitude": 52.1,
+        "longitude": -0.2,
+    }
+
+
+def test_get_open_meteo_location_config_raises_for_missing_coordinates():
+    """Raise a clear error when a named location is not configured."""
+    environ = {
+        "RIGLOG_OPEN_METEO_HOME_LATITUDE": "51.76",
+    }
+
+    try:
+        get_open_meteo_location_config(
+            location_label="home",
+            environ=environ,
+        )
+    except ValueError as exc:
+        assert "RIGLOG_OPEN_METEO_HOME_LATITUDE" in str(exc)
+        assert "RIGLOG_OPEN_METEO_HOME_LONGITUDE" in str(exc)
+    else:
+        raise AssertionError("Expected ValueError for missing longitude")
+
+
+def test_import_open_meteo_historical_weather_for_location_uses_env_config(
+    monkeypatch,
+):
+    """Use environment-backed coordinates when importing a named location."""
+    captured = {}
+
+    def fake_import_open_meteo_historical_weather(
+        *,
+        location_label,
+        latitude,
+        longitude,
+        start_date,
+        end_date,
+    ):
+        captured["location_label"] = location_label
+        captured["latitude"] = latitude
+        captured["longitude"] = longitude
+        captured["start_date"] = start_date
+        captured["end_date"] = end_date
+        return 2
+
+    monkeypatch.setattr(
+        importer,
+        "import_open_meteo_historical_weather",
+        fake_import_open_meteo_historical_weather,
+    )
+
+    imported_count = import_open_meteo_historical_weather_for_location(
+        location_label="home",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+        environ={
+            "RIGLOG_OPEN_METEO_HOME_LATITUDE": "51.76",
+            "RIGLOG_OPEN_METEO_HOME_LONGITUDE": "0.10",
+        },
+    )
+
+    assert imported_count == 2
+    assert captured == {
+        "location_label": "home",
+        "latitude": 51.76,
+        "longitude": 0.10,
+        "start_date": date(2026, 5, 1),
+        "end_date": date(2026, 5, 2),
+    }

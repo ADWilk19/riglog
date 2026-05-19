@@ -3,6 +3,7 @@ import json
 from datetime import date, datetime
 from urllib.parse import urlencode
 from urllib.request import urlopen
+import os
 
 from app.db.database import SessionLocal
 from app.db.models import DailyEnvironment
@@ -289,3 +290,70 @@ def import_open_meteo_daily_rows(rows: list[dict]) -> int:
 
     finally:
         session.close()
+
+
+def get_open_meteo_location_config(
+    location_label: str,
+    environ: dict[str, str] | None = None,
+) -> dict:
+    """
+    Load Open-Meteo location config from environment variables.
+
+    Expected variable pattern for location_label="home":
+
+    RIGLOG_OPEN_METEO_HOME_LATITUDE
+    RIGLOG_OPEN_METEO_HOME_LONGITUDE
+
+    The label is normalised to uppercase and hyphens/spaces become underscores.
+    """
+    environ = environ or os.environ
+
+    env_label = (
+        location_label
+        .strip()
+        .upper()
+        .replace("-", "_")
+        .replace(" ", "_")
+    )
+
+    latitude_key = f"RIGLOG_OPEN_METEO_{env_label}_LATITUDE"
+    longitude_key = f"RIGLOG_OPEN_METEO_{env_label}_LONGITUDE"
+
+    latitude_text = environ.get(latitude_key)
+    longitude_text = environ.get(longitude_key)
+
+    if not latitude_text or not longitude_text:
+        raise ValueError(
+            "Missing Open-Meteo location config for "
+            f"{location_label!r}. Expected {latitude_key} and {longitude_key}."
+        )
+
+    return {
+        "location_label": location_label,
+        "latitude": float(latitude_text),
+        "longitude": float(longitude_text),
+    }
+
+
+def import_open_meteo_historical_weather_for_location(
+    *,
+    location_label: str,
+    start_date: date,
+    end_date: date,
+    environ: dict[str, str] | None = None,
+) -> int:
+    """
+    Import Open-Meteo historical weather using coordinates from environment config.
+    """
+    location_config = get_open_meteo_location_config(
+        location_label=location_label,
+        environ=environ,
+    )
+
+    return import_open_meteo_historical_weather(
+        location_label=location_config["location_label"],
+        latitude=location_config["latitude"],
+        longitude=location_config["longitude"],
+        start_date=start_date,
+        end_date=end_date,
+    )
