@@ -1,9 +1,13 @@
 import csv
-from datetime import datetime
+import json
+from datetime import date, datetime
+from urllib.parse import urlencode
+from urllib.request import urlopen
 
 from app.db.database import SessionLocal
 from app.db.models import DailyEnvironment
 
+OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
 
 def import_daily_environment_csv(file_path: str) -> int:
     """
@@ -115,6 +119,87 @@ def _get_optional_list_value(values: list, index: int):
     return values[index]
 
 
+def build_open_meteo_archive_url(
+    *,
+    latitude: float,
+    longitude: float,
+    start_date: date,
+    end_date: date,
+) -> str:
+    """
+    Build an Open-Meteo historical daily weather API URL.
+
+    This function is pure: it performs no network I/O.
+    """
+    params = {
+        "latitude": latitude,
+        "longitude": longitude,
+        "start_date": start_date.isoformat(),
+        "end_date": end_date.isoformat(),
+        "daily": ",".join(
+            [
+                "temperature_2m_mean",
+                "temperature_2m_min",
+                "temperature_2m_max",
+            ]
+        ),
+        "temperature_unit": "celsius",
+        "timezone": "auto",
+    }
+
+    return f"{OPEN_METEO_ARCHIVE_URL}?{urlencode(params)}"
+
+
+def fetch_open_meteo_daily_json(
+    *,
+    latitude: float,
+    longitude: float,
+    start_date: date,
+    end_date: date,
+    timeout_seconds: int = 20,
+) -> dict:
+    """
+    Fetch historical daily weather JSON from Open-Meteo.
+
+    Network I/O is isolated here so normalisation remains pure and testable.
+    """
+    url = build_open_meteo_archive_url(
+        latitude=latitude,
+        longitude=longitude,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    with urlopen(url, timeout=timeout_seconds) as response:
+        return json.loads(response.read().decode("utf-8"))
+
+
+def import_open_meteo_historical_weather(
+    *,
+    location_label: str,
+    latitude: float,
+    longitude: float,
+    start_date: date,
+    end_date: date,
+) -> int:
+    """
+    Fetch, normalise, and persist Open-Meteo historical daily weather rows.
+    """
+    payload = fetch_open_meteo_daily_json(
+        latitude=latitude,
+        longitude=longitude,
+        start_date=start_date,
+        end_date=end_date,
+    )
+
+    rows = normalise_open_meteo_daily_json(
+        payload,
+        location_label=location_label,
+    )
+
+    return import_open_meteo_daily_rows(rows)
+
+
 def normalise_open_meteo_daily_json(
     payload: dict,
     location_label: str,
@@ -133,7 +218,7 @@ def normalise_open_meteo_daily_json(
     rows = []
 
     for index, date_text in enumerate(dates):
-        avg_temperature_c = mean_temperatures[index]
+        avg_temperature_c = _get_optional_list_value(mean_temperatures, index)
 
         if not date_text or avg_temperature_c is None:
             continue

@@ -1,12 +1,18 @@
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
+import json
+from urllib.parse import parse_qs, urlparse
+
 from app.db.base import Base
 from app.db.models import DailyEnvironment
 from app.services.environment import importer
 from app.services.environment.importer import (
+    build_open_meteo_archive_url,
+    fetch_open_meteo_daily_json,
     import_daily_environment_csv,
     import_open_meteo_daily_rows,
+    import_open_meteo_historical_weather,
     normalise_open_meteo_daily_json,
 )
 
@@ -271,6 +277,7 @@ def test_import_daily_environment_csv_allows_same_date_for_different_locations(
     finally:
         session.close()
 
+
 def test_normalise_open_meteo_daily_json_returns_daily_environment_rows():
     rows = normalise_open_meteo_daily_json(
         OPEN_METEO_SAMPLE_JSON,
@@ -299,6 +306,7 @@ def test_normalise_open_meteo_daily_json_returns_daily_environment_rows():
             "source": "open_meteo",
         },
     ]
+
 
 def test_normalise_open_meteo_daily_json_skips_rows_missing_required_values():
     payload = {
@@ -453,4 +461,152 @@ def test_import_open_meteo_daily_rows_skips_duplicates(
 
     finally:
         session.close()
-        
+
+
+def test_build_open_meteo_archive_url_uses_expected_parameters():
+    """Build the Open-Meteo archive URL without performing network I/O."""
+    url = build_open_meteo_archive_url(
+        latitude=51.76,
+        longitude=0.10,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+    )
+
+    parsed = urlparse(url)
+    query = parse_qs(parsed.query)
+
+    assert parsed.scheme == "https"
+    assert parsed.netloc == "archive-api.open-meteo.com"
+    assert parsed.path == "/v1/archive"
+
+    assert query["latitude"] == ["51.76"]
+    assert query["longitude"] == ["0.1"]
+    assert query["start_date"] == ["2026-05-01"]
+    assert query["end_date"] == ["2026-05-02"]
+    assert query["temperature_unit"] == ["celsius"]
+    assert query["timezone"] == ["auto"]
+    assert query["daily"] == [
+        "temperature_2m_mean,temperature_2m_min,temperature_2m_max"
+    ]
+
+
+def test_fetch_open_meteo_daily_json_uses_urlopen(monkeypatch):
+    """Fetch Open-Meteo JSON through the isolated network boundary."""
+    captured = {}
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, traceback):
+            return False
+
+        def read(self):
+            return json.dumps(OPEN_METEO_SAMPLE_JSON).encode("utf-8")
+
+    def fake_urlopen(url, timeout):
+        captured["url"] = url
+        captured["timeout"] = timeout
+        return FakeResponse()
+
+    monkeypatch.setattr(importer, "urlopen", fake_urlopen)
+
+    payload = fetch_open_meteo_daily_json(
+        latitude=51.76,
+        longitude=0.10,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+        timeout_seconds=10,
+    )
+
+    assert payload == OPEN_METEO_SAMPLE_JSON
+    assert captured["timeout"] == 10
+    assert "archive-api.open-meteo.com/v1/archive" in captured["url"]
+
+
+def test_import_open_meteo_historical_weather_fetches_normalises_and_persists(
+    tmp_path,
+    monkeypatch,
+):
+    """End-to-end importer path with the network call mocked out."""
+    TestSessionLocal = _build_test_session_factory(tmp_path)
+    monkeypatch.setattr(importer, "SessionLocal", TestSessionLocal)
+
+    def fake_fetch_open_meteo_daily_json(
+        *,
+        latitude,
+        longitude,
+        start_date,
+        end_date,
+        timeout_seconds=20,
+    ):
+        assert latitude == 51.76
+        assert longitude == 0.10
+        assert start_date == date(2026, 5, 1)
+        assert end_date == date(2026, 5, 2)
+        return OPEN_METEO_SAMPLE_JSON
+
+    monkeypatch.setattr(
+        importer,
+        "fetch_open_meteo_daily_json",
+        fake_fetch_open_meteo_daily_json,
+    )
+
+    imported_count = import_open_meteo_historical_weather(
+        location_label="home",
+        latitude=51.76,
+        longitude=0.10,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+    )
+
+    assert imported_count == 2
+
+    session = TestSessionLocal()
+
+    try:
+        rows = (
+            session.query(DailyEnvironment)
+            .order_by(DailyEnvironment.environment_date.asc())
+            .all()
+        )
+
+        assert len(rows) == 2
+        assert rows[0].environment_date.isoformat() == "2026-05-01"
+        assert rows[0].location_label == "home"
+        assert rows[0].source == "open_meteo"
+        assert rows[1].environment_date.isoformat() == "2026-05-02"
+        assert rows[1].location_label == "home"
+        assert rows[1].source == "open_meteo"
+
+    finally:
+        session.close()
+
+
+def test_normalise_open_meteo_daily_json_skips_rows_when_mean_list_is_shorter():
+    """Skip rows safely when required mean temperature values are missing."""
+    payload = {
+        **OPEN_METEO_SAMPLE_JSON,
+        "daily": {
+            **OPEN_METEO_SAMPLE_JSON["daily"],
+            "temperature_2m_mean": [14.2],
+        },
+    }
+
+    rows = normalise_open_meteo_daily_json(
+        payload,
+        location_label="home",
+    )
+
+    assert rows == [
+        {
+            "date": date(2026, 5, 1),
+            "location_label": "home",
+            "latitude": 51.76,
+            "longitude": 0.10,
+            "avg_temperature_c": 14.2,
+            "min_temperature_c": 8.7,
+            "max_temperature_c": 19.6,
+            "source": "open_meteo",
+        }
+    ]
