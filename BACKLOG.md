@@ -203,7 +203,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-## 🔗 Phase 4 — Cross-Module Intelligence
+## 🔗 Phase 4 — Cross-Module Intelligence ✅ COMPLETE
 
 ### Activity ↔ Glucose Integration
 
@@ -355,14 +355,18 @@ This backlog is organised by architectural layer and implementation priority.
     * Prevents double-counting glucose readings when weather exists for multiple locations on the same date
     * Added importer test coverage for multiple locations
 
-* [ ] Temperature vs Glucose — Chart Visualisation
+* [x] Temperature vs Glucose — Chart Visualisation
+
+  * Implemented:
+    * Added stacked Temperature vs Glucose chart to the Glucose tab
+    * Displays average glucose by temperature bucket
+    * Displays target % by temperature bucket
+    * Reuses `get_temperature_glucose_bucket_summary()`
+    * Uses `DEFAULT_ENVIRONMENT_LOCATION_LABEL` for the current default location
 
   * Visualisations:
     * Temperature bucket vs average glucose chart
     * Temperature bucket vs TIR% chart
-
-  * Decision:
-    * Defer charting until more weather rows are available
 
 * [x] Temperature Import Hardening — Initial
 
@@ -401,7 +405,7 @@ This backlog is organised by architectural layer and implementation priority.
     * Keeps real coordinates in local `.env`
     * Added tests for config loading, label normalisation, missing config, and import delegation
 
-* [ ] Future Environmental Extensions
+* [ ] Future Environmental Extensions — Deferred
 
   * Intraday temperature vs glucose
     * Requires intraday weather data
