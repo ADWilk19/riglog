@@ -75,13 +75,13 @@ HYPER_DANGER = "#7F1D1D"
 LINE_RED = "#FF4D4D"
 WHITE = "#FFFFFF"
 ACTIVITY_TEAL = "#4DB6AC"
-
 TIME_FILTER_DAYS = {
     "Last 7 Days": 7,
     "Last 14 Days": 14,
     "Last 30 Days": 30,
     "Last 90 Days": 90,
 }
+DEFAULT_ENVIRONMENT_LOCATION_LABEL = "home"
 
 def apply_chart_theme(fig: Figure, ax) -> None:
     """Apply the shared dark chart theme."""
@@ -541,6 +541,130 @@ class IntradayActivityGlucoseAlignmentChart(FigureCanvasQTAgg):
         self.draw()
 
 
+class TemperatureGlucoseChart(FigureCanvasQTAgg):
+    """Stacked chart comparing glucose metrics by temperature bucket."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(6, 5.2))
+        self.glucose_ax = self.figure.add_subplot(211)
+        self.tir_ax = self.figure.add_subplot(212)
+        super().__init__(self.figure)
+
+    def plot_temperature_summary(self, summary_rows: list[dict]) -> None:
+        """Plot average glucose and target percentage by temperature bucket."""
+        self.figure.clear()
+
+        self.glucose_ax = self.figure.add_subplot(211)
+        self.tir_ax = self.figure.add_subplot(212)
+
+        apply_chart_theme(self.figure, self.glucose_ax)
+        apply_chart_theme(self.figure, self.tir_ax)
+
+        self.glucose_ax.set_title(
+            "Temperature Bucket vs Average Glucose",
+            color=CHART_TEXT,
+        )
+        self.glucose_ax.set_ylabel("Glucose (mmol/L)", color=CHART_TEXT)
+
+        self.tir_ax.set_title(
+            "Temperature Bucket vs Target %",
+            color=CHART_TEXT,
+        )
+        self.tir_ax.set_ylabel("Target %", color=CHART_TEXT)
+
+        rows_with_glucose = [
+            row
+            for row in summary_rows
+            if row.get("glucose_count", 0) > 0
+            and row.get("avg_glucose") is not None
+        ]
+
+        if not rows_with_glucose:
+            self.glucose_ax.text(
+                0.5,
+                0.5,
+                "No temperature/glucose data available",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+                transform=self.glucose_ax.transAxes,
+            )
+            self.tir_ax.set_axis_off()
+            self.figure.tight_layout()
+            self.draw()
+            return
+
+        labels = [
+            row["temperature_bucket_label"]
+            for row in rows_with_glucose
+        ]
+        avg_glucose_values = [
+            row["avg_glucose"]
+            for row in rows_with_glucose
+        ]
+        target_values = [
+            row["target_pct"]
+            for row in rows_with_glucose
+        ]
+
+        glucose_bars = self.glucose_ax.bar(
+            labels,
+            avg_glucose_values,
+            color=LINE_RED,
+            alpha=0.75,
+        )
+
+        self.glucose_ax.axhspan(4.0, 10.0, color=TARGET_GREEN, alpha=0.18)
+        self.glucose_ax.axhline(4.0, color="#66BB6A", linestyle=":", linewidth=1)
+        self.glucose_ax.axhline(10.0, color="#66BB6A", linestyle=":", linewidth=1)
+        self.glucose_ax.axhline(3.3, color="#FF6666", linestyle="--", linewidth=1)
+        self.glucose_ax.axhline(15.0, color=HYPER_DANGER, linestyle="--", linewidth=1)
+
+        glucose_max = max(avg_glucose_values)
+        self.glucose_ax.set_ylim(0, max(12, glucose_max + 2))
+
+        for bar, value in zip(glucose_bars, avg_glucose_values):
+            self.glucose_ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + 0.2,
+                f"{value:.1f}",
+                ha="center",
+                va="bottom",
+                color=CHART_TEXT,
+                fontsize=9,
+            )
+
+        tir_bars = self.tir_ax.bar(
+            labels,
+            target_values,
+            color=TARGET_GREEN,
+            alpha=0.75,
+        )
+
+        self.tir_ax.set_ylim(0, 100)
+        self.tir_ax.axhline(
+            70,
+            color=WHITE,
+            linestyle=":",
+            linewidth=1,
+            alpha=0.8,
+        )
+
+        for bar, value in zip(tir_bars, target_values):
+            self.tir_ax.text(
+                bar.get_x() + bar.get_width() / 2,
+                value + 2,
+                f"{value:.1f}%",
+                ha="center",
+                va="bottom",
+                color=CHART_TEXT,
+                fontsize=9,
+            )
+
+        self.figure.subplots_adjust(hspace=0.45, bottom=0.12)
+        self.draw()
+
+
 class MealEventBoxPlotChart(FigureCanvasQTAgg):
     """Matplotlib canvas for glucose distribution by meal event."""
 
@@ -755,6 +879,7 @@ class GlucoseTab(QWidget):
         self._build_intraday_activity_date_selector()
         self._build_intraday_activity_glucose_alignment_chart()
         self._build_temperature_glucose_table()
+        self._build_temperature_glucose_chart()
         self._build_profile_chart()
         self._build_meal_boxplot_chart()
         self._build_insulin_effectiveness_table()
@@ -1243,6 +1368,12 @@ class GlucoseTab(QWidget):
 
         self.layout.addWidget(self.temperature_glucose_table)
 
+    def _build_temperature_glucose_chart(self) -> None:
+        """Build environmental temperature vs glucose summary charts."""
+        self.temperature_glucose_chart = TemperatureGlucoseChart()
+        self.temperature_glucose_chart.setMinimumHeight(420)
+        self.layout.addWidget(self.temperature_glucose_chart)
+
     def _get_filtered_readings(self) -> list[dict]:
         """Return readings filtered by the selected meal event and time range."""
         readings = get_all_glucose_readings_with_meal_event(days=365)
@@ -1336,7 +1467,12 @@ class GlucoseTab(QWidget):
 
         self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
 
-        self._update_temperature_glucose_table()
+        temperature_summary_rows = get_temperature_glucose_bucket_summary(
+            days=365,
+            location_label=DEFAULT_ENVIRONMENT_LOCATION_LABEL,
+        )
+        self._update_temperature_glucose_table(temperature_summary_rows)
+        self.temperature_glucose_chart.plot_temperature_summary(temperature_summary_rows)
 
         profile_data = get_time_of_day_profile(readings)
         self.profile_chart.plot_profile(profile_data)
@@ -1868,9 +2004,8 @@ class GlucoseTab(QWidget):
             self.selected_range_filter,
         )
 
-    def _update_temperature_glucose_table(self) -> None:
+    def _update_temperature_glucose_table(self, summary_rows: list[dict]) -> None:
         """Populate the temperature vs glucose summary table."""
-        summary_rows = get_temperature_glucose_bucket_summary(days=365)
 
         self.temperature_glucose_table.setRowCount(len(summary_rows))
 
