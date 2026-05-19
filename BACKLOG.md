@@ -382,7 +382,7 @@ This backlog is organised by architectural layer and implementation priority.
       * missing required values by skipping incomplete rows
       * missing optional min/max values as `None`
   * [x] Add Open-Meteo historical weather import
-  * [x ] Fetch daily weather by:
+  * [x] Fetch daily weather by:
     * location label
     * latitude
     * longitude
