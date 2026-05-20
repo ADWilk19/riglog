@@ -19,7 +19,7 @@ Built with a service-layer architecture, RigLog separates data processing from U
 
 ## Contents
 
-- [Demo Data](#demo-data)
+- [Demo Data](#-demo-data)
 - [Demo](#-demo)
 - [Features](#️-features)
 - [Why RigLog?](#why-riglog)
@@ -30,9 +30,27 @@ Built with a service-layer architecture, RigLog separates data processing from U
 - [Quick Start](#-quick-start)
 - [Optional: Connect Fitbit](#-optional-connect-fitbit)
 
-## Demo Data
+## 🧪 Demo Data
+
+RigLog includes artificial example data for safe local testing and screenshots.
+
+Example files live in:
+
+```test
+docs/examples/
+```
+
+### Create local importable CSV files
+
+```bash
+mkdir -p data/demo
+cp docs/examples/demo_glucose.csv.example data/demo/demo_glucose.csv
+cp docs/examples/sample_workout_log.csv.example data/demo/sample_workout_log.csv
+```
 
 Screenshots in this README use synthetically generated glucose data.
+
+The demo pipeline uses a separate SQLite database and reproducible data generation scripts.
 
 This allows the application to demonstrate:
 
@@ -42,7 +60,7 @@ This allows the application to demonstrate:
 
 without exposing personal health data.
 
-The demo pipeline uses a separate SQLite database and reproducible data generation scripts.
+The workout example data supports testing the spreadsheet-style workout import flow without using real training logs.
 
 ## 🎬 Demo
 
@@ -430,7 +448,7 @@ RigLog is currently in active development, with glucose, activity, and early cro
 
 ---
 
-### 🔗 Cross-Module Intelligence (Phase 4 — In Progress)
+### 🔗 Cross-Module Intelligence (Phase 4 — Complete)
 
 - Daily Activity ↔ Glucose comparison chart
 - Intraday glucose readings aligned with step-density buckets
@@ -451,7 +469,7 @@ Future work will expand this into broader insight views as additional modules ar
 - Location-aware weather data model
 - Manual weather CSV import
 - Temperature bucket summary in the Glucose tab
-- Open-Meteo historical import planned next
+- Open-Meteo historical weather import with environment-backed location config
 
 ---
 
