@@ -419,6 +419,54 @@ This backlog is organised by architectural layer and implementation priority.
     * air pressure
     * weather condition
 
+### Architecture Documentation
+
+* [ ] Add data dictionary
+  * Document each database table
+  * Include:
+    * column name
+    * data type
+    * nullable status
+    * meaning / business definition
+    * source system
+    * notes on grain
+
+* [ ] Add ERD for database models
+  * Include:
+    * glucose_readings
+    * daily_activity
+    * activity_intraday
+    * daily_environment
+    * exercises
+    * workout_routines
+    * workout_routine_exercises
+    * workout_sessions
+    * workout_sets
+  * Show primary keys, foreign keys, and relationship cardinality
+  * Store diagram source in the repo, e.g. Mermaid or dbdiagram format
+
+* [ ] Add code reference documentation
+  * Document key classes, methods, and functions across the app
+  * Include:
+    * name
+    * type: class / method / function
+    * file path
+    * responsibility
+    * key inputs
+    * key outputs / side effects
+    * notes for debugging
+  * Initial scope:
+    * database models
+    * service-layer functions
+    * importers
+    * UI tab classes
+    * chart classes
+    * shared widgets
+
+* [ ] Use emoji-led section headings where helpful
+  * Keep documentation readable and pleasant to scan
+  * Avoid overusing emojis inside technical tables or function definitions
+
 ---
 
 ## 🧱 Phase 5 — Data Layer Expansion ✅ COMPLETE
@@ -537,7 +585,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → Database Layer
 
-* [ ] Replace placeholder workout model with normalized workout schema
+* [x] Replace placeholder workout model with normalized workout schema
   * Add `Exercise`
     * exercise_key
     * name
@@ -568,8 +616,8 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → Import / Seed Layer
 
-* [ ] Seed exercise catalogue from curated Push/Pull/Legs exercise list
-* [ ] Seed routine-to-exercise mappings
+* [x] Seed exercise catalogue from curated Push/Pull/Legs exercise list
+* [x] Seed routine-to-exercise mappings
 * [ ] Add manual workout-set import path from spreadsheet-style CSV
 
 ### Workout → Service Layer
@@ -586,14 +634,13 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → UI Layer
 
-* [ ] Build Workout tab foundation
-  * Add workout entry form
-  * Select workout type
-  * Select exercise from filtered routine list
-  * Enter set number, weight, reps, notes
+* [ ] Build read-only Workout tab foundation
+  * Add spreadsheet / CSV import button
   * Add workout history table
   * Add summary cards
-  * Add basic trend chart
+  * Add volume-by-exercise chart
+  * Add recent sessions table
+  * Defer manual workout entry until later
 
 ## 🍽️ Phase 8 — Nutrition Module
 
