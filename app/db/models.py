@@ -52,10 +52,12 @@ class IntradayActivity(Base):
 class Exercise(Base):
     __tablename__ = "exercises"
     __table_args__ = (
+        UniqueConstraint("exercise_key", name="uq_exercise_key"),
         UniqueConstraint("name", name="uq_exercise_name"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
+    exercise_key = Column(String, nullable=True, index=True)
     name = Column(String, nullable=False, index=True)
     category = Column(String, nullable=True)
     primary_muscle = Column(String, nullable=True)

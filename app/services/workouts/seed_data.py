@@ -191,12 +191,13 @@ def seed_workout_catalogue(session=None) -> dict[str, int]:
 
             exercise = (
                 session.query(Exercise)
-                .filter(Exercise.name == exercise_data["name"])
+                .filter(Exercise.exercise_key == exercise_key)
                 .first()
             )
 
             if exercise is None:
                 exercise = Exercise(
+                    exercise_key=exercise_key,
                     name=exercise_data["name"],
                     category=exercise_data["category"],
                     primary_muscle=exercise_data["primary_muscle"],
@@ -205,6 +206,11 @@ def seed_workout_catalogue(session=None) -> dict[str, int]:
                 session.add(exercise)
                 session.flush()
                 created_counts["exercises"] += 1
+            else:
+                exercise.name = exercise_data["name"]
+                exercise.category = exercise_data["category"]
+                exercise.primary_muscle = exercise_data["primary_muscle"]
+                exercise.equipment = exercise_data["equipment"]
 
             exercise_by_key[exercise_key] = exercise
 
