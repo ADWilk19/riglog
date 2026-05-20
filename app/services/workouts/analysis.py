@@ -1,0 +1,313 @@
+from __future__ import annotations
+
+from datetime import datetime, timedelta
+
+from app.db.database import SessionLocal
+from app.db.models import Exercise, WorkoutRoutine, WorkoutSession, WorkoutSet
+
+
+def _get_session_duration_minutes(workout_session: WorkoutSession) -> float | None:
+    """Return workout duration in minutes when both start and end times exist."""
+    if workout_session.started_at is None or workout_session.ended_at is None:
+        return None
+
+    duration = workout_session.ended_at - workout_session.started_at
+    return duration.total_seconds() / 60
+
+
+def get_workout_summary_metrics(
+    session=None,
+    reference_datetime: datetime | None = None,
+) -> dict:
+    """
+    Return top-level workout summary metrics.
+
+    Args:
+        session: Optional SQLAlchemy session for test injection.
+        reference_datetime: Optional anchor datetime for last-7-days metrics.
+
+    Returns:
+        Dictionary containing:
+        - total_sessions
+        - weekly_sessions
+        - average_duration_minutes
+        - most_recent_workout
+        - total_sets
+        - total_volume_kg
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    if reference_datetime is None:
+        reference_datetime = datetime.now()
+
+    week_cutoff = reference_datetime - timedelta(days=7)
+
+    try:
+        workout_sessions = (
+            session.query(WorkoutSession)
+            .order_by(WorkoutSession.started_at.desc())
+            .all()
+        )
+
+        workout_sets = session.query(WorkoutSet).all()
+
+        total_sessions = len(workout_sessions)
+
+        weekly_sessions = sum(
+            1
+            for workout_session in workout_sessions
+            if workout_session.started_at >= week_cutoff
+        )
+
+        durations = [
+            duration
+            for duration in (
+                _get_session_duration_minutes(workout_session)
+                for workout_session in workout_sessions
+            )
+            if duration is not None
+        ]
+
+        average_duration_minutes = (
+            round(sum(durations) / len(durations), 1)
+            if durations
+            else None
+        )
+
+        most_recent = workout_sessions[0] if workout_sessions else None
+
+        most_recent_workout = None
+        if most_recent is not None:
+            routine_name = most_recent.routine.name if most_recent.routine else None
+
+            most_recent_workout = {
+                "id": most_recent.id,
+                "started_at": most_recent.started_at,
+                "ended_at": most_recent.ended_at,
+                "workout_type": most_recent.workout_type,
+                "routine": routine_name,
+                "perceived_effort": most_recent.perceived_effort,
+                "notes": most_recent.notes,
+            }
+
+        total_sets = len(workout_sets)
+
+        total_volume_kg = sum(
+            (workout_set.weight_kg or 0) * (workout_set.reps or 0)
+            for workout_set in workout_sets
+        )
+
+        return {
+            "total_sessions": total_sessions,
+            "weekly_sessions": weekly_sessions,
+            "average_duration_minutes": average_duration_minutes,
+            "most_recent_workout": most_recent_workout,
+            "total_sets": total_sets,
+            "total_volume_kg": round(total_volume_kg, 1),
+        }
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_volume_by_exercise(session=None) -> list[dict]:
+    """
+    Return total training volume grouped by exercise.
+
+    Volume is calculated as:
+
+        weight_kg * reps
+
+    Returns:
+        List of dictionaries containing:
+        - exercise_id
+        - exercise_name
+        - total_sets
+        - total_reps
+        - total_volume_kg
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sets = (
+            session.query(WorkoutSet)
+            .join(Exercise, WorkoutSet.exercise_id == Exercise.id)
+            .all()
+        )
+
+        grouped: dict[int, dict] = {}
+
+        for workout_set in workout_sets:
+            exercise = workout_set.exercise
+
+            if exercise.id not in grouped:
+                grouped[exercise.id] = {
+                    "exercise_id": exercise.id,
+                    "exercise_name": exercise.name,
+                    "total_sets": 0,
+                    "total_reps": 0,
+                    "total_volume_kg": 0.0,
+                }
+
+            reps = workout_set.reps or 0
+            weight = workout_set.weight_kg or 0
+
+            grouped[exercise.id]["total_sets"] += 1
+            grouped[exercise.id]["total_reps"] += reps
+            grouped[exercise.id]["total_volume_kg"] += weight * reps
+
+        results = list(grouped.values())
+
+        for row in results:
+            row["total_volume_kg"] = round(row["total_volume_kg"], 1)
+
+        return sorted(
+            results,
+            key=lambda row: row["total_volume_kg"],
+            reverse=True,
+        )
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_volume_by_workout_type(session=None) -> list[dict]:
+    """
+    Return total training volume grouped by workout type.
+
+    Returns:
+        List of dictionaries containing:
+        - workout_type
+        - total_sessions
+        - total_sets
+        - total_reps
+        - total_volume_kg
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sets = (
+            session.query(WorkoutSet)
+            .join(WorkoutSession, WorkoutSet.session_id == WorkoutSession.id)
+            .all()
+        )
+
+        grouped: dict[str, dict] = {}
+
+        for workout_set in workout_sets:
+            workout_session = workout_set.session
+            workout_type = workout_session.workout_type or "Uncategorised"
+
+            if workout_type not in grouped:
+                grouped[workout_type] = {
+                    "workout_type": workout_type,
+                    "session_ids": set(),
+                    "total_sets": 0,
+                    "total_reps": 0,
+                    "total_volume_kg": 0.0,
+                }
+
+            reps = workout_set.reps or 0
+            weight = workout_set.weight_kg or 0
+
+            grouped[workout_type]["session_ids"].add(workout_session.id)
+            grouped[workout_type]["total_sets"] += 1
+            grouped[workout_type]["total_reps"] += reps
+            grouped[workout_type]["total_volume_kg"] += weight * reps
+
+        results = []
+
+        for row in grouped.values():
+            results.append(
+                {
+                    "workout_type": row["workout_type"],
+                    "total_sessions": len(row["session_ids"]),
+                    "total_sets": row["total_sets"],
+                    "total_reps": row["total_reps"],
+                    "total_volume_kg": round(row["total_volume_kg"], 1),
+                }
+            )
+
+        return sorted(
+            results,
+            key=lambda row: row["total_volume_kg"],
+            reverse=True,
+        )
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_recent_workout_sessions(limit: int = 10, session=None) -> list[dict]:
+    """
+    Return recent workout sessions for table display.
+
+    Args:
+        limit: Maximum number of sessions to return.
+        session: Optional SQLAlchemy session for test injection.
+
+    Returns:
+        List of dictionaries containing session summary data.
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sessions = (
+            session.query(WorkoutSession)
+            .order_by(WorkoutSession.started_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        results = []
+
+        for workout_session in workout_sessions:
+            duration = _get_session_duration_minutes(workout_session)
+
+            set_count = len(workout_session.sets)
+            total_volume = sum(
+                (workout_set.weight_kg or 0) * (workout_set.reps or 0)
+                for workout_set in workout_session.sets
+            )
+
+            routine_name = (
+                workout_session.routine.name
+                if workout_session.routine
+                else None
+            )
+
+            results.append(
+                {
+                    "id": workout_session.id,
+                    "started_at": workout_session.started_at,
+                    "ended_at": workout_session.ended_at,
+                    "duration_minutes": round(duration, 1) if duration is not None else None,
+                    "workout_type": workout_session.workout_type,
+                    "routine": routine_name,
+                    "perceived_effort": workout_session.perceived_effort,
+                    "set_count": set_count,
+                    "total_volume_kg": round(total_volume, 1),
+                    "notes": workout_session.notes,
+                }
+            )
+
+        return results
+
+    finally:
+        if owns_session:
+            session.close()
