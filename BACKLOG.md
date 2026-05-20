@@ -622,7 +622,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → Service Layer
 
-* [ ] Add workout summary metrics
+* [x] Add workout summary metrics
   * total sessions
   * weekly sessions
   * average duration
