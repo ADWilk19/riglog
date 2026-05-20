@@ -537,13 +537,40 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → Database Layer
 
-* [ ] Add workout/session model
-  * Fields:
-    * date
-    * workout_type
-    * duration_minutes
+* [ ] Replace placeholder workout model with normalized workout schema
+  * Add `Exercise`
+    * exercise_key
+    * name
+    * category
+    * primary_muscle
+    * equipment
+  * Add `WorkoutRoutine`
+    * name
     * notes
+  * Add `WorkoutRoutineExercise`
+    * routine_id
+    * exercise_id
+    * display_order
+  * Refactor `WorkoutSession`
+    * started_at
+    * ended_at
+    * workout_type / routine_id
     * perceived_effort
+    * notes
+    * source
+  * Add `WorkoutSet`
+    * session_id
+    * exercise_id
+    * set_number
+    * weight_kg
+    * reps
+    * notes
+
+### Workout → Import / Seed Layer
+
+* [ ] Seed exercise catalogue from curated Push/Pull/Legs exercise list
+* [ ] Seed routine-to-exercise mappings
+* [ ] Add manual workout-set import path from spreadsheet-style CSV
 
 ### Workout → Service Layer
 
@@ -552,11 +579,18 @@ This backlog is organised by architectural layer and implementation priority.
   * weekly sessions
   * average duration
   * most recent workout
+  * total sets
+  * total volume kg
+  * volume by exercise
+  * volume by workout type
 
 ### Workout → UI Layer
 
-* [ ] Build Workout tab
+* [ ] Build Workout tab foundation
   * Add workout entry form
+  * Select workout type
+  * Select exercise from filtered routine list
+  * Enter set number, weight, reps, notes
   * Add workout history table
   * Add summary cards
   * Add basic trend chart
