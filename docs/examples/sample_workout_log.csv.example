@@ -1,23 +1,23 @@
-Date,Workout,Exercise,Exercise ID,Set #,Weight,Reps,Notes
-2026-05-04,Push,Barbell Squat,barbell_squat,1,60,8,Warm-up felt steady
-2026-05-04,Push,Barbell Squat,barbell_squat,2,70,6,Solid
-2026-05-04,Push,Barbell Bench Press,barbell_bench_press,1,50,8,Comfortable
-2026-05-04,Push,Barbell Bench Press,barbell_bench_press,2,55,6,Good control
-2026-05-04,Push,Standing Overhead Press,standing_overhead_press,1,30,8,Strict reps
-2026-05-06,Pull,Deadlift,deadlift,1,90,5,Felt strong
-2026-05-06,Pull,Deadlift,deadlift,2,100,3,Heavy but clean
-2026-05-06,Pull,Pull-up / Lat Pulldown,pull_up_lat_pulldown,1,45,10,Smooth
-2026-05-06,Pull,Barbell Row,barbell_row,1,50,8,Controlled
-2026-05-08,Legs,Barbell Squat,barbell_squat,1,65,8,Good depth
-2026-05-08,Legs,Barbell Squat,barbell_squat,2,75,5,Challenging
-2026-05-08,Legs,Romanian Deadlift,romanian_deadlift,1,60,8,Hamstrings tight
-2026-05-08,Legs,Leg Press,leg_press,1,120,10,Comfortable
-2026-05-11,Push,Barbell Bench Press,barbell_bench_press,1,52.5,8,Slight progress
-2026-05-11,Push,Barbell Bench Press,barbell_bench_press,2,57.5,6,Solid
-2026-05-11,Push,Incline Press,incline_press,1,22.5,10,Good tempo
-2026-05-13,Pull,Deadlift,deadlift,1,95,5,Good speed
-2026-05-13,Pull,Kelso Shrugs,kelso_shrugs,1,20,12,Felt useful
-2026-05-13,Pull,Barbell Curl,barbell_curl,1,25,10,Strict
-2026-05-15,Legs,Hamstring Curl,hamstring_curl,1,35,12,Controlled
-2026-05-15,Legs,Standing Calf Raise,standing_calf_raise,1,50,12,Full range
-2026-05-15,Legs,Cable Crunch,cable_crunch,1,30,12,Good squeeze
+Date,Workout,Start Time,End Time,Duration Minutes,Exercise,Exercise ID,Set #,Weight,Reps,Notes
+2026-05-04,Push,18:30,,75,Barbell Squat,barbell_squat,1,60,8,Warm-up felt steady
+2026-05-04,Push,18:30,,75,Barbell Squat,barbell_squat,2,70,6,Solid
+2026-05-04,Push,18:30,,75,Barbell Bench Press,barbell_bench_press,1,50,8,Comfortable
+2026-05-04,Push,18:30,,75,Barbell Bench Press,barbell_bench_press,2,55,6,Good control
+2026-05-04,Push,18:30,,75,Standing Overhead Press,standing_overhead_press,1,30,8,Strict reps
+2026-05-06,Pull,18:45,20:00,,Deadlift,deadlift,1,90,5,Felt strong
+2026-05-06,Pull,18:45,20:00,,Deadlift,deadlift,2,100,3,Heavy but clean
+2026-05-06,Pull,18:45,20:00,,Pull-up / Lat Pulldown,pull_up_lat_pulldown,1,45,10,Smooth
+2026-05-06,Pull,18:45,20:00,,Barbell Row,barbell_row,1,50,8,Controlled
+2026-05-08,Legs,17:30,,80,Barbell Squat,barbell_squat,1,65,8,Good depth
+2026-05-08,Legs,17:30,,80,Barbell Squat,barbell_squat,2,75,5,Challenging
+2026-05-08,Legs,17:30,,80,Romanian Deadlift,romanian_deadlift,1,60,8,Hamstrings tight
+2026-05-08,Legs,17:30,,80,Leg Press,leg_press,1,120,10,Comfortable
+2026-05-11,Push,18:20,,70,Barbell Bench Press,barbell_bench_press,1,52.5,8,Slight progress
+2026-05-11,Push,18:20,,70,Barbell Bench Press,barbell_bench_press,2,57.5,6,Solid
+2026-05-11,Push,18:20,,70,Incline Press,incline_press,1,22.5,10,Good tempo
+2026-05-13,Pull,18:40,19:50,,Deadlift,deadlift,1,95,5,Good speed
+2026-05-13,Pull,18:40,19:50,,Kelso Shrugs,kelso_shrugs,1,20,12,Felt useful
+2026-05-13,Pull,18:40,19:50,,Barbell Curl,barbell_curl,1,25,10,Strict
+2026-05-15,Legs,17:45,,65,Hamstring Curl,hamstring_curl,1,35,12,Controlled
+2026-05-15,Legs,17:45,,65,Standing Calf Raise,standing_calf_raise,1,50,12,Full range
+2026-05-15,Legs,17:45,,65,Cable Crunch,cable_crunch,1,30,12,Good squeeze
