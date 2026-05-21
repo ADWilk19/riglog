@@ -421,7 +421,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Architecture Documentation
 
-* [ ] Add data dictionary
+* [x] Add data dictionary
   * Document each database table
   * Include:
     * column name
@@ -431,7 +431,7 @@ This backlog is organised by architectural layer and implementation priority.
     * source system
     * notes on grain
 
-* [ ] Add ERD for database models
+* [x] Add ERD for database models
   * Include:
     * glucose_readings
     * daily_activity
@@ -445,7 +445,7 @@ This backlog is organised by architectural layer and implementation priority.
   * Show primary keys, foreign keys, and relationship cardinality
   * Store diagram source in the repo, e.g. Mermaid or dbdiagram format
 
-* [ ] Add code reference documentation
+* [x] Add code reference documentation
   * Document key classes, methods, and functions across the app
   * Include:
     * name
@@ -463,7 +463,7 @@ This backlog is organised by architectural layer and implementation priority.
     * chart classes
     * shared widgets
 
-* [ ] Use emoji-led section headings where helpful
+* [x] Use emoji-led section headings where helpful
   * Keep documentation readable and pleasant to scan
   * Avoid overusing emojis inside technical tables or function definitions
 
@@ -618,7 +618,11 @@ This backlog is organised by architectural layer and implementation priority.
 
 * [x] Seed exercise catalogue from curated Push/Pull/Legs exercise list
 * [x] Seed routine-to-exercise mappings
-* [ ] Add manual workout-set import path from spreadsheet-style CSV
+* [x] Add manual workout-set import path from spreadsheet-style CSV
+  * Import `WorkoutSession` rows grouped by date/workout
+  * Import `WorkoutSet` rows from set-level CSV records
+  * Resolve exercises by stable `exercise_key`
+  * Skip duplicate sets idempotently
 
 ### Workout → Service Layer
 
@@ -634,13 +638,20 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → UI Layer
 
-* [ ] Build read-only Workout tab foundation
+* [x] Build read-only Workout tab foundation
   * Add spreadsheet / CSV import button
   * Add workout history table
   * Add summary cards
-  * Add volume-by-exercise chart
+  * Add volume-by-exercise table
   * Add recent sessions table
   * Defer manual workout entry until later
+
+### Home → UI Layer
+
+* [x] Add live Workout summary card
+  * Display total workout sessions
+  * Display weekly sessions and total volume
+  * Navigate to Workout tab
 
 ## 🍽️ Phase 8 — Nutrition Module
 
@@ -753,16 +764,16 @@ Package RigLog as a double-clickable macOS application once the core modules are
 
 ### Goals
 
-- Package RigLog as a native `.app` bundle
-- Allow the app to be launched from Finder and the Applications folder
-- Add a proper app icon and bundle metadata
-- Ensure bundled assets load correctly, including branding and QSS theme files
-- Move writable app data out of the project directory
-- Store the SQLite database in a user-safe macOS location, such as:
-  - `~/Library/Application Support/RigLog/`
-- Confirm Fitbit tokens and future settings persist correctly outside the repo
-- Test CSV import, PDF export, charts, and tab navigation from the packaged app
-- Document the packaged-app launch workflow in the README
+* Package RigLog as a native `.app` bundle
+* Allow the app to be launched from Finder and the Applications folder
+* Add a proper app icon and bundle metadata
+* Ensure bundled assets load correctly, including branding and QSS theme files
+* Move writable app data out of the project directory
+* Store the SQLite database in a user-safe macOS location, such as:
+§* `~/Library/Application Support/RigLog/`
+* Confirm Fitbit tokens and future settings persist correctly outside the repo
+* Test CSV import, PDF export, charts, and tab navigation from the packaged app
+* Document the packaged-app launch workflow in the README
 
 ### Notes
 
