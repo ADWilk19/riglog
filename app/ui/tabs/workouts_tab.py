@@ -44,13 +44,17 @@ def apply_chart_theme(fig: Figure, ax) -> None:
     """Apply the shared dark chart theme."""
     fig.patch.set_facecolor(CHART_BG)
     ax.set_facecolor(CHART_BG)
+
     ax.tick_params(axis="x", colors=CHART_TEXT)
     ax.tick_params(axis="y", colors=CHART_TEXT)
 
-    for spine in ax.spines.values():
-        spine.set_color(CHART_SPINE)
+    ax.spines["top"].set_visible(False)
+    ax.spines["right"].set_visible(False)
 
-    ax.grid(True, axis="x", color=CHART_GRID, alpha=0.5)
+    ax.spines["left"].set_color(CHART_SPINE)
+    ax.spines["bottom"].set_color(CHART_SPINE)
+
+    ax.grid(True, axis="y", color=CHART_GRID, alpha=0.25)
 
 
 class WorkoutVolumeByExerciseChart(FigureCanvasQTAgg):
@@ -66,8 +70,10 @@ class WorkoutVolumeByExerciseChart(FigureCanvasQTAgg):
         self.ax.clear()
         apply_chart_theme(self.figure, self.ax)
 
-        self.ax.set_title("Top Exercises by Volume", color=CHART_TEXT)
-        self.ax.set_xlabel("Volume (kg)", color=CHART_TEXT)
+        self.ax.grid(False)
+        self.ax.tick_params(axis="x", bottom=False, labelbottom=False)
+        self.ax.set_xlabel("")
+        self.ax.spines["bottom"].set_visible(False)
 
         if not volume_by_exercise:
             self.ax.text(
@@ -536,7 +542,6 @@ class WorkoutTab(QWidget):
 
         self.handle_exercise_progression_changed()
 
-
     def handle_exercise_progression_changed(self) -> None:
         """Refresh progression chart and cards for the selected exercise."""
         exercise_id = self.exercise_progression_filter.currentData()
@@ -551,7 +556,6 @@ class WorkoutTab(QWidget):
         self.exercise_progression_chart.plot_progression(progression_data)
         self._update_exercise_progression_cards(summary)
 
-
     def _clear_exercise_progression(self) -> None:
         """Reset exercise progression chart and cards."""
         self.exercise_progression_chart.plot_progression([])
@@ -563,7 +567,6 @@ class WorkoutTab(QWidget):
         self.max_weight_card.set_variant("neutral")
         self.reps_at_max_card.set_variant("neutral")
         self.date_lifted_card.set_variant("neutral")
-
 
     def _update_exercise_progression_cards(self, summary: dict) -> None:
         """Update selected-exercise progression summary cards."""
