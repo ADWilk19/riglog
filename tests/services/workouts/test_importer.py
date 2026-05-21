@@ -1,5 +1,6 @@
 import csv
 from pathlib import Path
+from datetime import datetime
 
 import pytest
 from sqlalchemy import create_engine
@@ -43,6 +44,9 @@ def write_workout_csv(path: Path, rows: list[dict]):
     fieldnames = [
         "Date",
         "Workout",
+        "Start Time",
+        "End Time",
+        "Duration Minutes",
         "Exercise",
         "Exercise ID",
         "Set #",
@@ -215,6 +219,118 @@ def test_import_workout_csv_raises_for_missing_required_columns(tmp_path):
 
         with pytest.raises(ValueError, match="missing required columns"):
             import_workout_csv(str(csv_path), session=session)
+
+    finally:
+        session.close()
+
+
+def test_import_workout_csv_uses_start_and_end_time_when_present(tmp_path):
+    session = create_test_session()
+
+    try:
+        seed_catalogue(session)
+
+        csv_path = tmp_path / "workout_log.csv"
+        write_workout_csv(
+            csv_path,
+            [
+                {
+                    "Date": "2026-05-20",
+                    "Workout": "Push",
+                    "Start Time": "18:30",
+                    "End Time": "19:45",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "60",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+            ],
+        )
+
+        counts = import_workout_csv(str(csv_path), session=session)
+
+        assert counts == {
+            "sessions": 1,
+            "sets": 1,
+            "skipped_sets": 0,
+        }
+
+        workout_session = session.query(WorkoutSession).one()
+
+        assert workout_session.started_at == datetime(2026, 5, 20, 18, 30)
+        assert workout_session.ended_at == datetime(2026, 5, 20, 19, 45)
+
+    finally:
+        session.close()
+
+
+def test_import_workout_csv_uses_duration_minutes_when_end_time_missing(tmp_path):
+    session = create_test_session()
+
+    try:
+        seed_catalogue(session)
+
+        csv_path = tmp_path / "workout_log.csv"
+        write_workout_csv(
+            csv_path,
+            [
+                {
+                    "Date": "2026-05-20",
+                    "Workout": "Push",
+                    "Start Time": "18:30",
+                    "Duration Minutes": "75",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "60",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+            ],
+        )
+
+        import_workout_csv(str(csv_path), session=session)
+
+        workout_session = session.query(WorkoutSession).one()
+
+        assert workout_session.started_at == datetime(2026, 5, 20, 18, 30)
+        assert workout_session.ended_at == datetime(2026, 5, 20, 19, 45)
+
+    finally:
+        session.close()
+
+
+def test_import_workout_csv_preserves_existing_default_time_behaviour(tmp_path):
+    session = create_test_session()
+
+    try:
+        seed_catalogue(session)
+
+        csv_path = tmp_path / "workout_log.csv"
+        write_workout_csv(
+            csv_path,
+            [
+                {
+                    "Date": "2026-05-20",
+                    "Workout": "Push",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "60",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+            ],
+        )
+
+        import_workout_csv(str(csv_path), session=session)
+
+        workout_session = session.query(WorkoutSession).one()
+
+        assert workout_session.started_at == datetime(2026, 5, 20, 9, 0)
+        assert workout_session.ended_at is None
 
     finally:
         session.close()
