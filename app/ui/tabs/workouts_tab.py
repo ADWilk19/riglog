@@ -26,6 +26,7 @@ from app.services.workouts.analysis import (
     get_workout_summary_metrics,
 )
 from app.services.workouts.importer import import_workout_csv
+from app.services.workouts.maintenance import clear_imported_workout_data
 from app.ui.widgets.summary_card import SummaryCard
 
 CHART_BG = "#1E1E1E"
@@ -159,9 +160,14 @@ class WorkoutTab(QWidget):
         self.refresh_button.setObjectName("secondaryAction")
         self.refresh_button.clicked.connect(self.refresh_data)
 
+        self.clear_imported_button = QPushButton("Clear Imported Workouts")
+        self.clear_imported_button.setObjectName("secondaryAction")
+        self.clear_imported_button.clicked.connect(self.handle_clear_imported_workouts)
+
         toolbar.addStretch()
         toolbar.addWidget(self.import_button)
         toolbar.addWidget(self.refresh_button)
+        toolbar.addWidget(self.clear_imported_button)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
@@ -415,6 +421,44 @@ class WorkoutTab(QWidget):
                 f"Imported {counts['sessions']} sessions and "
                 f"{counts['sets']} sets.\n"
                 f"Skipped {counts['skipped_sets']} duplicate sets."
+            ),
+        )
+
+        self.refresh_data()
+
+    def handle_clear_imported_workouts(self) -> None:
+        """Clear imported workout sessions and sets after confirmation."""
+        response = QMessageBox.warning(
+            self,
+            "Clear imported workouts",
+            (
+                "This will delete imported workout sessions and workout sets.\n\n"
+                "Your exercise catalogue and workout routines will be kept.\n\n"
+                "Continue?"
+            ),
+            QMessageBox.Yes | QMessageBox.No,
+            QMessageBox.No,
+        )
+
+        if response != QMessageBox.Yes:
+            return
+
+        try:
+            counts = clear_imported_workout_data()
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Clear failed",
+                f"Could not clear imported workout data:\n{exc}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Imported workouts cleared",
+            (
+                f"Deleted {counts['sessions']} imported sessions and "
+                f"{counts['sets']} workout sets."
             ),
         )
 
