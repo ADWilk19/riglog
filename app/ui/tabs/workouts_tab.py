@@ -15,12 +15,16 @@ from PySide6.QtWidgets import (
     QTableWidgetItem,
     QVBoxLayout,
     QWidget,
+    QComboBox,
 )
 
 from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
 from matplotlib.figure import Figure
 
 from app.services.workouts.analysis import (
+    get_exercise_progression,
+    get_exercise_progression_summary,
+    get_exercises_with_workout_data,
     get_recent_workout_sessions,
     get_volume_by_exercise,
     get_workout_summary_metrics,
@@ -114,6 +118,68 @@ class WorkoutVolumeByExerciseChart(FigureCanvasQTAgg):
         self.draw()
 
 
+class WorkoutExerciseProgressionChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for selected-exercise progression over time."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(8, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_progression(self, progression_data: list[dict]) -> None:
+        """Plot selected exercise max weight over time."""
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+
+        self.ax.set_title("Exercise Progression", color=CHART_TEXT)
+        self.ax.set_ylabel("Max Weight (kg)", color=CHART_TEXT)
+
+        if not progression_data:
+            self.ax.text(
+                0.5,
+                0.5,
+                "Select an exercise with workout data",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+                transform=self.ax.transAxes,
+            )
+            self.ax.set_axis_off()
+            self.figure.tight_layout()
+            self.draw()
+            return
+
+        dates = [row["date"] for row in progression_data]
+        weights = [row["max_weight_kg"] for row in progression_data]
+
+        self.ax.plot(
+            dates,
+            weights,
+            marker="o",
+            linewidth=2,
+            color=BAR_GREEN,
+            alpha=0.9,
+        )
+
+        for date, weight in zip(dates, weights):
+            self.ax.text(
+                date,
+                weight,
+                f"{weight:g} kg",
+                ha="center",
+                va="bottom",
+                color=CHART_TEXT,
+                fontsize=9,
+            )
+
+        max_weight = max(weights) if weights else 0
+        self.ax.set_ylim(0, max_weight * 1.2 if max_weight else 1)
+
+        self.figure.autofmt_xdate()
+        self.figure.tight_layout()
+        self.draw()
+
+
 class WorkoutTab(QWidget):
     """Read-only workout analytics tab with CSV import support."""
 
@@ -137,6 +203,7 @@ class WorkoutTab(QWidget):
         self._build_toolbar()
         self._build_summary_cards()
         self._build_volume_by_exercise_chart()
+        self._build_exercise_progression_section()
         self._build_recent_sessions_table()
         self._build_volume_by_exercise_table()
 
@@ -208,6 +275,55 @@ class WorkoutTab(QWidget):
         self.volume_by_exercise_chart.setMinimumHeight(360)
 
         self.layout.addWidget(self.volume_by_exercise_chart)
+
+    def _build_exercise_progression_section(self) -> None:
+        self.layout.addWidget(self._create_section_title("Exercise Progression"))
+
+        controls_layout = QHBoxLayout()
+        controls_layout.setSpacing(12)
+
+        exercise_label = QLabel("Exercise")
+        exercise_label.setObjectName("fieldLabel")
+
+        self.exercise_progression_filter = QComboBox()
+        self.exercise_progression_filter.setMinimumWidth(260)
+        self.exercise_progression_filter.currentIndexChanged.connect(
+            self.handle_exercise_progression_changed
+        )
+
+        controls_layout.addStretch()
+        controls_layout.addWidget(exercise_label)
+        controls_layout.addWidget(self.exercise_progression_filter)
+        controls_layout.addStretch()
+
+        self.layout.addLayout(controls_layout)
+
+        progression_cards_layout = QHBoxLayout()
+        progression_cards_layout.setSpacing(12)
+
+        self.max_weight_card = SummaryCard("Most Weight Lifted", "-")
+        self.reps_at_max_card = SummaryCard("Reps at Max Weight", "-")
+        self.date_lifted_card = SummaryCard("Date Lifted", "-")
+
+        progression_cards = [
+            self.max_weight_card,
+            self.reps_at_max_card,
+            self.date_lifted_card,
+        ]
+
+        progression_cards_layout.addStretch()
+
+        for card in progression_cards:
+            progression_cards_layout.addWidget(card)
+
+        progression_cards_layout.addStretch()
+
+        self.layout.addLayout(progression_cards_layout)
+
+        self.exercise_progression_chart = WorkoutExerciseProgressionChart()
+        self.exercise_progression_chart.setMinimumHeight(360)
+
+        self.layout.addWidget(self.exercise_progression_chart)
 
     def _build_recent_sessions_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Recent Workout Sessions"))
@@ -281,6 +397,7 @@ class WorkoutTab(QWidget):
 
         self._update_summary_cards(metrics)
         self.volume_by_exercise_chart.plot_volume_by_exercise(volume_by_exercise)
+        self._refresh_exercise_progression_options()
         self._update_recent_sessions_table(recent_sessions)
         self._update_volume_by_exercise_table(volume_by_exercise)
 
@@ -391,6 +508,90 @@ class WorkoutTab(QWidget):
                     column_index,
                     item,
                 )
+
+    def _refresh_exercise_progression_options(self) -> None:
+        """Refresh the exercise dropdown while preserving the selected exercise."""
+        current_exercise_id = self.exercise_progression_filter.currentData()
+
+        exercises = get_exercises_with_workout_data()
+
+        self.exercise_progression_filter.blockSignals(True)
+        self.exercise_progression_filter.clear()
+
+        if not exercises:
+            self.exercise_progression_filter.addItem("No exercises available", None)
+        else:
+            for exercise in exercises:
+                self.exercise_progression_filter.addItem(
+                    exercise["exercise_name"],
+                    exercise["exercise_id"],
+                )
+
+        if current_exercise_id is not None:
+            index = self.exercise_progression_filter.findData(current_exercise_id)
+            if index >= 0:
+                self.exercise_progression_filter.setCurrentIndex(index)
+
+        self.exercise_progression_filter.blockSignals(False)
+
+        self.handle_exercise_progression_changed()
+
+
+    def handle_exercise_progression_changed(self) -> None:
+        """Refresh progression chart and cards for the selected exercise."""
+        exercise_id = self.exercise_progression_filter.currentData()
+
+        if exercise_id is None:
+            self._clear_exercise_progression()
+            return
+
+        progression_data = get_exercise_progression(exercise_id)
+        summary = get_exercise_progression_summary(exercise_id)
+
+        self.exercise_progression_chart.plot_progression(progression_data)
+        self._update_exercise_progression_cards(summary)
+
+
+    def _clear_exercise_progression(self) -> None:
+        """Reset exercise progression chart and cards."""
+        self.exercise_progression_chart.plot_progression([])
+
+        self.max_weight_card.set_content("-")
+        self.reps_at_max_card.set_content("-")
+        self.date_lifted_card.set_content("-")
+
+        self.max_weight_card.set_variant("neutral")
+        self.reps_at_max_card.set_variant("neutral")
+        self.date_lifted_card.set_variant("neutral")
+
+
+    def _update_exercise_progression_cards(self, summary: dict) -> None:
+        """Update selected-exercise progression summary cards."""
+        max_weight = summary["max_weight_kg"]
+        reps_at_max = summary["reps_at_max_weight"]
+        date_of_max = summary["date_of_max_weight"]
+
+        if max_weight is None:
+            self._clear_exercise_progression()
+            return
+
+        self.max_weight_card.set_content(f"{max_weight:g}", "kg")
+
+        if reps_at_max is None:
+            self.reps_at_max_card.set_content("-")
+        else:
+            self.reps_at_max_card.set_content(str(reps_at_max), "reps")
+
+        if date_of_max is None:
+            self.date_lifted_card.set_content("-")
+        else:
+            self.date_lifted_card.set_content(
+                date_of_max.strftime("%Y-%m-%d")
+            )
+
+        self.max_weight_card.set_variant("success")
+        self.reps_at_max_card.set_variant("neutral")
+        self.date_lifted_card.set_variant("neutral")
 
     def handle_import_csv(self) -> None:
         """Import workout CSV data and refresh the tab."""
