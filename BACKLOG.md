@@ -646,6 +646,63 @@ This backlog is organised by architectural layer and implementation priority.
   * Add recent sessions table
   * Defer manual workout entry until later
 
+* [x] Add workout volume chart
+  * Display top exercises by total training volume
+  * Reuse `get_volume_by_exercise()`
+  * Keep volume-by-exercise detail table underneath
+
+### Workout → Chart Layer
+
+* [ ] Add exercise progression chart
+  * Add exercise dropdown populated from workout data
+  * Plot selected exercise progression over time
+  * Initial metric:
+    * highest weight lifted per workout date
+  * Include contextual fields:
+    * workout type
+    * reps achieved at highest weight
+    * total exercise volume for that date
+  * Future extensions:
+    * estimated 1RM
+    * best weight by rep count
+    * total volume trend
+    * rep-range selector
+
+* [ ] Add clear imported workout data action
+  * Delete imported `WorkoutSession` and `WorkoutSet` records
+  * Preserve seeded exercises and workout routines
+  * Require confirmation before deleting
+  * Intended for replacing demo workout data with real imported data
+
+### Workout → Insight Layer
+
+* [ ] Add workout session calorie analysis
+  * Estimate or import calories burned per workout session
+  * Preferred first version:
+    * use `activity_intraday.calories_burned`
+    * sum calories between `WorkoutSession.started_at` and `WorkoutSession.ended_at`
+  * Requires workout session duration or end time
+  * Compare calorie burn against lifting style:
+    * heavy weight / low reps
+    * lighter weight / higher reps
+  * Return:
+    * session_id
+    * workout_type
+    * started_at
+    * duration_minutes
+    * total_sets
+    * total_reps
+    * total_volume_kg
+    * average_load_per_rep
+    * max_weight_kg
+    * calories_burned
+    * calories_per_minute
+    * calories_per_kg_lifted
+  * Future extensions:
+    * MET-based fallback estimate
+    * heart-rate-informed calorie estimate
+    * session intensity classification
+
 ### Home → UI Layer
 
 * [x] Add live Workout summary card
