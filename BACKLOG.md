@@ -695,6 +695,14 @@ This backlog is organised by architectural layer and implementation priority.
   * Refresh action updates summary cards
   * Selected-day interaction updates detail panel once implemented
 
+* [ ] Add lightweight WorkoutTab interaction tests
+  * Workout tab renders without crashing
+  * Refresh action updates summary cards
+  * Recent sessions table populates from mocked service-layer output
+  * Volume-by-exercise table populates from mocked service-layer output
+  * CSV import success refreshes workout data
+  * CSV import failure shows an error message
+
 * [ ] Add HomeTab navigation tests
   * Glucose card navigates to Glucose tab
   * Activity card navigates to Activity tab
@@ -705,6 +713,7 @@ This backlog is organised by architectural layer and implementation priority.
 * [ ] Add pytest-qt support for UI interaction tests
   * Provide shared `qapp` / `qtbot` fixtures
   * Mock service-layer calls to avoid database dependency
+  * Cover HomeTab, ActivityTab, GlucoseTab, and WorkoutTab
   * Keep tests focused on widget state and signal behaviour
 
 ---
@@ -770,7 +779,7 @@ Package RigLog as a double-clickable macOS application once the core modules are
 * Ensure bundled assets load correctly, including branding and QSS theme files
 * Move writable app data out of the project directory
 * Store the SQLite database in a user-safe macOS location, such as:
-§* `~/Library/Application Support/RigLog/`
+  * `~/Library/Application Support/RigLog/`
 * Confirm Fitbit tokens and future settings persist correctly outside the repo
 * Test CSV import, PDF export, charts, and tab navigation from the packaged app
 * Document the packaged-app launch workflow in the README
