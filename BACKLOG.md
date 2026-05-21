@@ -668,7 +668,7 @@ This backlog is organised by architectural layer and implementation priority.
     * total volume trend
     * rep-range selector
 
-* [ ] Add clear imported workout data action
+* [x] Add clear imported workout data action
   * Delete imported `WorkoutSession` and `WorkoutSet` records
   * Preserve seeded exercises and workout routines
   * Require confirmation before deleting
