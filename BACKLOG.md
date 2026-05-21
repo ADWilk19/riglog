@@ -651,9 +651,15 @@ This backlog is organised by architectural layer and implementation priority.
   * Reuse `get_volume_by_exercise()`
   * Keep volume-by-exercise detail table underneath
 
+* [x] Add clear imported workout data action
+  * Delete imported `WorkoutSession` and `WorkoutSet` records
+  * Preserve seeded exercises and workout routines
+  * Require confirmation before deleting
+  * Intended for replacing demo workout data with real imported data
+
 ### Workout → Chart Layer
 
-* [ ] Add exercise progression chart
+* [x] Add exercise progression chart
   * Add exercise dropdown populated from workout data
   * Plot selected exercise progression over time
   * Initial metric:
@@ -667,12 +673,6 @@ This backlog is organised by architectural layer and implementation priority.
     * best weight by rep count
     * total volume trend
     * rep-range selector
-
-* [x] Add clear imported workout data action
-  * Delete imported `WorkoutSession` and `WorkoutSet` records
-  * Preserve seeded exercises and workout routines
-  * Require confirmation before deleting
-  * Intended for replacing demo workout data with real imported data
 
 ### Workout → Insight Layer
 
