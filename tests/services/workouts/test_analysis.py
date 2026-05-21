@@ -6,6 +6,9 @@ from sqlalchemy.orm import sessionmaker
 from app.db.base import Base
 from app.db.models import Exercise, WorkoutRoutine, WorkoutSession, WorkoutSet
 from app.services.workouts.analysis import (
+    get_exercise_progression,
+    get_exercise_progression_summary,
+    get_exercises_with_workout_data,
     get_recent_workout_sessions,
     get_volume_by_exercise,
     get_volume_by_workout_type,
@@ -215,6 +218,195 @@ def test_get_recent_workout_sessions_returns_limited_recent_sessions():
         assert recent["set_count"] == 2
         assert recent["total_volume_kg"] == 870.0
         assert recent["notes"] == "Good push session"
+
+    finally:
+        session.close()
+
+
+def test_get_exercises_with_workout_data_returns_only_logged_exercises():
+    session = create_test_session()
+
+    try:
+        seed_workout_test_data(session)
+
+        unused_exercise = Exercise(
+            name="Unused Exercise",
+            category="Accessory",
+            primary_muscle="Shoulders",
+            equipment="Dumbbells",
+        )
+        session.add(unused_exercise)
+        session.commit()
+
+        results = get_exercises_with_workout_data(session=session)
+
+        exercise_names = [row["exercise_name"] for row in results]
+
+        assert exercise_names == [
+            "Barbell Bench Press",
+            "Barbell Squat",
+        ]
+
+    finally:
+        session.close()
+
+
+def test_get_exercise_progression_returns_max_weight_by_date():
+    session = create_test_session()
+
+    try:
+        seed_workout_test_data(session)
+
+        bench = (
+            session.query(Exercise)
+            .filter(Exercise.name == "Barbell Bench Press")
+            .one()
+        )
+
+        results = get_exercise_progression(
+            exercise_id=bench.id,
+            session=session,
+        )
+
+        assert results == [
+            {
+                "date": datetime(2026, 5, 20).date(),
+                "exercise_id": bench.id,
+                "exercise_name": "Barbell Bench Press",
+                "max_weight_kg": 65,
+                "reps_at_max_weight": 6,
+                "workout_type": "Push",
+                "set_count": 2,
+                "total_reps": 14,
+                "total_volume_kg": 870.0,
+            }
+        ]
+
+    finally:
+        session.close()
+
+
+def test_get_exercise_progression_tracks_same_exercise_across_workout_types():
+    session = create_test_session()
+
+    try:
+        seed_workout_test_data(session)
+
+        squat = (
+            session.query(Exercise)
+            .filter(Exercise.name == "Barbell Squat")
+            .one()
+        )
+
+        push = (
+            session.query(WorkoutRoutine)
+            .filter(WorkoutRoutine.name == "Push")
+            .one()
+        )
+
+        push_squat_session = WorkoutSession(
+            started_at=datetime(2026, 5, 20, 11, 0),
+            ended_at=datetime(2026, 5, 20, 11, 45),
+            routine_id=push.id,
+            workout_type="Push",
+            perceived_effort=8,
+            source="test",
+        )
+        session.add(push_squat_session)
+        session.commit()
+
+        session.add(
+            WorkoutSet(
+                session_id=push_squat_session.id,
+                exercise_id=squat.id,
+                set_number=1,
+                weight_kg=120,
+                reps=1,
+            )
+        )
+        session.commit()
+
+        results = get_exercise_progression(
+            exercise_id=squat.id,
+            session=session,
+        )
+
+        assert results == [
+            {
+                "date": datetime(2026, 5, 1).date(),
+                "exercise_id": squat.id,
+                "exercise_name": "Barbell Squat",
+                "max_weight_kg": 80,
+                "reps_at_max_weight": 5,
+                "workout_type": "Legs",
+                "set_count": 1,
+                "total_reps": 5,
+                "total_volume_kg": 400.0,
+            },
+            {
+                "date": datetime(2026, 5, 20).date(),
+                "exercise_id": squat.id,
+                "exercise_name": "Barbell Squat",
+                "max_weight_kg": 120,
+                "reps_at_max_weight": 1,
+                "workout_type": "Push",
+                "set_count": 1,
+                "total_reps": 1,
+                "total_volume_kg": 120.0,
+            },
+        ]
+
+    finally:
+        session.close()
+
+
+def test_get_exercise_progression_summary_returns_card_metrics():
+    session = create_test_session()
+
+    try:
+        seed_workout_test_data(session)
+
+        bench = (
+            session.query(Exercise)
+            .filter(Exercise.name == "Barbell Bench Press")
+            .one()
+        )
+
+        summary = get_exercise_progression_summary(
+            exercise_id=bench.id,
+            session=session,
+        )
+
+        assert summary == {
+            "exercise_id": bench.id,
+            "exercise_name": "Barbell Bench Press",
+            "max_weight_kg": 65,
+            "reps_at_max_weight": 6,
+            "date_of_max_weight": datetime(2026, 5, 20).date(),
+            "max_reps": 8,
+        }
+
+    finally:
+        session.close()
+
+
+def test_get_exercise_progression_summary_handles_unknown_exercise():
+    session = create_test_session()
+
+    try:
+        summary = get_exercise_progression_summary(
+            exercise_id=999,
+            session=session,
+        )
+
+        assert summary == {
+            "exercise_id": 999,
+            "exercise_name": None,
+            "max_weight_kg": None,
+            "reps_at_max_weight": None,
+            "date_of_max_weight": None,
+            "max_reps": None,
+        }
 
     finally:
         session.close()

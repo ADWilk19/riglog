@@ -311,3 +311,211 @@ def get_recent_workout_sessions(limit: int = 10, session=None) -> list[dict]:
     finally:
         if owns_session:
             session.close()
+
+def get_exercises_with_workout_data(session=None) -> list[dict]:
+    """
+    Return exercises that have at least one logged workout set.
+
+    Intended for populating an exercise dropdown in the Workout tab.
+
+    Returns:
+        List of dictionaries containing:
+        - exercise_id
+        - exercise_key
+        - exercise_name
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        exercises = (
+            session.query(Exercise)
+            .join(WorkoutSet, WorkoutSet.exercise_id == Exercise.id)
+            .distinct()
+            .order_by(Exercise.name.asc())
+            .all()
+        )
+
+        return [
+            {
+                "exercise_id": exercise.id,
+                "exercise_key": exercise.exercise_key,
+                "exercise_name": exercise.name,
+            }
+            for exercise in exercises
+        ]
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_exercise_progression(
+    exercise_id: int,
+    session=None,
+) -> list[dict]:
+    """
+    Return selected-exercise progression by workout date.
+
+    For each date, the function returns the heaviest set for that exercise,
+    plus useful context for future chart tooltips/cards.
+
+    Args:
+        exercise_id: Database ID of the exercise.
+        session: Optional SQLAlchemy session for test injection.
+
+    Returns:
+        List of dictionaries containing:
+        - date
+        - exercise_id
+        - exercise_name
+        - max_weight_kg
+        - reps_at_max_weight
+        - workout_type
+        - set_count
+        - total_reps
+        - total_volume_kg
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sets = (
+            session.query(WorkoutSet)
+            .join(WorkoutSession, WorkoutSet.session_id == WorkoutSession.id)
+            .join(Exercise, WorkoutSet.exercise_id == Exercise.id)
+            .filter(WorkoutSet.exercise_id == exercise_id)
+            .order_by(WorkoutSession.started_at.asc(), WorkoutSet.set_number.asc())
+            .all()
+        )
+
+        grouped: dict = {}
+
+        for workout_set in workout_sets:
+            workout_session = workout_set.session
+            exercise = workout_set.exercise
+            workout_date = workout_session.started_at.date()
+
+            if workout_date not in grouped:
+                grouped[workout_date] = {
+                    "date": workout_date,
+                    "exercise_id": exercise.id,
+                    "exercise_name": exercise.name,
+                    "max_weight_kg": None,
+                    "reps_at_max_weight": None,
+                    "workout_type": workout_session.workout_type,
+                    "set_count": 0,
+                    "total_reps": 0,
+                    "total_volume_kg": 0.0,
+                }
+
+            row = grouped[workout_date]
+
+            weight = workout_set.weight_kg or 0
+            reps = workout_set.reps or 0
+
+            row["set_count"] += 1
+            row["total_reps"] += reps
+            row["total_volume_kg"] += weight * reps
+
+            current_max = row["max_weight_kg"]
+
+            if current_max is None or weight > current_max:
+                row["max_weight_kg"] = weight
+                row["reps_at_max_weight"] = reps
+                row["workout_type"] = workout_session.workout_type
+
+        results = []
+
+        for row in grouped.values():
+            row["total_volume_kg"] = round(row["total_volume_kg"], 1)
+            results.append(row)
+
+        return sorted(results, key=lambda row: row["date"])
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_exercise_progression_summary(
+    exercise_id: int,
+    session=None,
+) -> dict:
+    """
+    Return summary cards for a selected exercise progression view.
+
+    Intended future cards:
+    - Most Weight Lifted
+    - Most Reps Lifted
+    - Date Lifted
+
+    Args:
+        exercise_id: Database ID of the exercise.
+        session: Optional SQLAlchemy session for test injection.
+
+    Returns:
+        Dictionary containing:
+        - exercise_id
+        - exercise_name
+        - max_weight_kg
+        - reps_at_max_weight
+        - date_of_max_weight
+        - max_reps
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sets = (
+            session.query(WorkoutSet)
+            .join(WorkoutSession, WorkoutSet.session_id == WorkoutSession.id)
+            .join(Exercise, WorkoutSet.exercise_id == Exercise.id)
+            .filter(WorkoutSet.exercise_id == exercise_id)
+            .order_by(WorkoutSession.started_at.asc(), WorkoutSet.set_number.asc())
+            .all()
+        )
+
+        if not workout_sets:
+            return {
+                "exercise_id": exercise_id,
+                "exercise_name": None,
+                "max_weight_kg": None,
+                "reps_at_max_weight": None,
+                "date_of_max_weight": None,
+                "max_reps": None,
+            }
+
+        exercise = workout_sets[0].exercise
+
+        max_weight_set = max(
+            workout_sets,
+            key=lambda workout_set: (
+                workout_set.weight_kg or 0,
+                workout_set.session.started_at,
+            ),
+        )
+
+        max_reps = max(
+            workout_set.reps or 0
+            for workout_set in workout_sets
+        )
+
+        return {
+            "exercise_id": exercise.id,
+            "exercise_name": exercise.name,
+            "max_weight_kg": max_weight_set.weight_kg,
+            "reps_at_max_weight": max_weight_set.reps,
+            "date_of_max_weight": max_weight_set.session.started_at.date(),
+            "max_reps": max_reps,
+        }
+
+    finally:
+        if owns_session:
+            session.close()
