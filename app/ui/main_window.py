@@ -12,6 +12,7 @@ from PySide6.QtGui import QIcon
 from app.ui.tabs.glucose_tab import GlucoseTab
 from app.ui.tabs.home_tab import HomeTab
 from app.ui.tabs.activity_tab import ActivityTab
+from app.ui.tabs.workouts_tab import WorkoutTab
 
 
 class MainWindow(QMainWindow):
@@ -29,7 +30,7 @@ class MainWindow(QMainWindow):
 
         self.glucose_tab = GlucoseTab()
         self.activity_tab = ActivityTab()
-        self.workouts_tab = self._build_tab("Workouts")
+        self.workouts_tab = WorkoutTab()
 
         self.home_tab = HomeTab(
             on_open_glucose=lambda: self.tabs.setCurrentWidget(self.glucose_tab),
