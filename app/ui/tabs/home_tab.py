@@ -17,6 +17,7 @@ from app.services.activity.analysis import (
     get_activity_summary_cards,
     get_daily_activity,
 )
+from app.services.workouts.analysis import get_workout_summary_metrics
 from app.ui.widgets.summary_card import SummaryCard
 
 
@@ -152,8 +153,8 @@ class HomeTab(QWidget):
         )
         self.workouts_card = SummaryCard(
             title="Workouts",
-            value="Coming soon",
-            subtitle="Track sessions and progression",
+            value="Loading...",
+            subtitle="Checking workout data",
             on_click=self.on_open_workouts,
         )
         self.nutrition_card = SummaryCard(
@@ -164,6 +165,7 @@ class HomeTab(QWidget):
 
         self.glucose_card.set_variant("primary")
         self.activity_card.set_variant("primary")
+        self.workouts_card.set_variant("primary")
 
         for card in (
             self.glucose_card,
@@ -193,6 +195,7 @@ class HomeTab(QWidget):
         try:
             self._refresh_glucose_card(session)
             self._refresh_activity_card()
+            self._refresh_workouts_card()
         finally:
             session.close()
 
@@ -244,6 +247,26 @@ class HomeTab(QWidget):
         self.activity_card.set_content(
             goal_adherence_card.get("value", "-"),
             "7-day goal adherence",
+        )
+
+    def _refresh_workouts_card(self) -> None:
+        metrics = get_workout_summary_metrics()
+
+        total_sessions = metrics["total_sessions"]
+
+        if total_sessions == 0:
+            self.workouts_card.set_content(
+                "No workouts",
+                "Import workout CSV",
+            )
+            return
+
+        weekly_sessions = metrics["weekly_sessions"]
+        total_volume = metrics["total_volume_kg"]
+
+        self.workouts_card.set_content(
+            f"{total_sessions:,} sessions",
+            f"{weekly_sessions} this week • {total_volume:,.0f} kg",
         )
 
     def refresh_data(self) -> None:
