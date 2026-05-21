@@ -17,6 +17,9 @@ from PySide6.QtWidgets import (
     QWidget,
 )
 
+from matplotlib.backends.backend_qtagg import FigureCanvasQTAgg
+from matplotlib.figure import Figure
+
 from app.services.workouts.analysis import (
     get_recent_workout_sessions,
     get_volume_by_exercise,
@@ -24,6 +27,90 @@ from app.services.workouts.analysis import (
 )
 from app.services.workouts.importer import import_workout_csv
 from app.ui.widgets.summary_card import SummaryCard
+
+CHART_BG = "#1E1E1E"
+CHART_TEXT = "#F0F0F0"
+CHART_GRID = "#444444"
+CHART_SPINE = "#888888"
+BAR_GREEN = "#43A047"
+
+
+def apply_chart_theme(fig: Figure, ax) -> None:
+    """Apply the shared dark chart theme."""
+    fig.patch.set_facecolor(CHART_BG)
+    ax.set_facecolor(CHART_BG)
+    ax.tick_params(axis="x", colors=CHART_TEXT)
+    ax.tick_params(axis="y", colors=CHART_TEXT)
+
+    for spine in ax.spines.values():
+        spine.set_color(CHART_SPINE)
+
+    ax.grid(True, axis="x", color=CHART_GRID, alpha=0.5)
+
+
+class WorkoutVolumeByExerciseChart(FigureCanvasQTAgg):
+    """Matplotlib canvas for workout volume grouped by exercise."""
+
+    def __init__(self) -> None:
+        self.figure = Figure(figsize=(8, 4.5))
+        self.ax = self.figure.add_subplot(111)
+        super().__init__(self.figure)
+
+    def plot_volume_by_exercise(self, volume_by_exercise: list[dict]) -> None:
+        """Plot top exercises by total training volume."""
+        self.ax.clear()
+        apply_chart_theme(self.figure, self.ax)
+
+        self.ax.set_title("Top Exercises by Volume", color=CHART_TEXT)
+        self.ax.set_xlabel("Volume (kg)", color=CHART_TEXT)
+
+        if not volume_by_exercise:
+            self.ax.text(
+                0.5,
+                0.5,
+                "No workout volume data available",
+                ha="center",
+                va="center",
+                color=CHART_TEXT,
+                transform=self.ax.transAxes,
+            )
+            self.ax.set_axis_off()
+            self.figure.tight_layout()
+            self.draw()
+            return
+
+        top_rows = volume_by_exercise[:10]
+
+        exercise_names = [row["exercise_name"] for row in top_rows]
+        volumes = [row["total_volume_kg"] for row in top_rows]
+
+        # Reverse so the largest appears at the top of the horizontal chart.
+        exercise_names = list(reversed(exercise_names))
+        volumes = list(reversed(volumes))
+
+        bars = self.ax.barh(
+            exercise_names,
+            volumes,
+            color=BAR_GREEN,
+            alpha=0.85,
+        )
+
+        max_volume = max(volumes) if volumes else 0
+        label_offset = max_volume * 0.02 if max_volume else 1
+
+        for bar, value in zip(bars, volumes):
+            self.ax.text(
+                value + label_offset,
+                bar.get_y() + bar.get_height() / 2,
+                f"{value:,.0f} kg",
+                va="center",
+                color=CHART_TEXT,
+                fontsize=9,
+            )
+
+        self.ax.set_xlim(0, max_volume * 1.15 if max_volume else 1)
+        self.figure.tight_layout()
+        self.draw()
 
 
 class WorkoutTab(QWidget):
@@ -48,6 +135,7 @@ class WorkoutTab(QWidget):
 
         self._build_toolbar()
         self._build_summary_cards()
+        self._build_volume_by_exercise_chart()
         self._build_recent_sessions_table()
         self._build_volume_by_exercise_table()
 
@@ -107,6 +195,14 @@ class WorkoutTab(QWidget):
 
         self.layout.addLayout(summary_layout)
 
+    def _build_volume_by_exercise_chart(self) -> None:
+        self.layout.addWidget(self._create_section_title("Volume by Exercise"))
+
+        self.volume_by_exercise_chart = WorkoutVolumeByExerciseChart()
+        self.volume_by_exercise_chart.setMinimumHeight(360)
+
+        self.layout.addWidget(self.volume_by_exercise_chart)
+
     def _build_recent_sessions_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Recent Workout Sessions"))
 
@@ -144,7 +240,7 @@ class WorkoutTab(QWidget):
         self.layout.addWidget(self.recent_sessions_table)
 
     def _build_volume_by_exercise_table(self) -> None:
-        self.layout.addWidget(self._create_section_title("Volume by Exercise"))
+        self.layout.addWidget(self._create_section_title("Volume by Exercise Detail"))
 
         self.volume_by_exercise_table = QTableWidget()
         self.volume_by_exercise_table.setObjectName("analysisTable")
@@ -178,6 +274,7 @@ class WorkoutTab(QWidget):
         volume_by_exercise = get_volume_by_exercise()
 
         self._update_summary_cards(metrics)
+        self.volume_by_exercise_chart.plot_volume_by_exercise(volume_by_exercise)
         self._update_recent_sessions_table(recent_sessions)
         self._update_volume_by_exercise_table(volume_by_exercise)
 
