@@ -36,7 +36,7 @@ RigLog includes artificial example data for safe local testing and screenshots.
 
 Example files live in:
 
-```test
+```text
 docs/examples/
 ```
 
@@ -106,6 +106,17 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Step consistency analysis using coefficient of variation (CV)
   - Streak and trend analysis
   - Daily and weekly charts with hover insights
+- Workout analytics:
+  - Spreadsheet-style workout CSV import
+  - Seeded Push / Pull / Legs exercise catalogue
+  - Stable exercise identifiers via `exercise_key`
+  - Read-only Workout dashboard
+  - Workout summary cards
+  - Volume by exercise chart and detail table
+  - Exercise progression chart with exercise dropdown
+  - Recent workout sessions table
+  - Workout calorie analysis table using intraday activity calories
+  - Clear imported workout data action
 - Unified home dashboard:
   - Live summary cards for glucose and activity
   - Quick navigation between modules
@@ -271,6 +282,7 @@ flowchart TD
         home["tabs/home_tab.py"]
         glucose_ui["tabs/glucose_tab.py"]
         activity_ui["tabs/activity_tab.py"]
+        workouts_ui["tabs/workouts_tab.py"]
         card["widgets/summary_card.py"]
     end
 
@@ -282,6 +294,10 @@ flowchart TD
         fitbit_importer["activity/fitbit_importer.py"]
         fitbit_client["activity/fitbit_client.py"]
         fitbit_auth["activity/fitbit_auth.py"]
+        workout_analysis["workouts/analysis.py"]
+        workout_importer["workouts/importer.py"]
+        workout_seed["workouts/seed_data.py"]
+        workout_maintenance["workouts/maintenance.py"]
     end
 
     subgraph db["app/db"]
@@ -292,6 +308,7 @@ flowchart TD
 
     diabetes["Diabetes:M CSV"]
     fitbit["Fitbit API"]
+    workout_csv["Workout CSV"]
     sqlite["data/riglog.db"]
 
     main --> window
@@ -301,10 +318,12 @@ flowchart TD
     window --> home
     window --> glucose_ui
     window --> activity_ui
+    window --> workouts_ui
 
     home --> card
     glucose_ui --> card
     activity_ui --> card
+    workouts_ui --> card
 
     diabetes --> glucose_importer
     glucose_ui --> glucose_importer
@@ -321,6 +340,15 @@ flowchart TD
     home --> activity_analysis
     fitbit_importer --> database
     activity_analysis --> database
+
+    workout_csv --> workout_importer
+    workouts_ui --> workout_importer
+    workouts_ui --> workout_analysis
+    workouts_ui --> workout_maintenance
+    workout_importer --> database
+    workout_analysis --> database
+    workout_maintenance --> database
+    workout_seed --> database
 
     cross_module_analysis --> activity_analysis
     cross_module_analysis --> glucose_analysis
@@ -470,6 +498,32 @@ Future work will expand this into broader insight views as additional modules ar
 - Manual weather CSV import
 - Temperature bucket summary in the Glucose tab
 - Open-Meteo historical weather import with environment-backed location config
+
+---
+
+### 🏋️ Workout Module (Foundation — Complete)
+
+- Normalised workout schema:
+  - exercises
+  - workout routines
+  - routine/exercise mappings
+  - workout sessions
+  - workout sets
+- Seeded Push / Pull / Legs workout catalogue
+- Spreadsheet-style workout CSV import
+- Optional session timing support:
+  - Start Time
+  - End Time
+  - Duration Minutes
+- Stable exercise identifiers via `exercise_key`
+- Read-only Workout dashboard:
+  - summary cards
+  - volume by exercise chart
+  - exercise progression chart
+  - recent sessions table
+  - volume detail table
+  - calorie analysis table
+- Clear imported workout data action that preserves catalogue/routine data
 
 ---
 
