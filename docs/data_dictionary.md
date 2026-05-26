@@ -140,6 +140,8 @@ This document describes RigLog’s database tables, their grain, and the meaning
 | `notes` | String | Yes | Free-text notes |
 | `source` | String | Yes | Source system, e.g. `workout_csv` |
 
+**Timing note:** `ended_at` enables workout duration, average duration metrics, and activity-calorie alignment for workout insight analysis.
+
 ---
 
 ## 🏋️ `workout_sets`

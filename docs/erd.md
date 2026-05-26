@@ -118,3 +118,4 @@ erDiagram
 - Workout data separates planned structure from completed activity:
   - planned structure: `workout_routines`, `workout_routine_exercises`, `exercises`
   - completed activity: `workout_sessions`, `workout_sets`
+- Workout calorie analysis is derived in the service layer by aligning `workout_sessions.started_at` / `ended_at` with `activity_intraday.recorded_at`; it is not represented as a physical table relationship.
