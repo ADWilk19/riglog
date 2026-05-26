@@ -407,6 +407,16 @@ Imports spreadsheet-style workout logs from CSV.
 
 - `Notes`
 
+**Optional timing columns:**
+
+- `Start Time`
+
+- `End Time`
+
+- `Duration Minutes`
+
+- `Duration`
+
 **Inputs:**
 
 - `file_path`: path to the workout CSV.
@@ -436,6 +446,59 @@ Imports spreadsheet-style workout logs from CSV.
 - Falls back to exercise name where needed.
 
 - Duplicate sets are skipped using session, exercise, and set number.
+
+- If timing columns are present, the importer populates `WorkoutSession.started_at` and `WorkoutSession.ended_at`.
+
+- If no start time is supplied, imported sessions default to `09:00` to preserve earlier importer behaviour.
+
+- Session timing enables average duration metrics and workout calorie analysis.
+
+---
+
+### `clear_imported_workout_data`
+
+**Type:**
+Function
+
+**Location:**
+`app/services/workouts/maintenance.py`
+
+**What it does:**
+Deletes imported workout sessions and their associated sets for a given source.
+
+**Inputs:**
+
+- `source`: source value to clear. Defaults to `workout_csv`.
+
+- `session`: optional SQLAlchemy session for test injection.
+
+**Outputs:**
+
+- Dictionary with deleted counts:
+
+  - `sets`
+
+  - `sessions`
+
+**Writes to:**
+
+- `workout_sets`
+
+- `workout_sessions`
+
+**Preserves:**
+
+- `exercises`
+
+- `workout_routines`
+
+- `workout_routine_exercises`
+
+**Debugging notes:**
+
+- Used by the Workout tab clear-imported-data action.
+
+- Designed to remove demo/imported workout logs without deleting the seeded exercise catalogue or routine templates.
 
 ---
 
@@ -629,6 +692,208 @@ Returns recent workout sessions for table display.
 
 ---
 
+### `get_exercises_with_workout_data`
+
+**Type:**
+Function
+
+**Location:**
+`app/services/workouts/analysis.py`
+
+**What it does:**
+Returns exercises that have at least one logged workout set.
+
+**Inputs:**
+
+- `session`: optional SQLAlchemy session for test injection.
+
+**Outputs per exercise:**
+
+- `exercise_id`
+
+- `exercise_key`
+
+- `exercise_name`
+
+**Reads from:**
+
+- `exercises`
+
+- `workout_sets`
+
+**Debugging notes:**
+
+- Used to populate the Exercise Progression dropdown in the Workout tab.
+
+- Excludes catalogue exercises that have not yet appeared in logged workout data.
+
+---
+
+### `get_exercise_progression`
+
+**Type:**
+Function
+
+**Location:**
+`app/services/workouts/analysis.py`
+
+**What it does:**
+Returns selected-exercise progression by workout date.
+
+**Inputs:**
+
+- `exercise_id`: database ID of the selected exercise.
+
+- `session`: optional SQLAlchemy session for test injection.
+
+**Outputs per date:**
+
+- `date`
+
+- `exercise_id`
+
+- `exercise_name`
+
+- `max_weight_kg`
+
+- `reps_at_max_weight`
+
+- `workout_type`
+
+- `set_count`
+
+- `total_reps`
+
+- `total_volume_kg`
+
+**Reads from:**
+
+- `workout_sets`
+
+- `workout_sessions`
+
+- `exercises`
+
+**Debugging notes:**
+
+- Used by the Exercise Progression chart.
+
+- Groups records by workout date.
+
+- Tracks the heaviest set for the selected exercise on each date.
+
+---
+
+### `get_exercise_progression_summary`
+
+**Type:**
+Function
+
+**Location:**
+`app/services/workouts/analysis.py`
+
+**What it does:**
+Returns summary-card metrics for the selected exercise progression view.
+
+**Inputs:**
+
+- `exercise_id`: database ID of the selected exercise.
+
+- `session`: optional SQLAlchemy session for test injection.
+
+**Outputs:**
+
+- `exercise_id`
+
+- `exercise_name`
+
+- `max_weight_kg`
+
+- `reps_at_max_weight`
+
+- `date_of_max_weight`
+
+- `max_reps`
+
+**Reads from:**
+
+- `workout_sets`
+
+- `workout_sessions`
+
+- `exercises`
+
+**Debugging notes:**
+
+- Powers the Workout tab cards beneath the exercise dropdown.
+
+- Returns empty/null-style values when no sets exist for the selected exercise.
+
+---
+
+### `get_workout_session_calorie_analysis`
+
+**Type:**
+Function
+
+**Location:**
+`app/services/workouts/analysis.py`
+
+**What it does:**
+Returns workout session calorie analysis by aligning workout session time windows with intraday activity calorie burn.
+
+**Inputs:**
+
+- `session`: optional SQLAlchemy session for test injection.
+
+**Outputs per workout session:**
+
+- `session_id`
+
+- `workout_type`
+
+- `started_at`
+
+- `ended_at`
+
+- `duration_minutes`
+
+- `total_sets`
+
+- `total_reps`
+
+- `total_volume_kg`
+
+- `average_load_per_rep`
+
+- `max_weight_kg`
+
+- `calories_burned`
+
+- `calories_per_minute`
+
+- `calories_per_kg_lifted`
+
+**Reads from:**
+
+- `workout_sessions`
+
+- `workout_sets`
+
+- `activity_intraday`
+
+**Debugging notes:**
+
+- Only sessions with both `started_at` and `ended_at` are included.
+
+- Calories are derived from `IntradayActivity.calories_burned` between the workout start and end timestamps.
+
+- The function does not persist calorie values; it returns derived insight data.
+
+- Used by the Workout Calorie Analysis table.
+
+---
+
 ## 🧪 Workout Tests
 
 ### `test_workout_models.py`
@@ -702,6 +967,14 @@ Tests workout analysis service functions.
 
 - Recent workout session output.
 
+- Exercises with logged workout data.
+
+- Exercise progression by date.
+
+- Exercise progression summary metrics.
+
+- Workout session calorie analysis.
+
 ---
 
 ### `test_importer.py`
@@ -729,6 +1002,33 @@ Tests spreadsheet-style workout CSV import.
 
 ---
 
+### `test_maintenance.py`
+
+**Type:**
+Test module
+
+**Location:**
+`tests/services/workouts/test_maintenance.py`
+
+**What it does:**
+Tests workout data maintenance utilities.
+
+**Covers:**
+
+- Clearing imported workout sessions.
+
+- Clearing associated workout sets.
+
+- Preserving exercises.
+
+- Preserving workout routines.
+
+- Preserving routine/exercise mappings.
+
+- Returning zero counts when no matching source exists.
+
+---
+
 ## 📝 Expansion Notes
 
 This reference currently covers:
@@ -736,6 +1036,8 @@ This reference currently covers:
 - Database models.
 
 - Workout services.
+
+- Workout maintenance utilities.
 
 - Workout tests.
 
@@ -754,4 +1056,3 @@ Future sections should add:
 - Chart classes.
 
 - Shared widgets.
-git status
