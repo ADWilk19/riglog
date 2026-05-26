@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from app.db.database import SessionLocal
+from app.db.models import MealLog, MealTemplate
 
 NUTRITION_FIELDS = [
     "calories",
@@ -102,3 +104,59 @@ def calculate_logged_meal_totals(meal_log: Any) -> dict[str, float]:
     }
 
     return _round_totals(totals)
+
+
+def get_meal_template_totals(meal_template_id: int) -> dict[str, float] | None:
+    """
+    Fetch a meal template by ID and calculate its nutrition totals.
+
+    Args:
+        meal_template_id: Database ID of the meal template.
+
+    Returns:
+        Nutrition totals dictionary, or ``None`` if the meal template is not found.
+    """
+    session = SessionLocal()
+
+    try:
+        meal_template = (
+            session.query(MealTemplate)
+            .filter(MealTemplate.id == meal_template_id)
+            .first()
+        )
+
+        if meal_template is None:
+            return None
+
+        return calculate_meal_template_totals(meal_template)
+
+    finally:
+        session.close()
+
+
+def get_logged_meal_totals(meal_log_id: int) -> dict[str, float] | None:
+    """
+    Fetch a logged meal by ID and calculate its portion-adjusted nutrition totals.
+
+    Args:
+        meal_log_id: Database ID of the logged meal.
+
+    Returns:
+        Nutrition totals dictionary, or ``None`` if the meal log is not found.
+    """
+    session = SessionLocal()
+
+    try:
+        meal_log = (
+            session.query(MealLog)
+            .filter(MealLog.id == meal_log_id)
+            .first()
+        )
+
+        if meal_log is None:
+            return None
+
+        return calculate_logged_meal_totals(meal_log)
+
+    finally:
+        session.close()
