@@ -27,6 +27,7 @@ from app.services.workouts.analysis import (
     get_exercises_with_workout_data,
     get_recent_workout_sessions,
     get_volume_by_exercise,
+    get_workout_session_calorie_analysis,
     get_workout_summary_metrics,
 )
 from app.services.workouts.importer import import_workout_csv
@@ -210,6 +211,7 @@ class WorkoutTab(QWidget):
         self._build_summary_cards()
         self._build_volume_by_exercise_chart()
         self._build_exercise_progression_section()
+        self._build_workout_calorie_analysis_table()
         self._build_recent_sessions_table()
         self._build_volume_by_exercise_table()
 
@@ -331,6 +333,48 @@ class WorkoutTab(QWidget):
 
         self.layout.addWidget(self.exercise_progression_chart)
 
+    def _build_workout_calorie_analysis_table(self) -> None:
+        self.layout.addWidget(self._create_section_title("Workout Calorie Analysis"))
+
+        self.workout_calorie_table = QTableWidget()
+        self.workout_calorie_table.setObjectName("analysisTable")
+        self.workout_calorie_table.setColumnCount(11)
+        self.workout_calorie_table.setHorizontalHeaderLabels(
+            [
+                "Date",
+                "Workout",
+                "Duration",
+                "Sets",
+                "Reps",
+                "Volume",
+                "Avg Load / Rep",
+                "Max Weight",
+                "Calories",
+                "Calories / Min",
+                "Calories / kg",
+            ]
+        )
+        self.workout_calorie_table.verticalHeader().setVisible(False)
+        self.workout_calorie_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.workout_calorie_table.setSelectionMode(QTableWidget.NoSelection)
+        self.workout_calorie_table.setAlternatingRowColors(True)
+        self.workout_calorie_table.setMinimumHeight(260)
+
+        header = self.workout_calorie_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(7, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(8, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(9, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(10, QHeaderView.Stretch)
+
+        self.layout.addWidget(self.workout_calorie_table)
+
     def _build_recent_sessions_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Recent Workout Sessions"))
 
@@ -400,10 +444,12 @@ class WorkoutTab(QWidget):
         metrics = get_workout_summary_metrics()
         recent_sessions = get_recent_workout_sessions(limit=10)
         volume_by_exercise = get_volume_by_exercise()
+        calorie_analysis = get_workout_session_calorie_analysis()
 
         self._update_summary_cards(metrics)
         self.volume_by_exercise_chart.plot_volume_by_exercise(volume_by_exercise)
         self._refresh_exercise_progression_options()
+        self._update_workout_calorie_analysis_table(calorie_analysis)
         self._update_recent_sessions_table(recent_sessions)
         self._update_volume_by_exercise_table(volume_by_exercise)
 
@@ -444,6 +490,47 @@ class WorkoutTab(QWidget):
         self.total_volume_card.set_variant("success")
         self.average_duration_card.set_variant("neutral")
         self.recent_workout_card.set_variant("neutral")
+
+    def _update_workout_calorie_analysis_table(self, calorie_analysis: list[dict]) -> None:
+        self.workout_calorie_table.setRowCount(len(calorie_analysis))
+
+        for row_index, row in enumerate(calorie_analysis):
+            started_at = row["started_at"].strftime("%Y-%m-%d %H:%M")
+
+            average_load = row["average_load_per_rep"]
+            calories_per_minute = row["calories_per_minute"]
+            calories_per_kg = row["calories_per_kg_lifted"]
+
+            values = [
+                started_at,
+                row["workout_type"] or "-",
+                f"{row['duration_minutes']:.1f} min",
+                str(row["total_sets"]),
+                str(row["total_reps"]),
+                f"{row['total_volume_kg']:.1f} kg",
+                "-" if average_load is None else f"{average_load:.1f} kg",
+                f"{row['max_weight_kg']:.1f} kg",
+                f"{row['calories_burned']:.2f}",
+                "-" if calories_per_minute is None else f"{calories_per_minute:.2f}",
+                "-" if calories_per_kg is None else f"{calories_per_kg:.4f}",
+            ]
+
+            for column_index, value in enumerate(values):
+                item = QTableWidgetItem(value)
+
+                if column_index == 1:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+                else:
+                    item.setTextAlignment(Qt.AlignmentFlag.AlignCenter)
+
+                self.workout_calorie_table.setItem(
+                    row_index,
+                    column_index,
+                    item,
+                )
 
     def _update_recent_sessions_table(self, recent_sessions: list[dict]) -> None:
         self.recent_sessions_table.setRowCount(len(recent_sessions))
