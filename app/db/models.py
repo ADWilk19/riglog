@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, Float, DateTime, String, Date, ForeignKey, UniqueConstraint
+from sqlalchemy import Column, Integer, Float, DateTime, String, Date, ForeignKey, UniqueConstraint, Text
 from sqlalchemy.orm import relationship
 from app.db.base import Base
 
@@ -172,3 +172,112 @@ class DailyEnvironment(Base):
 
     source = Column(String, nullable=True)
     notes = Column(String, nullable=True)
+
+
+class Food(Base):
+    """Reusable food item with nutrition values stored per 100g."""
+
+    __tablename__ = "foods"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    brand = Column(String, nullable=True)
+    serving_notes = Column(Text, nullable=True)
+
+    calories_per_100g = Column(Float, nullable=False, default=0.0)
+    carbs_per_100g = Column(Float, nullable=False, default=0.0)
+    protein_per_100g = Column(Float, nullable=False, default=0.0)
+    fat_per_100g = Column(Float, nullable=False, default=0.0)
+    fibre_per_100g = Column(Float, nullable=False, default=0.0)
+    salt_per_100g = Column(Float, nullable=False, default=0.0)
+
+    source = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    meal_template_items = relationship(
+        "MealTemplateItem",
+        back_populates="food",
+    )
+
+
+class MealTemplate(Base):
+    """Reusable meal definition made up of one or more foods."""
+
+    __tablename__ = "meal_templates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    default_meal_event = Column(String, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    items = relationship(
+        "MealTemplateItem",
+        back_populates="meal_template",
+        cascade="all, delete-orphan",
+    )
+
+    meal_logs = relationship(
+        "MealLog",
+        back_populates="meal_template",
+    )
+
+
+class MealTemplateItem(Base):
+    """Food item and quantity within a reusable meal template."""
+
+    __tablename__ = "meal_template_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    meal_template_id = Column(
+        Integer,
+        ForeignKey("meal_templates.id"),
+        nullable=False,
+        index=True,
+    )
+    food_id = Column(
+        Integer,
+        ForeignKey("foods.id"),
+        nullable=False,
+        index=True,
+    )
+
+    quantity_g = Column(Float, nullable=False)
+    display_order = Column(Integer, nullable=False, default=0)
+    notes = Column(Text, nullable=True)
+
+    meal_template = relationship(
+        "MealTemplate",
+        back_populates="items",
+    )
+
+    food = relationship(
+        "Food",
+        back_populates="meal_template_items",
+    )
+
+
+class MealLog(Base):
+    """Single logged meal event based on a reusable meal template."""
+
+    __tablename__ = "meal_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    logged_at = Column(DateTime, nullable=False, index=True)
+
+    meal_template_id = Column(
+        Integer,
+        ForeignKey("meal_templates.id"),
+        nullable=False,
+        index=True,
+    )
+
+    meal_event = Column(String, nullable=True, index=True)
+    portion_multiplier = Column(Float, nullable=False, default=1.0)
+    notes = Column(Text, nullable=True)
+    source = Column(String, nullable=True)
+
+    meal_template = relationship(
+        "MealTemplate",
+        back_populates="meal_logs",
+    )
