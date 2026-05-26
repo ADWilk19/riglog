@@ -1,0 +1,4 @@
+meal_template_key,name,description,default_meal_event,notes
+porridge_breakfast,Porridge breakfast,"Oats, milk, and banana",Pre-Breakfast,Demo nutrition meal template
+chicken_rice_bowl,Chicken rice bowl,"Rice, chicken breast, and olive oil",Pre-Dinner,Demo nutrition meal template
+yoghurt_banana_snack,Yoghurt and banana snack,Greek yoghurt with banana,Post-Lunch,Demo nutrition meal template

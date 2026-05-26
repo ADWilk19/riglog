@@ -1,0 +1,9 @@
+meal_template_key,food_key,quantity_g,display_order,notes
+porridge_breakfast,porridge_oats,50,1,Demo nutrition meal item
+porridge_breakfast,semi_skimmed_milk,200,2,Demo nutrition meal item
+porridge_breakfast,banana,100,3,Demo nutrition meal item
+chicken_rice_bowl,cooked_rice,250,1,Demo nutrition meal item
+chicken_rice_bowl,chicken_breast,150,2,Demo nutrition meal item
+chicken_rice_bowl,olive_oil,10,3,Demo nutrition meal item
+yoghurt_banana_snack,greek_yoghurt,200,1,Demo nutrition meal item
+yoghurt_banana_snack,banana,100,2,Demo nutrition meal item

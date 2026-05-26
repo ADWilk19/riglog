@@ -31,7 +31,14 @@ data/riglog.db
 data/riglog_demo.db
 
 # --- Demo / generated data ---
-data/demo/
+data/*
+!data/demo/
+!data/demo/**
 *.csv
+!data/demo/*.csv
 .venv/
 .venv-test/
+
+# Local demo files generated from README examples
+data/demo/demo_glucose.csv
+data/demo/sample_workout_log.csv

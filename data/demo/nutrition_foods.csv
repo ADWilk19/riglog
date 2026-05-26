@@ -1,0 +1,8 @@
+food_key,name,brand,serving_notes,calories_per_100g,carbs_per_100g,protein_per_100g,fat_per_100g,fibre_per_100g,salt_per_100g,source,notes
+porridge_oats,Porridge oats,Demo,Typical dry oats,370,60,12,8,6,0.1,demo_nutrition,Demo nutrition food
+semi_skimmed_milk,Semi-skimmed milk,Demo,Approximate values,50,5,3.5,1.8,0,0.1,demo_nutrition,Demo nutrition food
+banana,Banana,Demo,Raw banana,89,23,1.1,0.3,2.6,0,demo_nutrition,Demo nutrition food
+greek_yoghurt,Greek yoghurt,Demo,Plain Greek-style yoghurt,95,3.8,9,5,0,0.1,demo_nutrition,Demo nutrition food
+cooked_rice,Cooked rice,Demo,Cooked white rice,130,28,2.7,0.3,0.4,0,demo_nutrition,Demo nutrition food
+chicken_breast,Chicken breast,Demo,Cooked skinless chicken breast,165,0,31,3.6,0,0.2,demo_nutrition,Demo nutrition food
+olive_oil,Olive oil,Demo,One tablespoon is roughly 13.5g,884,0,0,100,0,0,demo_nutrition,Demo nutrition food

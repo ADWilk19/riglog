@@ -1,0 +1,4 @@
+logged_at,meal_template_key,meal_event,portion_multiplier,source,notes
+2026-05-24 08:00:00,porridge_breakfast,Pre-Breakfast,1.0,demo_nutrition,Demo breakfast log
+2026-05-25 18:30:00,chicken_rice_bowl,Pre-Dinner,1.0,demo_nutrition,Demo dinner log
+2026-05-26 13:30:00,yoghurt_banana_snack,Post-Lunch,0.75,demo_nutrition,Demo snack log
