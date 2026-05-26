@@ -676,7 +676,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ### Workout → Insight Layer
 
-* [ ] Add workout session calorie analysis
+* [x] Add workout session calorie analysis
   * Estimate or import calories burned per workout session
   * Preferred first version:
     * use `activity_intraday.calories_burned`
@@ -702,6 +702,11 @@ This backlog is organised by architectural layer and implementation priority.
     * MET-based fallback estimate
     * heart-rate-informed calorie estimate
     * session intensity classification
+
+* [ ] Add workout intensity classification
+  * Compare heavy weight / low reps vs lighter weight / higher reps
+  * Add session labels based on average load per rep, total reps, and volume
+  * Consider charting calories per minute and calories per kg lifted
 
 ### Home → UI Layer
 
