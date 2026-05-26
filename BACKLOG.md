@@ -717,31 +717,214 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## 🍽️ Phase 8 — Nutrition Module
 
-### Nutrition → Database Layer
+### Slice 1 — Nutrition Model Foundation
 
-* [ ] Add nutrition / meal model
+#### Nutrition → Database Layer (`app/db/models.py`)
+
+* [ ] Add `Food`
+  * Grain:
+    * one reusable food item
   * Fields:
-    * recorded_at
-    * meal_event
-    * carbs_g
-    * calories
+    * name
+    * brand
+    * serving_notes
+    * calories_per_100g
+    * carbs_per_100g
+    * protein_per_100g
+    * fat_per_100g
+    * fibre_per_100g
+    * salt_per_100g
+    * source
     * notes
 
-### Nutrition → Service Layer
+* [ ] Add `MealTemplate`
+  * Grain:
+    * one reusable meal definition
+  * Fields:
+    * name
+    * description
+    * default_meal_event
+    * notes
+
+* [ ] Add `MealTemplateItem`
+  * Grain:
+    * one food within one reusable meal template
+  * Fields:
+    * meal_template_id
+    * food_id
+    * quantity_g
+    * display_order
+    * notes
+
+* [ ] Add `MealLog`
+  * Grain:
+    * one logged meal event
+  * Fields:
+    * logged_at
+    * meal_template_id
+    * meal_event
+    * portion_multiplier
+    * notes
+    * source
+
+* [ ] Add model relationships
+  * `MealTemplate` → many `MealTemplateItem`
+  * `Food` → many `MealTemplateItem`
+  * `MealTemplate` → many `MealLog`
+
+---
+
+### Slice 2 — Nutrition Calculation Service
+
+#### Nutrition → Service Layer (`app/services/nutrition/analysis.py`)
+
+* [ ] Add food total calculation
+  * Calculate nutrition totals for a food by quantity in grams
+  * Return:
+    * calories
+    * carbs_g
+    * protein_g
+    * fat_g
+    * fibre_g
+    * salt_g
+
+* [ ] Add meal template total calculation
+  * Sum all `MealTemplateItem` rows for a meal template
+  * Apply each item quantity in grams
+  * Return total calories and macros
+
+* [ ] Add logged meal total calculation
+  * Calculate totals for a `MealLog`
+  * Apply `portion_multiplier`
+  * Return logged meal nutrition totals
 
 * [ ] Add nutrition summary metrics
+  * total meals logged
   * total carbs by day
   * carbs by meal event
   * average daily carbs
   * calorie totals where available
 
-### Nutrition → UI Layer
+---
 
-* [ ] Build Nutrition tab
-  * Add meal entry form
-  * Add meal history table
+### Slice 3 — Seed / Demo Nutrition Data
+
+#### Nutrition → Import / Seed Layer
+
+* [ ] Add sample foods
+  * Examples:
+    * porridge oats
+    * semi-skimmed milk
+    * banana
+    * Greek yoghurt
+    * rice
+    * chicken breast
+    * olive oil
+
+* [ ] Add sample meal templates
+  * Examples:
+    * porridge breakfast
+    * chicken rice bowl
+    * yoghurt and banana snack
+
+* [ ] Add sample meal logs
+  * Use realistic timestamps
+  * Include meal events
+  * Include portion multipliers
+
+---
+
+### Slice 4 — Read-Only Nutrition Tab
+
+#### Nutrition → UI Layer (`app/ui/tabs/nutrition_tab.py`)
+
+* [ ] Build read-only Nutrition tab foundation
   * Add summary cards
-  * Add carbs-by-meal-event chart
+  * Add recent meal logs table
+  * Add meal template totals table
+  * Defer manual meal entry until later
+
+* [ ] Add summary cards
+  * Meals logged
+  * Calories
+  * Carbs
+  * Protein
+  * Fat
+
+* [ ] Add recent meal logs table
+  * Display:
+    * logged at
+    * meal name
+    * meal event
+    * portion multiplier
+    * calories
+    * carbs
+    * protein
+    * fat
+    * notes
+
+* [ ] Add meal template totals table
+  * Display:
+    * template name
+    * calories
+    * carbs
+    * protein
+    * fat
+    * fibre
+    * salt
+
+---
+
+### Slice 5 — Manual Food / Meal Import Path
+
+#### Nutrition → Import Layer
+
+* [ ] Add food CSV import
+  * Import reusable foods from CSV
+  * Resolve duplicate foods safely
+  * Return imported count
+  * Keep import idempotent where practical
+
+* [ ] Add meal log CSV import
+  * Import logged meals from CSV
+  * Resolve meal templates by name or stable key
+  * Support logged_at, meal_event, portion_multiplier, and notes
+  * Defer complex conflict handling until real data shape is known
+
+---
+
+### Slice 6 — Nutrition ↔ Glucose Analysis
+
+#### Nutrition ↔ Glucose Service Layer
+
+* [ ] Add post-meal glucose response analysis
+  * For each logged meal, calculate:
+    * pre-meal / nearest prior glucose
+    * average glucose 1–3 hours after meal
+    * peak glucose 1–3 hours after meal
+    * glucose delta
+    * reading count
+
+* [ ] Add carbs / macros by glucose meal event
+  * Group logged meals by meal event
+  * Compare carbs, calories, protein, fat, and fibre against post-meal glucose response
+
+* [ ] Add meal template glucose response summary
+  * Compare reusable meal templates against typical post-meal glucose outcomes
+  * Return:
+    * meal template
+    * logged count
+    * average carbs
+    * average post-meal glucose
+    * average glucose delta
+    * peak post-meal glucose
+
+* [ ] Future:
+  * Identify meals associated with stable glucose response
+  * Identify meals associated with elevated post-meal glucose
+  * Add nutrition insights to a future dedicated Insights tab
+
+---
 
 ## 🧪 Phase 9 — Testing & Quality Assurance
 
