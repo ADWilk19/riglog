@@ -1,6 +1,6 @@
 from types import SimpleNamespace
 
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import pytest
 from sqlalchemy import create_engine
@@ -17,6 +17,7 @@ from app.services.nutrition.analysis import (
     calculate_meal_template_totals,
     get_logged_meal_totals,
     get_meal_template_totals,
+    get_nutrition_summary_metrics,
 )
 
 
@@ -313,3 +314,209 @@ def test_get_logged_meal_totals_returns_none_for_missing_log(test_session):
     result = get_logged_meal_totals(999)
 
     assert result is None
+
+
+def test_get_nutrition_summary_metrics_returns_empty_summary(test_session):
+    result = get_nutrition_summary_metrics()
+
+    assert result == {
+        "total_meals": 0,
+        "total_calories": 0.0,
+        "total_carbs_g": 0.0,
+        "total_protein_g": 0.0,
+        "total_fat_g": 0.0,
+        "average_daily_carbs_g": 0.0,
+        "carbs_by_meal_event": {},
+    }
+
+
+def test_get_nutrition_summary_metrics_summarises_logged_meals(test_session):
+    oats = Food(
+        name="Porridge oats",
+        calories_per_100g=370,
+        carbs_per_100g=60,
+        protein_per_100g=12,
+        fat_per_100g=8,
+        fibre_per_100g=6,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    rice = Food(
+        name="Cooked rice",
+        calories_per_100g=130,
+        carbs_per_100g=28,
+        protein_per_100g=2.7,
+        fat_per_100g=0.3,
+        fibre_per_100g=0.4,
+        salt_per_100g=0.0,
+        source="test",
+    )
+
+    breakfast = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+    breakfast.items = [
+        MealTemplateItem(
+            food=oats,
+            quantity_g=50,
+            display_order=1,
+        )
+    ]
+
+    dinner = MealTemplate(
+        name="Rice bowl",
+        default_meal_event="Pre-Dinner",
+    )
+    dinner.items = [
+        MealTemplateItem(
+            food=rice,
+            quantity_g=250,
+            display_order=1,
+        )
+    ]
+
+    test_session.add_all(
+        [
+            MealLog(
+                logged_at=datetime(2026, 5, 25, 8, 0),
+                meal_template=breakfast,
+                meal_event="Pre-Breakfast",
+                portion_multiplier=1.0,
+                source="test",
+            ),
+            MealLog(
+                logged_at=datetime(2026, 5, 25, 18, 30),
+                meal_template=dinner,
+                meal_event="Pre-Dinner",
+                portion_multiplier=1.0,
+                source="test",
+            ),
+            MealLog(
+                logged_at=datetime(2026, 5, 26, 8, 0),
+                meal_template=breakfast,
+                meal_event="Pre-Breakfast",
+                portion_multiplier=0.5,
+                source="test",
+            ),
+        ]
+    )
+    test_session.commit()
+
+    result = get_nutrition_summary_metrics()
+
+    assert result == {
+        "total_meals": 3,
+        "total_calories": 602.5,
+        "total_carbs_g": 115.0,
+        "total_protein_g": 15.8,
+        "total_fat_g": 6.8,
+        "average_daily_carbs_g": 57.5,
+        "carbs_by_meal_event": {
+            "Pre-Breakfast": 45.0,
+            "Pre-Dinner": 70.0,
+        },
+    }
+
+
+def test_get_nutrition_summary_metrics_filters_by_days(test_session):
+    food = Food(
+        name="Test food",
+        calories_per_100g=100,
+        carbs_per_100g=20,
+        protein_per_100g=5,
+        fat_per_100g=2,
+        fibre_per_100g=1,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event="Pre-Lunch",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    recent_log = MealLog(
+        logged_at=datetime.now() - timedelta(days=1),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    old_log = MealLog(
+        logged_at=datetime.now() - timedelta(days=30),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    test_session.add_all([recent_log, old_log])
+    test_session.commit()
+
+    result = get_nutrition_summary_metrics(days=7)
+
+    assert result == {
+        "total_meals": 1,
+        "total_calories": 100.0,
+        "total_carbs_g": 20.0,
+        "total_protein_g": 5.0,
+        "total_fat_g": 2.0,
+        "average_daily_carbs_g": 20.0,
+        "carbs_by_meal_event": {
+            "Pre-Lunch": 20.0,
+        },
+    }
+
+
+def test_get_nutrition_summary_metrics_groups_missing_meal_event_as_uncategorised(
+    test_session,
+):
+    food = Food(
+        name="Test food",
+        calories_per_100g=100,
+        carbs_per_100g=20,
+        protein_per_100g=5,
+        fat_per_100g=2,
+        fibre_per_100g=1,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event=None,
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    meal_log = MealLog(
+        logged_at=datetime(2026, 5, 26, 12, 30),
+        meal_template=meal_template,
+        meal_event=None,
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    test_session.add(meal_log)
+    test_session.commit()
+
+    result = get_nutrition_summary_metrics()
+
+    assert result["carbs_by_meal_event"] == {
+        "Uncategorised": 20.0,
+    }

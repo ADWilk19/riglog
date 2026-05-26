@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timedelta
 from typing import Any
 
 from app.db.database import SessionLocal
@@ -160,3 +161,84 @@ def get_logged_meal_totals(meal_log_id: int) -> dict[str, float] | None:
 
     finally:
         session.close()
+
+
+def get_nutrition_summary_metrics(days: int | None = None) -> dict[str, Any]:
+    """
+    Calculate high-level nutrition summary metrics from logged meals.
+
+    Args:
+        days: Optional lookback window. When provided, only meal logs on or
+            after ``now - days`` are included.
+
+    Returns:
+        Dictionary containing meal counts, nutrition totals, average daily
+        carbs, and carbs grouped by meal event.
+    """
+    session = SessionLocal()
+
+    try:
+        query = session.query(MealLog).order_by(MealLog.logged_at.desc())
+
+        if days is not None:
+            cutoff = datetime.now() - timedelta(days=days)
+            query = query.filter(MealLog.logged_at >= cutoff)
+
+        meal_logs = query.all()
+
+        summary = {
+            "total_meals": len(meal_logs),
+            "total_calories": 0.0,
+            "total_carbs_g": 0.0,
+            "total_protein_g": 0.0,
+            "total_fat_g": 0.0,
+            "average_daily_carbs_g": 0.0,
+            "carbs_by_meal_event": {},
+        }
+
+        if not meal_logs:
+            return summary
+
+        carbs_by_date: dict[object, float] = {}
+
+        for meal_log in meal_logs:
+            totals = calculate_logged_meal_totals(meal_log)
+
+            summary["total_calories"] += totals["calories"]
+            summary["total_carbs_g"] += totals["carbs_g"]
+            summary["total_protein_g"] += totals["protein_g"]
+            summary["total_fat_g"] += totals["fat_g"]
+
+            meal_date = meal_log.logged_at.date()
+            carbs_by_date[meal_date] = (
+                carbs_by_date.get(meal_date, 0.0) + totals["carbs_g"]
+            )
+
+            meal_event = meal_log.meal_event or "Uncategorised"
+            summary["carbs_by_meal_event"][meal_event] = (
+                summary["carbs_by_meal_event"].get(meal_event, 0.0)
+                + totals["carbs_g"]
+            )
+
+        day_count = len(carbs_by_date)
+
+        summary["total_calories"] = round(summary["total_calories"], 1)
+        summary["total_carbs_g"] = round(summary["total_carbs_g"], 1)
+        summary["total_protein_g"] = round(summary["total_protein_g"], 1)
+        summary["total_fat_g"] = round(summary["total_fat_g"], 1)
+        summary["average_daily_carbs_g"] = round(
+            summary["total_carbs_g"] / day_count,
+            1,
+        )
+
+        summary["carbs_by_meal_event"] = {
+            meal_event: round(carbs_g, 1)
+            for meal_event, carbs_g in summary["carbs_by_meal_event"].items()
+        }
+
+        return summary
+
+    finally:
+        session.close()
+
+        
