@@ -4,7 +4,13 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
-from app.db.models import Exercise, WorkoutRoutine, WorkoutSession, WorkoutSet
+from app.db.models import (
+    Exercise,
+    IntradayActivity,
+    WorkoutRoutine,
+    WorkoutSession,
+    WorkoutSet,
+)
 from app.services.workouts.analysis import (
     get_exercise_progression,
     get_exercise_progression_summary,
@@ -13,6 +19,7 @@ from app.services.workouts.analysis import (
     get_volume_by_exercise,
     get_volume_by_workout_type,
     get_workout_summary_metrics,
+    get_workout_session_calorie_analysis,
 )
 
 
@@ -407,6 +414,103 @@ def test_get_exercise_progression_summary_handles_unknown_exercise():
             "date_of_max_weight": None,
             "max_reps": None,
         }
+
+    finally:
+        session.close()
+
+
+def test_get_workout_session_calorie_analysis_aligns_intraday_calories():
+    session = create_test_session()
+
+    try:
+        seed_workout_test_data(session)
+
+        session.add_all(
+            [
+                IntradayActivity(
+                    recorded_at=datetime(2026, 5, 20, 9, 0),
+                    calories_burned=5.0,
+                    source="fitbit",
+                ),
+                IntradayActivity(
+                    recorded_at=datetime(2026, 5, 20, 9, 30),
+                    calories_burned=7.5,
+                    source="fitbit",
+                ),
+                IntradayActivity(
+                    recorded_at=datetime(2026, 5, 20, 10, 0),
+                    calories_burned=6.0,
+                    source="fitbit",
+                ),
+                IntradayActivity(
+                    recorded_at=datetime(2026, 5, 20, 10, 30),
+                    calories_burned=99.0,
+                    source="fitbit",
+                ),
+            ]
+        )
+        session.commit()
+
+        results = get_workout_session_calorie_analysis(session=session)
+
+        push_result = [
+            row for row in results
+            if row["workout_type"] == "Push"
+        ][0]
+
+        assert push_result["duration_minutes"] == 60.0
+        assert push_result["total_sets"] == 2
+        assert push_result["total_reps"] == 14
+        assert push_result["total_volume_kg"] == 870.0
+        assert push_result["average_load_per_rep"] == 62.1
+        assert push_result["max_weight_kg"] == 65
+        assert push_result["calories_burned"] == 18.5
+        assert push_result["calories_per_minute"] == 0.31
+        assert push_result["calories_per_kg_lifted"] == 0.0213
+
+    finally:
+        session.close()
+
+
+def test_get_workout_session_calorie_analysis_skips_sessions_without_end_time():
+    session = create_test_session()
+
+    try:
+        exercise = Exercise(
+            name="Barbell Bench Press",
+            category="Compound",
+            primary_muscle="Chest",
+            equipment="Barbell",
+        )
+        routine = WorkoutRoutine(name="Push")
+
+        session.add_all([exercise, routine])
+        session.commit()
+
+        workout_session = WorkoutSession(
+            started_at=datetime(2026, 5, 20, 9, 0),
+            ended_at=None,
+            routine_id=routine.id,
+            workout_type="Push",
+            source="test",
+        )
+        session.add(workout_session)
+        session.commit()
+
+        session.add(
+            WorkoutSet(
+                session_id=workout_session.id,
+                exercise_id=exercise.id,
+                set_number=1,
+                weight_kg=60,
+                reps=8,
+            )
+        )
+        session.commit()
+
+        results = get_workout_session_calorie_analysis(session=session)
+
+        assert results == []
 
     finally:
         session.close()

@@ -3,7 +3,13 @@ from __future__ import annotations
 from datetime import datetime, timedelta
 
 from app.db.database import SessionLocal
-from app.db.models import Exercise, WorkoutRoutine, WorkoutSession, WorkoutSet
+from app.db.models import (
+    Exercise,
+    IntradayActivity,
+    WorkoutRoutine,
+    WorkoutSession,
+    WorkoutSet,
+)
 
 
 def _get_session_duration_minutes(workout_session: WorkoutSession) -> float | None:
@@ -515,6 +521,117 @@ def get_exercise_progression_summary(
             "date_of_max_weight": max_weight_set.session.started_at.date(),
             "max_reps": max_reps,
         }
+
+    finally:
+        if owns_session:
+            session.close()
+
+
+def get_workout_session_calorie_analysis(session=None) -> list[dict]:
+    """
+    Return workout session calorie analysis by aligning workout windows
+    with intraday activity calorie burn.
+
+    Only sessions with both started_at and ended_at are included.
+    """
+    owns_session = session is None
+
+    if owns_session:
+        session = SessionLocal()
+
+    try:
+        workout_sessions = (
+            session.query(WorkoutSession)
+            .filter(WorkoutSession.ended_at.isnot(None))
+            .order_by(WorkoutSession.started_at.asc())
+            .all()
+        )
+
+        results = []
+
+        for workout_session in workout_sessions:
+            duration = _get_session_duration_minutes(workout_session)
+
+            if duration is None or duration <= 0:
+                continue
+
+            workout_sets = workout_session.sets
+
+            total_sets = len(workout_sets)
+            total_reps = sum(workout_set.reps or 0 for workout_set in workout_sets)
+            total_volume_kg = sum(
+                (workout_set.weight_kg or 0) * (workout_set.reps or 0)
+                for workout_set in workout_sets
+            )
+            max_weight_kg = max(
+                [(workout_set.weight_kg or 0) for workout_set in workout_sets],
+                default=0,
+            )
+
+            calories_burned = (
+                session.query(IntradayActivity)
+                .filter(
+                    IntradayActivity.recorded_at >= workout_session.started_at,
+                    IntradayActivity.recorded_at <= workout_session.ended_at,
+                )
+                .with_entities(IntradayActivity.calories_burned)
+                .all()
+            )
+
+            total_calories = sum(
+                row.calories_burned or 0
+                for row in calories_burned
+            )
+
+            average_load_per_rep = (
+                total_volume_kg / total_reps
+                if total_reps > 0
+                else None
+            )
+
+            calories_per_minute = (
+                total_calories / duration
+                if duration > 0
+                else None
+            )
+
+            calories_per_kg_lifted = (
+                total_calories / total_volume_kg
+                if total_volume_kg > 0
+                else None
+            )
+
+            results.append(
+                {
+                    "session_id": workout_session.id,
+                    "workout_type": workout_session.workout_type,
+                    "started_at": workout_session.started_at,
+                    "ended_at": workout_session.ended_at,
+                    "duration_minutes": round(duration, 1),
+                    "total_sets": total_sets,
+                    "total_reps": total_reps,
+                    "total_volume_kg": round(total_volume_kg, 1),
+                    "average_load_per_rep": (
+                        round(average_load_per_rep, 1)
+                        if average_load_per_rep is not None
+                        else None
+                    ),
+                    "max_weight_kg": round(max_weight_kg, 1),
+                    "calories_burned": round(total_calories, 2),
+                    "calories_per_minute": (
+                        round(calories_per_minute, 2)
+                        if calories_per_minute is not None
+                        else None
+                    ),
+                    "calories_per_kg_lifted": (
+                        round(calories_per_kg_lifted, 4)
+                        if calories_per_kg_lifted is not None
+                        else None
+                    ),
+                }
+            )
+
+        return results
 
     finally:
         if owns_session:
