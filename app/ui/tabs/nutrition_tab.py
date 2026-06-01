@@ -402,6 +402,10 @@ class NutritionTab(QWidget):
         self.meal_name_input = self._create_text_input("e.g. Porridge breakfast")
         self.meal_description_input = self._create_text_input("Optional")
         self.meal_event_input = QComboBox()
+        self.meal_event_input.setMinimumWidth(180)
+        self.meal_event_input.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
         self.meal_event_input.addItems(
             [
                 "",
@@ -417,7 +421,10 @@ class NutritionTab(QWidget):
         )
 
         self.meal_food_selector = QComboBox()
-        self.meal_food_selector.setMinimumWidth(260)
+        self.meal_food_selector.setMinimumWidth(300)
+        self.meal_food_selector.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
 
         self.meal_quantity_input = self._create_macro_input("g")
         self.meal_quantity_input.setRange(0, 5000)
