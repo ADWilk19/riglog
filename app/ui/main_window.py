@@ -3,9 +3,6 @@ from pathlib import Path
 from PySide6.QtWidgets import (
     QMainWindow,
     QTabWidget,
-    QWidget,
-    QVBoxLayout,
-    QLabel,
 )
 from PySide6.QtGui import QIcon
 
@@ -13,6 +10,7 @@ from app.ui.tabs.glucose_tab import GlucoseTab
 from app.ui.tabs.home_tab import HomeTab
 from app.ui.tabs.activity_tab import ActivityTab
 from app.ui.tabs.workouts_tab import WorkoutTab
+from app.ui.tabs.nutrition_tab import NutritionTab
 
 
 class MainWindow(QMainWindow):
@@ -31,6 +29,7 @@ class MainWindow(QMainWindow):
         self.glucose_tab = GlucoseTab()
         self.activity_tab = ActivityTab()
         self.workouts_tab = WorkoutTab()
+        self.nutrition_tab = NutritionTab()
 
         self.home_tab = HomeTab(
             on_open_glucose=lambda: self.tabs.setCurrentWidget(self.glucose_tab),
@@ -44,15 +43,7 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.glucose_tab, "Glucose")
         self.tabs.addTab(self.activity_tab, "Activity")
         self.tabs.addTab(self.workouts_tab, "Workouts")
+        self.tabs.addTab(self.nutrition_tab, "Nutrition")
 
         self.setCentralWidget(self.tabs)
 
-    def _build_tab(self, name: str) -> QWidget:
-        tab = QWidget()
-
-        layout = QVBoxLayout()
-        layout.addWidget(QLabel(f"{name} tab"))
-
-        tab.setLayout(layout)
-
-        return tab
