@@ -4,18 +4,24 @@ from __future__ import annotations
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QDoubleSpinBox,
+    QFormLayout,
     QHeaderView,
     QHBoxLayout,
     QLabel,
+    QLineEdit,
+    QMessageBox,
     QPushButton,
     QScrollArea,
     QTableWidget,
     QTableWidgetItem,
+    QTextEdit,
     QVBoxLayout,
     QWidget,
 )
 
 from app.services.nutrition.analysis import (
+    add_food,
     get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
     get_recent_meal_logs,
@@ -48,6 +54,7 @@ class NutritionTab(QWidget):
 
         self._build_toolbar()
         self._build_summary_panel()
+        self._build_add_food_form()
         self._build_recent_meals_table()
         self._build_template_totals_table()
 
@@ -97,6 +104,23 @@ class NutritionTab(QWidget):
         summary_row.addStretch()
 
         self.layout.addLayout(summary_row)
+
+    def _create_text_input(self, placeholder: str = "") -> QLineEdit:
+        field = QLineEdit()
+        field.setPlaceholderText(placeholder)
+        return field
+
+
+    def _create_macro_input(self, suffix: str = "") -> QDoubleSpinBox:
+        field = QDoubleSpinBox()
+        field.setRange(0, 10000)
+        field.setDecimals(1)
+        field.setSingleStep(1.0)
+
+        if suffix:
+            field.setSuffix(f" {suffix}")
+
+        return field
 
     def _build_recent_meals_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Recent Meal Logs"))
@@ -267,4 +291,92 @@ class NutritionTab(QWidget):
 
         self.template_totals_table.setSortingEnabled(True)
         self.template_totals_table.sortItems(0, Qt.SortOrder.AscendingOrder)
-        
+
+    def _build_add_food_form(self) -> None:
+        self.layout.addWidget(self._create_section_title("Add Food"))
+
+        form_container = QWidget()
+        form_container.setObjectName("nutritionForm")
+
+        form_layout = QFormLayout(form_container)
+        form_layout.setSpacing(10)
+        form_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.food_name_input = self._create_text_input("e.g. Porridge oats")
+        self.food_brand_input = self._create_text_input("Optional")
+        self.food_serving_notes_input = self._create_text_input(
+            "e.g. values from label per 100g"
+        )
+
+        self.food_calories_input = self._create_macro_input("kcal")
+        self.food_carbs_input = self._create_macro_input("g")
+        self.food_protein_input = self._create_macro_input("g")
+        self.food_fat_input = self._create_macro_input("g")
+        self.food_fibre_input = self._create_macro_input("g")
+        self.food_salt_input = self._create_macro_input("g")
+
+        self.food_notes_input = QTextEdit()
+        self.food_notes_input.setPlaceholderText("Optional notes...")
+        self.food_notes_input.setMaximumHeight(80)
+
+        form_layout.addRow("Name", self.food_name_input)
+        form_layout.addRow("Brand", self.food_brand_input)
+        form_layout.addRow("Serving Notes", self.food_serving_notes_input)
+        form_layout.addRow("Calories / 100g", self.food_calories_input)
+        form_layout.addRow("Carbs / 100g", self.food_carbs_input)
+        form_layout.addRow("Protein / 100g", self.food_protein_input)
+        form_layout.addRow("Fat / 100g", self.food_fat_input)
+        form_layout.addRow("Fibre / 100g", self.food_fibre_input)
+        form_layout.addRow("Salt / 100g", self.food_salt_input)
+        form_layout.addRow("Notes", self.food_notes_input)
+
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+
+        self.save_food_button = QPushButton("Save Food")
+        self.save_food_button.setObjectName("primaryAction")
+        self.save_food_button.clicked.connect(self.handle_save_food)
+
+        button_row.addWidget(self.save_food_button)
+        form_layout.addRow("", button_row)
+
+        self.layout.addWidget(form_container)
+
+    def _clear_add_food_form(self) -> None:
+        self.food_name_input.clear()
+        self.food_brand_input.clear()
+        self.food_serving_notes_input.clear()
+        self.food_calories_input.setValue(0)
+        self.food_carbs_input.setValue(0)
+        self.food_protein_input.setValue(0)
+        self.food_fat_input.setValue(0)
+        self.food_fibre_input.setValue(0)
+        self.food_salt_input.setValue(0)
+        self.food_notes_input.clear()
+
+
+    def handle_save_food(self) -> None:
+        """Persist a manually entered food item."""
+        try:
+            add_food(
+                name=self.food_name_input.text(),
+                brand=self.food_brand_input.text(),
+                serving_notes=self.food_serving_notes_input.text(),
+                calories_per_100g=self.food_calories_input.value(),
+                carbs_per_100g=self.food_carbs_input.value(),
+                protein_per_100g=self.food_protein_input.value(),
+                fat_per_100g=self.food_fat_input.value(),
+                fibre_per_100g=self.food_fibre_input.value(),
+                salt_per_100g=self.food_salt_input.value(),
+                notes=self.food_notes_input.toPlainText(),
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid food", str(exc))
+            return
+        except Exception as exc:
+            QMessageBox.critical(self, "Save failed", f"Could not save food:\n{exc}")
+            return
+
+        QMessageBox.information(self, "Food saved", "Food saved successfully.")
+        self._clear_add_food_form()
+        self.load_data()
