@@ -21,6 +21,8 @@ from app.services.nutrition.analysis import (
     get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
     get_recent_meal_logs,
+    create_meal_template,
+    get_food_options,
 )
 
 
@@ -748,4 +750,205 @@ def test_add_food_rejects_negative_nutrition_values(test_session):
         assert str(exc) == "carbs_per_100g cannot be negative."
     else:
         raise AssertionError("Expected ValueError")
-    
+
+
+def test_get_food_options_returns_foods_for_selection(test_session):
+    food_a = Food(
+        name="Banana",
+        brand=None,
+        calories_per_100g=89,
+        carbs_per_100g=23,
+        protein_per_100g=1.1,
+        fat_per_100g=0.3,
+        fibre_per_100g=2.6,
+        salt_per_100g=0,
+        source="test",
+    )
+
+    food_b = Food(
+        name="Greek yoghurt",
+        brand="Demo",
+        calories_per_100g=95,
+        carbs_per_100g=3.8,
+        protein_per_100g=9,
+        fat_per_100g=5,
+        fibre_per_100g=0,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    test_session.add_all([food_b, food_a])
+    test_session.commit()
+
+    result = get_food_options()
+
+    assert result == [
+        {
+            "id": food_a.id,
+            "name": "Banana",
+            "brand": None,
+            "display_name": "Banana",
+        },
+        {
+            "id": food_b.id,
+            "name": "Greek yoghurt",
+            "brand": "Demo",
+            "display_name": "Greek yoghurt (Demo)",
+        },
+    ]
+
+
+def test_create_meal_template_creates_template_with_items(test_session):
+    oats = Food(
+        name="Porridge oats",
+        calories_per_100g=370,
+        carbs_per_100g=60,
+        protein_per_100g=12,
+        fat_per_100g=8,
+        fibre_per_100g=6,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    milk = Food(
+        name="Semi-skimmed milk",
+        calories_per_100g=50,
+        carbs_per_100g=5,
+        protein_per_100g=3.5,
+        fat_per_100g=1.8,
+        fibre_per_100g=0,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    test_session.add_all([oats, milk])
+    test_session.commit()
+
+    meal_template = create_meal_template(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+        description="Oats and milk",
+        notes="Manual meal template",
+        items=[
+            {
+                "food_id": oats.id,
+                "quantity_g": 50,
+                "display_order": 1,
+            },
+            {
+                "food_id": milk.id,
+                "quantity_g": 200,
+                "display_order": 2,
+            },
+        ],
+    )
+
+    stored_template = (
+        test_session.query(MealTemplate)
+        .filter(MealTemplate.id == meal_template.id)
+        .first()
+    )
+
+    assert stored_template is not None
+    assert stored_template.name == "Porridge breakfast"
+    assert stored_template.default_meal_event == "Pre-Breakfast"
+    assert stored_template.description == "Oats and milk"
+    assert stored_template.notes == "Manual meal template"
+    assert len(stored_template.items) == 2
+
+    assert [
+        (item.food.name, item.quantity_g, item.display_order)
+        for item in stored_template.items
+    ] == [
+        ("Porridge oats", 50, 1),
+        ("Semi-skimmed milk", 200, 2),
+    ]
+
+
+def test_create_meal_template_requires_name(test_session):
+    food = Food(
+        name="Banana",
+        calories_per_100g=89,
+        carbs_per_100g=23,
+        protein_per_100g=1.1,
+        fat_per_100g=0.3,
+        fibre_per_100g=2.6,
+        salt_per_100g=0,
+        source="test",
+    )
+    test_session.add(food)
+    test_session.commit()
+
+    try:
+        create_meal_template(
+            name="   ",
+            items=[
+                {
+                    "food_id": food.id,
+                    "quantity_g": 100,
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert str(exc) == "Meal name is required."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_create_meal_template_requires_at_least_one_food_item(test_session):
+    try:
+        create_meal_template(
+            name="Empty meal",
+            items=[],
+        )
+    except ValueError as exc:
+        assert str(exc) == "At least one food item is required."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_create_meal_template_rejects_zero_or_negative_quantity(test_session):
+    food = Food(
+        name="Banana",
+        calories_per_100g=89,
+        carbs_per_100g=23,
+        protein_per_100g=1.1,
+        fat_per_100g=0.3,
+        fibre_per_100g=2.6,
+        salt_per_100g=0,
+        source="test",
+    )
+    test_session.add(food)
+    test_session.commit()
+
+    try:
+        create_meal_template(
+            name="Invalid meal",
+            items=[
+                {
+                    "food_id": food.id,
+                    "quantity_g": 0,
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert str(exc) == "Food quantity must be greater than zero."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_create_meal_template_rejects_missing_food(test_session):
+    try:
+        create_meal_template(
+            name="Invalid meal",
+            items=[
+                {
+                    "food_id": 999,
+                    "quantity_g": 100,
+                }
+            ],
+        )
+    except ValueError as exc:
+        assert str(exc) == "Food ID 999 was not found."
+    else:
+        raise AssertionError("Expected ValueError")

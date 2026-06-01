@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from app.db.database import SessionLocal
-from app.db.models import Food, MealLog, MealTemplate
+from app.db.models import Food, MealLog, MealTemplate, MealTemplateItem
 
 NUTRITION_FIELDS = [
     "calories",
@@ -324,6 +324,120 @@ def get_meal_template_totals_rows() -> list[dict[str, Any]]:
             )
 
         return rows
+
+    finally:
+        session.close()
+
+
+def get_food_options() -> list[dict[str, Any]]:
+    """
+    Return reusable foods for UI selection.
+
+    Returns:
+        List of dictionaries containing food IDs and display labels.
+    """
+    session = SessionLocal()
+
+    try:
+        foods = session.query(Food).order_by(Food.name.asc()).all()
+
+        return [
+            {
+                "id": food.id,
+                "name": food.name,
+                "brand": food.brand,
+                "display_name": (
+                    f"{food.name} ({food.brand})"
+                    if food.brand
+                    else food.name
+                ),
+            }
+            for food in foods
+        ]
+
+    finally:
+        session.close()
+
+
+def create_meal_template(
+    name: str,
+    default_meal_event: str | None = None,
+    description: str | None = None,
+    notes: str | None = None,
+    items: list[dict[str, float | int | str | None]] | None = None,
+) -> MealTemplate:
+    """
+    Create a reusable meal template from selected foods.
+
+    Args:
+        name: Meal template name.
+        default_meal_event: Optional default meal event.
+        description: Optional description.
+        notes: Optional notes.
+        items: List of food item dictionaries. Each item should contain:
+            - food_id
+            - quantity_g
+            - display_order, optional
+            - notes, optional
+
+    Returns:
+        The created MealTemplate instance.
+    """
+    clean_name = name.strip()
+
+    if not clean_name:
+        raise ValueError("Meal name is required.")
+
+    if not items:
+        raise ValueError("At least one food item is required.")
+
+    session = SessionLocal()
+
+    try:
+        meal_template = MealTemplate(
+            name=clean_name,
+            default_meal_event=(
+                default_meal_event.strip()
+                if default_meal_event
+                else None
+            ),
+            description=description.strip() if description else None,
+            notes=notes.strip() if notes else None,
+        )
+
+        session.add(meal_template)
+        session.flush()
+
+        for index, item in enumerate(items, start=1):
+            food_id = int(item["food_id"])
+            quantity_g = float(item["quantity_g"])
+
+            if quantity_g <= 0:
+                raise ValueError("Food quantity must be greater than zero.")
+
+            food = session.query(Food).filter(Food.id == food_id).first()
+
+            if food is None:
+                raise ValueError(f"Food ID {food_id} was not found.")
+
+            meal_item = MealTemplateItem(
+                meal_template_id=meal_template.id,
+                food_id=food_id,
+                quantity_g=quantity_g,
+                display_order=int(item.get("display_order") or index),
+                notes=str(item.get("notes") or "").strip() or None,
+            )
+
+            session.add(meal_item)
+
+        session.commit()
+        session.refresh(meal_template)
+
+        return meal_template
+
+    except Exception:
+        session.rollback()
+        raise
 
     finally:
         session.close()
