@@ -967,14 +967,19 @@ Future / Deferred:
 
 #### Nutrition → External Dataset Converter
 
-* [ ] Add external food dataset converter
-  * Convert trusted external nutrition datasets into RigLog-compatible food CSV format
-  * Initial target:
-    * vegetables / common whole foods
-  * Preferred sources:
-    * official food composition datasets
-    * open food databases
-    * API/export-based sources rather than web scraping
+* [x] Add external food dataset converter
+  * Converts normalised external nutrition CSVs into RigLog-compatible food CSV format
+  * Supports optional food group filtering
+  * Validates required source columns
+  * Validates numeric values
+  * Writes reviewable CSV output
+  * Does not write directly to the database
+
+* [ ] Add provider-specific adapter
+  * Initial candidate:
+    * CoFID / UK food composition dataset
+  * Convert raw provider export into normalised converter input
+  * Keep provider-specific parsing separate from RigLog food import
 
 * [ ] Add converter output contract
   * Output CSV should match RigLog food import format:
