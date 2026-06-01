@@ -20,6 +20,7 @@ from PySide6.QtWidgets import (
     QWidget,
     QComboBox,
     QDateTimeEdit,
+    QFileDialog,
 )
 
 from app.services.nutrition.analysis import (
@@ -32,6 +33,7 @@ from app.services.nutrition.analysis import (
     get_nutrition_summary_metrics,
     get_recent_meal_logs,
 )
+from app.services.nutrition.importer import import_foods_csv
 from app.ui.widgets.summary_card import SummaryCard
 
 
@@ -87,8 +89,13 @@ class NutritionTab(QWidget):
         self.refresh_button.setObjectName("secondaryAction")
         self.refresh_button.clicked.connect(self.load_data)
 
+        self.import_foods_button = QPushButton("Import Foods CSV")
+        self.import_foods_button.setObjectName("secondaryAction")
+        self.import_foods_button.clicked.connect(self.handle_import_foods_csv)
+
         toolbar.addStretch()
         toolbar.addWidget(self.refresh_button)
+        toolbar.addWidget(self.import_foods_button)
         toolbar.addStretch()
 
         self.layout.addLayout(toolbar)
@@ -757,3 +764,34 @@ class NutritionTab(QWidget):
         QMessageBox.information(self, "Meal logged", "Meal log saved successfully.")
         self._clear_log_meal_form()
         self.load_data()
+
+    def handle_import_foods_csv(self) -> None:
+        """Import reusable foods from a CSV file."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select foods CSV",
+            "",
+            "CSV Files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            imported_count = import_foods_csv(file_path)
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Import failed",
+                f"Could not import foods CSV:\n{exc}",
+            )
+            return
+
+        QMessageBox.information(
+            self,
+            "Import complete",
+            f"Imported {imported_count} new foods.",
+        )
+
+        self.load_data()
+        self.data_updated.emit()
