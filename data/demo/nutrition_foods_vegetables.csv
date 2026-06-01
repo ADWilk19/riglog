@@ -1,0 +1,31 @@
+food_key,name,brand,serving_notes,calories_per_100g,carbs_per_100g,protein_per_100g,fat_per_100g,fibre_per_100g,salt_per_100g,source,notes
+broccoli_raw,Broccoli,Generic,Raw values per 100g,34,6.6,2.8,0.4,2.6,0.08,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+carrot_raw,Carrot,Generic,Raw values per 100g,41,9.6,0.9,0.2,2.8,0.07,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+spinach_raw,Spinach,Generic,Raw values per 100g,23,3.6,2.9,0.4,2.2,0.20,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+kale_raw,Kale,Generic,Raw values per 100g,49,8.8,4.3,0.9,3.6,0.10,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+cauliflower_raw,Cauliflower,Generic,Raw values per 100g,25,5.0,1.9,0.3,2.0,0.08,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+courgette_raw,Courgette,Generic,Raw values per 100g,17,3.1,1.2,0.3,1.0,0.02,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+aubergine_raw,Aubergine,Generic,Raw values per 100g,25,5.9,1.0,0.2,3.0,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+red_pepper_raw,Red pepper,Generic,Raw values per 100g,31,6.0,1.0,0.3,2.1,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+green_pepper_raw,Green pepper,Generic,Raw values per 100g,20,4.6,0.9,0.2,1.7,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+mushrooms_raw,Mushrooms,Generic,Raw white mushrooms per 100g,22,3.3,3.1,0.3,1.0,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+onion_raw,Onion,Generic,Raw values per 100g,40,9.3,1.1,0.1,1.7,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+tomato_raw,Tomato,Generic,Raw values per 100g,18,3.9,0.9,0.2,1.2,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+cucumber_raw,Cucumber,Generic,Raw values per 100g,15,3.6,0.7,0.1,0.5,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+lettuce_raw,Lettuce,Generic,Raw values per 100g,15,2.9,1.4,0.2,1.3,0.03,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+green_beans_raw,Green beans,Generic,Raw values per 100g,31,7.0,1.8,0.2,3.4,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+peas_raw,Peas,Generic,Raw values per 100g,81,14.5,5.4,0.4,5.1,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+sweetcorn_raw,Sweetcorn,Generic,Raw kernels per 100g,86,19.0,3.2,1.2,2.7,0.02,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+asparagus_raw,Asparagus,Generic,Raw values per 100g,20,3.9,2.2,0.1,2.1,0.00,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+cabbage_raw,Cabbage,Generic,Raw green cabbage per 100g,25,5.8,1.3,0.1,2.5,0.02,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+red_cabbage_raw,Red cabbage,Generic,Raw values per 100g,31,7.4,1.4,0.2,2.1,0.03,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+brussels_sprouts_raw,Brussels sprouts,Generic,Raw values per 100g,43,9.0,3.4,0.3,3.8,0.03,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+leek_raw,Leek,Generic,Raw values per 100g,61,14.2,1.5,0.3,1.8,0.02,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+celery_raw,Celery,Generic,Raw values per 100g,16,3.0,0.7,0.2,1.6,0.20,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+beetroot_raw,Beetroot,Generic,Raw values per 100g,43,9.6,1.6,0.2,2.8,0.20,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+butternut_squash_raw,Butternut squash,Generic,Raw values per 100g,45,11.7,1.0,0.1,2.0,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+pumpkin_raw,Pumpkin,Generic,Raw values per 100g,26,6.5,1.0,0.1,0.5,0.00,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+radish_raw,Radish,Generic,Raw values per 100g,16,3.4,0.7,0.1,1.6,0.04,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+swede_raw,Swede,Generic,Raw values per 100g,37,8.6,1.1,0.2,2.3,0.02,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+turnip_raw,Turnip,Generic,Raw values per 100g,28,6.4,0.9,0.1,1.8,0.07,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
+parsnip_raw,Parsnip,Generic,Raw values per 100g,75,18.0,1.2,0.3,4.9,0.01,riglog_vegetable_seed,Approximate starter value; verify against preferred dataset
