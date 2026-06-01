@@ -27,12 +27,14 @@ class HomeTab(QWidget):
         on_open_glucose=None,
         on_open_activity=None,
         on_open_workouts=None,
+        on_open_nutrition=None,
     ) -> None:
         super().__init__()
 
         self.on_open_glucose = on_open_glucose
         self.on_open_activity = on_open_activity
         self.on_open_workouts = on_open_workouts
+        self.on_open_nutrition = on_open_nutrition
 
         project_root = Path(__file__).resolve().parents[3]
         logo_path = project_root / "assets" / "branding" / "logo_full.png"
@@ -161,11 +163,13 @@ class HomeTab(QWidget):
             title="Nutrition",
             value="Coming soon",
             subtitle="Log meals and calorie trends",
+            on_click=self.on_open_nutrition,
         )
 
         self.glucose_card.set_variant("primary")
         self.activity_card.set_variant("primary")
         self.workouts_card.set_variant("primary")
+        self.nutrition_card.set_variant("primary")
 
         for card in (
             self.glucose_card,

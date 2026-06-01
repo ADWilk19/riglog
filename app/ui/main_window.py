@@ -35,6 +35,7 @@ class MainWindow(QMainWindow):
             on_open_glucose=lambda: self.tabs.setCurrentWidget(self.glucose_tab),
             on_open_activity=lambda: self.tabs.setCurrentWidget(self.activity_tab),
             on_open_workouts=lambda: self.tabs.setCurrentWidget(self.workouts_tab),
+            on_open_nutrition=lambda: self.tabs.setCurrentWidget(self.nutrition_tab),
         )
 
         self.activity_tab.data_updated.connect(self.home_tab.refresh_data)
@@ -46,4 +47,3 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.nutrition_tab, "Nutrition")
 
         self.setCentralWidget(self.tabs)
-
