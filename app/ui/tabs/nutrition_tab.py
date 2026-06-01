@@ -18,10 +18,13 @@ from PySide6.QtWidgets import (
     QTextEdit,
     QVBoxLayout,
     QWidget,
+    QComboBox,
 )
 
 from app.services.nutrition.analysis import (
     add_food,
+    create_meal_template,
+    get_food_options,
     get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
     get_recent_meal_logs,
@@ -34,6 +37,8 @@ class NutritionTab(QWidget):
 
     def __init__(self) -> None:
         super().__init__()
+
+        self.pending_meal_items: list[dict] = []
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -55,6 +60,7 @@ class NutritionTab(QWidget):
         self._build_toolbar()
         self._build_summary_panel()
         self._build_add_food_form()
+        self._build_meal_template_form()
         self._build_recent_meals_table()
         self._build_template_totals_table()
 
@@ -200,6 +206,7 @@ class NutritionTab(QWidget):
 
     def load_data(self) -> None:
         """Refresh summary cards and nutrition tables."""
+        self._load_food_options()
         self._load_summary_cards()
         self._load_recent_meals_table()
         self._load_template_totals_table()
@@ -379,4 +386,187 @@ class NutritionTab(QWidget):
 
         QMessageBox.information(self, "Food saved", "Food saved successfully.")
         self._clear_add_food_form()
+        self._load_food_options()
+        self.load_data()
+
+    def _build_meal_template_form(self) -> None:
+        self.layout.addWidget(self._create_section_title("Build Meal"))
+
+        form_container = QWidget()
+        form_container.setObjectName("nutritionForm")
+
+        form_layout = QFormLayout(form_container)
+        form_layout.setSpacing(10)
+        form_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.meal_name_input = self._create_text_input("e.g. Porridge breakfast")
+        self.meal_description_input = self._create_text_input("Optional")
+        self.meal_event_input = QComboBox()
+        self.meal_event_input.addItems(
+            [
+                "",
+                "Pre-Breakfast",
+                "Post-Breakfast",
+                "Pre-Lunch",
+                "Post-Lunch",
+                "Pre-Dinner",
+                "Post-Dinner",
+                "Before Bed",
+                "Night",
+            ]
+        )
+
+        self.meal_food_selector = QComboBox()
+        self.meal_food_selector.setMinimumWidth(260)
+
+        self.meal_quantity_input = self._create_macro_input("g")
+        self.meal_quantity_input.setRange(0, 5000)
+
+        add_item_row = QHBoxLayout()
+        self.add_meal_item_button = QPushButton("Add Food to Meal")
+        self.add_meal_item_button.setObjectName("secondaryAction")
+        self.add_meal_item_button.clicked.connect(self.handle_add_meal_item)
+        add_item_row.addWidget(self.meal_food_selector)
+        add_item_row.addWidget(self.meal_quantity_input)
+        add_item_row.addWidget(self.add_meal_item_button)
+
+        self.pending_items_table = QTableWidget()
+        self.pending_items_table.setObjectName("nutritionTable")
+        self.pending_items_table.setColumnCount(3)
+        self.pending_items_table.setHorizontalHeaderLabels(
+            ["Food", "Quantity (g)", "Food ID"]
+        )
+        self.pending_items_table.setColumnHidden(2, True)
+        self.pending_items_table.verticalHeader().setVisible(False)
+        self.pending_items_table.setEditTriggers(QTableWidget.NoEditTriggers)
+        self.pending_items_table.setSelectionBehavior(QTableWidget.SelectRows)
+        self.pending_items_table.setAlternatingRowColors(True)
+        self.pending_items_table.setMinimumHeight(140)
+
+        pending_header = self.pending_items_table.horizontalHeader()
+        pending_header.setSectionResizeMode(0, QHeaderView.Stretch)
+        pending_header.setSectionResizeMode(1, QHeaderView.ResizeToContents)
+        pending_header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+
+        self.clear_meal_items_button = QPushButton("Clear Items")
+        self.clear_meal_items_button.setObjectName("secondaryAction")
+        self.clear_meal_items_button.clicked.connect(self._clear_pending_meal_items)
+
+        self.save_meal_template_button = QPushButton("Save Meal Template")
+        self.save_meal_template_button.setObjectName("primaryAction")
+        self.save_meal_template_button.clicked.connect(self.handle_save_meal_template)
+
+        button_row.addWidget(self.clear_meal_items_button)
+        button_row.addWidget(self.save_meal_template_button)
+
+        form_layout.addRow("Meal Name", self.meal_name_input)
+        form_layout.addRow("Description", self.meal_description_input)
+        form_layout.addRow("Default Meal Event", self.meal_event_input)
+        form_layout.addRow("Add Food Item", add_item_row)
+        form_layout.addRow("Selected Foods", self.pending_items_table)
+        form_layout.addRow("", button_row)
+
+        self.layout.addWidget(form_container)
+
+    def _load_food_options(self) -> None:
+        """Refresh the food selector used by the Build Meal form."""
+        if not hasattr(self, "meal_food_selector"):
+            return
+
+        self.meal_food_selector.clear()
+
+        foods = get_food_options()
+
+        for food in foods:
+            self.meal_food_selector.addItem(food["display_name"], food["id"])
+
+
+    def _refresh_pending_items_table(self) -> None:
+        self.pending_items_table.setRowCount(len(self.pending_meal_items))
+
+        for row_index, item_data in enumerate(self.pending_meal_items):
+            food_item = QTableWidgetItem(item_data["food_name"])
+            quantity_item = QTableWidgetItem(f"{item_data['quantity_g']:.1f}")
+            food_id_item = QTableWidgetItem(str(item_data["food_id"]))
+
+            quantity_item.setTextAlignment(
+                Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter
+            )
+
+            self.pending_items_table.setItem(row_index, 0, food_item)
+            self.pending_items_table.setItem(row_index, 1, quantity_item)
+            self.pending_items_table.setItem(row_index, 2, food_id_item)
+
+
+    def _clear_pending_meal_items(self) -> None:
+        self.pending_meal_items = []
+        self._refresh_pending_items_table()
+
+    def handle_add_meal_item(self) -> None:
+        """Add the selected food and quantity to the pending meal template."""
+        food_id = self.meal_food_selector.currentData()
+        food_name = self.meal_food_selector.currentText()
+        quantity_g = self.meal_quantity_input.value()
+
+        if food_id is None:
+            QMessageBox.warning(self, "No food selected", "Please add or select a food first.")
+            return
+
+        if quantity_g <= 0:
+            QMessageBox.warning(
+                self,
+                "Invalid quantity",
+                "Food quantity must be greater than zero.",
+            )
+            return
+
+        self.pending_meal_items.append(
+            {
+                "food_id": food_id,
+                "food_name": food_name,
+                "quantity_g": quantity_g,
+                "display_order": len(self.pending_meal_items) + 1,
+            }
+        )
+
+        self.meal_quantity_input.setValue(0)
+        self._refresh_pending_items_table()
+
+
+    def _clear_meal_template_form(self) -> None:
+        self.meal_name_input.clear()
+        self.meal_description_input.clear()
+        self.meal_event_input.setCurrentIndex(0)
+        self.meal_quantity_input.setValue(0)
+        self._clear_pending_meal_items()
+
+
+    def handle_save_meal_template(self) -> None:
+        """Persist a reusable meal template from the pending food items."""
+        try:
+            create_meal_template(
+                name=self.meal_name_input.text(),
+                default_meal_event=self.meal_event_input.currentText() or None,
+                description=self.meal_description_input.text(),
+                items=[
+                    {
+                        "food_id": item["food_id"],
+                        "quantity_g": item["quantity_g"],
+                        "display_order": item["display_order"],
+                    }
+                    for item in self.pending_meal_items
+                ],
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid meal", str(exc))
+            return
+        except Exception as exc:
+            QMessageBox.critical(self, "Save failed", f"Could not save meal:\n{exc}")
+            return
+
+        QMessageBox.information(self, "Meal saved", "Meal template saved successfully.")
+        self._clear_meal_template_form()
         self.load_data()
