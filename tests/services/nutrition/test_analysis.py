@@ -12,6 +12,7 @@ from app.db.models import Food, MealLog, MealTemplate, MealTemplateItem
 import app.services.nutrition.analysis as nutrition_analysis
 
 from app.services.nutrition.analysis import (
+    add_food,
     calculate_food_totals,
     calculate_logged_meal_totals,
     calculate_meal_template_totals,
@@ -680,3 +681,71 @@ def test_get_meal_template_totals_rows_returns_display_rows(test_session):
             "salt_g": 0.4,
         }
     ]
+
+
+def test_add_food_creates_manual_food(test_session):
+    food = add_food(
+        name="Test cereal",
+        brand="Test Brand",
+        serving_notes="Nutrition values from packet label",
+        calories_per_100g=380,
+        carbs_per_100g=70,
+        protein_per_100g=8,
+        fat_per_100g=4,
+        fibre_per_100g=5,
+        salt_per_100g=0.3,
+        notes="Manual test food",
+    )
+
+    stored_food = test_session.query(Food).filter(Food.id == food.id).first()
+
+    assert stored_food is not None
+    assert stored_food.name == "Test cereal"
+    assert stored_food.brand == "Test Brand"
+    assert stored_food.serving_notes == "Nutrition values from packet label"
+    assert stored_food.calories_per_100g == 380
+    assert stored_food.carbs_per_100g == 70
+    assert stored_food.protein_per_100g == 8
+    assert stored_food.fat_per_100g == 4
+    assert stored_food.fibre_per_100g == 5
+    assert stored_food.salt_per_100g == 0.3
+    assert stored_food.source == "manual"
+    assert stored_food.notes == "Manual test food"
+
+
+def test_add_food_strips_text_fields(test_session):
+    food = add_food(
+        name="  Greek yoghurt  ",
+        brand="  Test Brand  ",
+        serving_notes="  Per label  ",
+        notes="  Useful staple  ",
+    )
+
+    stored_food = test_session.query(Food).filter(Food.id == food.id).first()
+
+    assert stored_food.name == "Greek yoghurt"
+    assert stored_food.brand == "Test Brand"
+    assert stored_food.serving_notes == "Per label"
+    assert stored_food.notes == "Useful staple"
+
+
+def test_add_food_requires_name(test_session):
+    try:
+        add_food(name="   ")
+    except ValueError as exc:
+        assert str(exc) == "Food name is required."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_add_food_rejects_negative_nutrition_values(test_session):
+    try:
+        add_food(
+            name="Invalid food",
+            carbs_per_100g=-1,
+        )
+    except ValueError as exc:
+        assert str(exc) == "carbs_per_100g cannot be negative."
+    else:
+        raise AssertionError("Expected ValueError")
+    

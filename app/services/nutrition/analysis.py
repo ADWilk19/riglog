@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from app.db.database import SessionLocal
-from app.db.models import MealLog, MealTemplate
+from app.db.models import Food, MealLog, MealTemplate
 
 NUTRITION_FIELDS = [
     "calories",
@@ -324,6 +324,83 @@ def get_meal_template_totals_rows() -> list[dict[str, Any]]:
             )
 
         return rows
+
+    finally:
+        session.close()
+
+
+def add_food(
+    name: str,
+    brand: str | None = None,
+    serving_notes: str | None = None,
+    calories_per_100g: float = 0.0,
+    carbs_per_100g: float = 0.0,
+    protein_per_100g: float = 0.0,
+    fat_per_100g: float = 0.0,
+    fibre_per_100g: float = 0.0,
+    salt_per_100g: float = 0.0,
+    source: str = "manual",
+    notes: str | None = None,
+) -> Food:
+    """
+    Create and persist a reusable food item.
+
+    Args:
+        name: Food name.
+        brand: Optional brand.
+        serving_notes: Optional serving description.
+        calories_per_100g: Calories per 100g.
+        carbs_per_100g: Carbohydrates per 100g.
+        protein_per_100g: Protein per 100g.
+        fat_per_100g: Fat per 100g.
+        fibre_per_100g: Fibre per 100g.
+        salt_per_100g: Salt per 100g.
+        source: Source identifier.
+        notes: Optional notes.
+
+    Returns:
+        The created Food instance.
+    """
+    clean_name = name.strip()
+
+    if not clean_name:
+        raise ValueError("Food name is required.")
+
+    values = {
+        "calories_per_100g": calories_per_100g,
+        "carbs_per_100g": carbs_per_100g,
+        "protein_per_100g": protein_per_100g,
+        "fat_per_100g": fat_per_100g,
+        "fibre_per_100g": fibre_per_100g,
+        "salt_per_100g": salt_per_100g,
+    }
+
+    for field_name, value in values.items():
+        if value < 0:
+            raise ValueError(f"{field_name} cannot be negative.")
+
+    session = SessionLocal()
+
+    try:
+        food = Food(
+            name=clean_name,
+            brand=brand.strip() if brand else None,
+            serving_notes=serving_notes.strip() if serving_notes else None,
+            calories_per_100g=calories_per_100g,
+            carbs_per_100g=carbs_per_100g,
+            protein_per_100g=protein_per_100g,
+            fat_per_100g=fat_per_100g,
+            fibre_per_100g=fibre_per_100g,
+            salt_per_100g=salt_per_100g,
+            source=source,
+            notes=notes.strip() if notes else None,
+        )
+
+        session.add(food)
+        session.commit()
+        session.refresh(food)
+
+        return food
 
     finally:
         session.close()
