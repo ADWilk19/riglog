@@ -717,11 +717,11 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## 🍽️ Phase 8 — Nutrition Module
 
-### Slice 1 — Nutrition Model Foundation
+### Slice 1 — Nutrition Model Foundation ✅ COMPLETE
 
 #### Nutrition → Database Layer (`app/db/models.py`)
 
-* [ ] Add `Food`
+* [x] Add `Food`
   * Grain:
     * one reusable food item
   * Fields:
@@ -737,7 +737,7 @@ This backlog is organised by architectural layer and implementation priority.
     * source
     * notes
 
-* [ ] Add `MealTemplate`
+* [x] Add `MealTemplate`
   * Grain:
     * one reusable meal definition
   * Fields:
@@ -746,7 +746,7 @@ This backlog is organised by architectural layer and implementation priority.
     * default_meal_event
     * notes
 
-* [ ] Add `MealTemplateItem`
+* [x] Add `MealTemplateItem`
   * Grain:
     * one food within one reusable meal template
   * Fields:
@@ -756,7 +756,7 @@ This backlog is organised by architectural layer and implementation priority.
     * display_order
     * notes
 
-* [ ] Add `MealLog`
+* [x] Add `MealLog`
   * Grain:
     * one logged meal event
   * Fields:
@@ -767,18 +767,18 @@ This backlog is organised by architectural layer and implementation priority.
     * notes
     * source
 
-* [ ] Add model relationships
+* [x] Add model relationships
   * `MealTemplate` → many `MealTemplateItem`
   * `Food` → many `MealTemplateItem`
   * `MealTemplate` → many `MealLog`
 
 ---
 
-### Slice 2 — Nutrition Calculation Service
+### Slice 2 — Nutrition Calculation Service ✅ COMPLETE
 
 #### Nutrition → Service Layer (`app/services/nutrition/analysis.py`)
 
-* [ ] Add food total calculation
+* [x] Add food total calculation
   * Calculate nutrition totals for a food by quantity in grams
   * Return:
     * calories
@@ -788,30 +788,40 @@ This backlog is organised by architectural layer and implementation priority.
     * fibre_g
     * salt_g
 
-* [ ] Add meal template total calculation
+* [x] Add meal template total calculation
   * Sum all `MealTemplateItem` rows for a meal template
   * Apply each item quantity in grams
   * Return total calories and macros
 
-* [ ] Add logged meal total calculation
+* [x] Add logged meal total calculation
   * Calculate totals for a `MealLog`
   * Apply `portion_multiplier`
   * Return logged meal nutrition totals
 
-* [ ] Add nutrition summary metrics
+* [x] Add database-backed total helpers
+  * meal template totals by ID
+  * logged meal totals by ID
+
+* [x] Add nutrition summary metrics
   * total meals logged
   * total carbs by day
   * carbs by meal event
   * average daily carbs
   * calorie totals where available
 
+* [x] Add display helpers for the Nutrition tab
+  * recent meal logs
+  * meal template totals rows
+  * food selector options
+  * meal template selector options
+
 ---
 
-### Slice 3 — Seed / Demo Nutrition Data
+### Slice 3 — Seed / Demo Nutrition Data ✅ COMPLETE
 
 #### Nutrition → Import / Seed Layer
 
-* [ ] Add sample foods
+* [x] Add sample foods under `data/demo`
   * Examples:
     * porridge oats
     * semi-skimmed milk
@@ -821,37 +831,43 @@ This backlog is organised by architectural layer and implementation priority.
     * chicken breast
     * olive oil
 
-* [ ] Add sample meal templates
+* [x] Add sample meal templates under `data/demo`
   * Examples:
     * porridge breakfast
     * chicken rice bowl
     * yoghurt and banana snack
 
-* [ ] Add sample meal logs
+* [x] Add sample meal logs under `data/demo`
   * Use realistic timestamps
   * Include meal events
   * Include portion multipliers
 
+* [x] Add demo seed loader
+  * Reads Nutrition demo CSV files
+  * Inserts foods, meal templates, template items, and meal logs
+  * Keeps demo seeding idempotent
+  * Tested with isolated SQLite database
+
 ---
 
-### Slice 4 — Read-Only Nutrition Tab
+### Slice 4 — Read-Only Nutrition Tab ✅ COMPLETE
 
 #### Nutrition → UI Layer (`app/ui/tabs/nutrition_tab.py`)
 
-* [ ] Build read-only Nutrition tab foundation
+* [x] Build read-only Nutrition tab foundation
   * Add summary cards
   * Add recent meal logs table
   * Add meal template totals table
-  * Defer manual meal entry until later
 
-* [ ] Add summary cards
+* [x] Add summary cards
   * Meals logged
   * Calories
   * Carbs
   * Protein
   * Fat
+  * Average daily carbs
 
-* [ ] Add recent meal logs table
+* [x] Add recent meal logs table
   * Display:
     * logged at
     * meal name
@@ -863,9 +879,10 @@ This backlog is organised by architectural layer and implementation priority.
     * fat
     * notes
 
-* [ ] Add meal template totals table
+* [x] Add meal template totals table
   * Display:
     * template name
+    * default meal event
     * calories
     * carbs
     * protein
@@ -873,9 +890,64 @@ This backlog is organised by architectural layer and implementation priority.
     * fibre
     * salt
 
+* [x] Add Home tab integration
+  * Add live Nutrition summary card
+  * Navigate from Home card to Nutrition tab
+  * Refresh Home Nutrition card after nutrition updates
+  * Clarify Home card uses 7-day nutrition summary
+
 ---
 
-### Slice 5 — Manual Food / Meal Import Path
+### Slice 5 — Manual Nutrition Entry ✅ COMPLETE
+
+#### Nutrition → Manual Entry Service Layer
+
+* [x] Add manual food creation service
+  * Validate required food name
+  * Reject negative nutrition values
+  * Strip whitespace from text fields
+  * Store source as `manual`
+
+* [x] Add manual meal template creation service
+  * Select existing foods
+  * Store food quantities in grams
+  * Validate at least one food item
+  * Reject zero / negative quantities
+  * Resolve missing food IDs safely
+
+* [x] Add manual meal log creation service
+  * Select existing meal template
+  * Store logged timestamp
+  * Store meal event
+  * Apply portion multiplier
+  * Validate positive portion multiplier
+  * Store optional notes
+
+#### Nutrition → Manual Entry UI Layer
+
+* [x] Add Food form
+  * Enter food label values per 100g
+  * Save reusable food records
+  * Refresh food selector after save
+
+* [x] Build Meal form
+  * Select foods from stored food database
+  * Enter food quantities in grams
+  * Add selected foods to pending meal
+  * Save reusable meal template
+  * Refresh meal template totals table after save
+
+* [x] Log Meal form
+  * Select saved meal template
+  * Select logged-at timestamp
+  * Auto-fill meal event from template default where possible
+  * Apply portion multiplier
+  * Save logged meal
+  * Refresh Nutrition summary cards and Recent Meal Logs table
+
+---
+
+### Slice 6 — Manual Food / Meal Import Path — Deferred
 
 #### Nutrition → Import Layer
 
@@ -885,6 +957,11 @@ This backlog is organised by architectural layer and implementation priority.
   * Return imported count
   * Keep import idempotent where practical
 
+* [ ] Add meal template CSV import
+  * Import reusable meal templates from CSV
+  * Resolve foods by stable key or name
+  * Import meal template items with quantities in grams
+
 * [ ] Add meal log CSV import
   * Import logged meals from CSV
   * Resolve meal templates by name or stable key
@@ -893,7 +970,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-### Slice 6 — Nutrition ↔ Glucose Analysis
+### Slice 7 — Nutrition ↔ Glucose Analysis
 
 #### Nutrition ↔ Glucose Service Layer
 
@@ -953,12 +1030,20 @@ This backlog is organised by architectural layer and implementation priority.
   * Activity card navigates to Activity tab
   * Home cards render live service-layer summaries
 
+* [ ] Add lightweight NutritionTab interaction tests
+  * Nutrition tab renders without crashing
+  * Add Food form validates required name
+  * Build Meal form adds selected foods to pending meal
+  * Log Meal form saves a meal log from a selected template
+  * Refresh action updates summary cards and tables
+  * Nutrition `data_updated` signal refreshes Home card
+
 ### Test Infrastructure
 
 * [ ] Add pytest-qt support for UI interaction tests
   * Provide shared `qapp` / `qtbot` fixtures
   * Mock service-layer calls to avoid database dependency
-  * Cover HomeTab, ActivityTab, GlucoseTab, and WorkoutTab
+  Cover HomeTab, ActivityTab, GlucoseTab, WorkoutTab, and NutritionTab
   * Keep tests focused on widget state and signal behaviour
 
 ---
