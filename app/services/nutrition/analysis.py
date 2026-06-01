@@ -329,6 +329,96 @@ def get_meal_template_totals_rows() -> list[dict[str, Any]]:
         session.close()
 
 
+def get_meal_template_options() -> list[dict[str, Any]]:
+    """
+    Return reusable meal templates for UI selection.
+
+    Returns:
+        List of dictionaries containing meal template IDs and display labels.
+    """
+    session = SessionLocal()
+
+    try:
+        meal_templates = (
+            session.query(MealTemplate)
+            .order_by(MealTemplate.name.asc())
+            .all()
+        )
+
+        return [
+            {
+                "id": meal_template.id,
+                "name": meal_template.name,
+                "default_meal_event": meal_template.default_meal_event,
+                "display_name": meal_template.name,
+            }
+            for meal_template in meal_templates
+        ]
+
+    finally:
+        session.close()
+
+
+def create_meal_log(
+    meal_template_id: int,
+    logged_at: datetime,
+    meal_event: str | None = None,
+    portion_multiplier: float = 1.0,
+    notes: str | None = None,
+    source: str = "manual",
+) -> MealLog:
+    """
+    Create and persist a logged meal from a reusable meal template.
+
+    Args:
+        meal_template_id: Database ID of the reusable meal template.
+        logged_at: Timestamp when the meal was eaten.
+        meal_event: Optional meal-event label.
+        portion_multiplier: Portion multiplier applied to the meal template.
+        notes: Optional notes.
+        source: Source identifier.
+
+    Returns:
+        The created MealLog instance.
+    """
+    if portion_multiplier <= 0:
+        raise ValueError("Portion multiplier must be greater than zero.")
+
+    session = SessionLocal()
+
+    try:
+        meal_template = (
+            session.query(MealTemplate)
+            .filter(MealTemplate.id == meal_template_id)
+            .first()
+        )
+
+        if meal_template is None:
+            raise ValueError(f"Meal template ID {meal_template_id} was not found.")
+
+        meal_log = MealLog(
+            logged_at=logged_at,
+            meal_template_id=meal_template_id,
+            meal_event=meal_event.strip() if meal_event else None,
+            portion_multiplier=portion_multiplier,
+            notes=notes.strip() if notes else None,
+            source=source,
+        )
+
+        session.add(meal_log)
+        session.commit()
+        session.refresh(meal_log)
+
+        return meal_log
+
+    except Exception:
+        session.rollback()
+        raise
+
+    finally:
+        session.close()
+
+
 def get_food_options() -> list[dict[str, Any]]:
     """
     Return reusable foods for UI selection.

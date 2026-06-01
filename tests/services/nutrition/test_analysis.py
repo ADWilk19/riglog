@@ -23,6 +23,8 @@ from app.services.nutrition.analysis import (
     get_recent_meal_logs,
     create_meal_template,
     get_food_options,
+    create_meal_log,
+    get_meal_template_options,
 )
 
 
@@ -950,5 +952,153 @@ def test_create_meal_template_rejects_missing_food(test_session):
         )
     except ValueError as exc:
         assert str(exc) == "Food ID 999 was not found."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_get_meal_template_options_returns_templates_for_selection(test_session):
+    breakfast = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+    dinner = MealTemplate(
+        name="Chicken rice bowl",
+        default_meal_event="Pre-Dinner",
+    )
+
+    test_session.add_all([dinner, breakfast])
+    test_session.commit()
+
+    result = get_meal_template_options()
+
+    assert result == [
+        {
+            "id": dinner.id,
+            "name": "Chicken rice bowl",
+            "default_meal_event": "Pre-Dinner",
+            "display_name": "Chicken rice bowl",
+        },
+        {
+            "id": breakfast.id,
+            "name": "Porridge breakfast",
+            "default_meal_event": "Pre-Breakfast",
+            "display_name": "Porridge breakfast",
+        },
+    ]
+
+
+def test_create_meal_log_creates_logged_meal(test_session):
+    meal_template = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+
+    test_session.add(meal_template)
+    test_session.commit()
+
+    meal_log = create_meal_log(
+        meal_template_id=meal_template.id,
+        logged_at=datetime(2026, 6, 1, 8, 0),
+        meal_event="Pre-Breakfast",
+        portion_multiplier=1.25,
+        notes="Manual meal log",
+    )
+
+    stored_log = (
+        test_session.query(MealLog)
+        .filter(MealLog.id == meal_log.id)
+        .first()
+    )
+
+    assert stored_log is not None
+    assert stored_log.meal_template_id == meal_template.id
+    assert stored_log.logged_at == datetime(2026, 6, 1, 8, 0)
+    assert stored_log.meal_event == "Pre-Breakfast"
+    assert stored_log.portion_multiplier == 1.25
+    assert stored_log.notes == "Manual meal log"
+    assert stored_log.source == "manual"
+
+
+def test_create_meal_log_strips_optional_text_fields(test_session):
+    meal_template = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+
+    test_session.add(meal_template)
+    test_session.commit()
+
+    meal_log = create_meal_log(
+        meal_template_id=meal_template.id,
+        logged_at=datetime(2026, 6, 1, 8, 0),
+        meal_event="  Pre-Breakfast  ",
+        notes="  Ate before gym  ",
+    )
+
+    stored_log = (
+        test_session.query(MealLog)
+        .filter(MealLog.id == meal_log.id)
+        .first()
+    )
+
+    assert stored_log.meal_event == "Pre-Breakfast"
+    assert stored_log.notes == "Ate before gym"
+
+
+def test_create_meal_log_defaults_optional_fields(test_session):
+    meal_template = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+
+    test_session.add(meal_template)
+    test_session.commit()
+
+    meal_log = create_meal_log(
+        meal_template_id=meal_template.id,
+        logged_at=datetime(2026, 6, 1, 8, 0),
+    )
+
+    stored_log = (
+        test_session.query(MealLog)
+        .filter(MealLog.id == meal_log.id)
+        .first()
+    )
+
+    assert stored_log.meal_event is None
+    assert stored_log.portion_multiplier == 1.0
+    assert stored_log.notes is None
+    assert stored_log.source == "manual"
+
+
+def test_create_meal_log_rejects_zero_or_negative_portion_multiplier(test_session):
+    meal_template = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+
+    test_session.add(meal_template)
+    test_session.commit()
+
+    try:
+        create_meal_log(
+            meal_template_id=meal_template.id,
+            logged_at=datetime(2026, 6, 1, 8, 0),
+            portion_multiplier=0,
+        )
+    except ValueError as exc:
+        assert str(exc) == "Portion multiplier must be greater than zero."
+    else:
+        raise AssertionError("Expected ValueError")
+
+
+def test_create_meal_log_rejects_missing_meal_template(test_session):
+    try:
+        create_meal_log(
+            meal_template_id=999,
+            logged_at=datetime(2026, 6, 1, 8, 0),
+        )
+    except ValueError as exc:
+        assert str(exc) == "Meal template ID 999 was not found."
     else:
         raise AssertionError("Expected ValueError")
