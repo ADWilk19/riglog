@@ -292,7 +292,7 @@ class HomeTab(QWidget):
 
         self.nutrition_card.set_content(
             f"{total_meals:,} meals",
-            f"{total_carbs:.1f}g carbs • {average_daily_carbs:.1f}g/day",
+            f"7d: {total_carbs:.1f}g carbs • {average_daily_carbs:.1f}g/day",
         )
 
     def refresh_data(self) -> None:

@@ -39,6 +39,7 @@ class MainWindow(QMainWindow):
         )
 
         self.activity_tab.data_updated.connect(self.home_tab.refresh_data)
+        self.nutrition_tab.data_updated.connect(self.home_tab.refresh_data)
 
         self.tabs.addTab(self.home_tab, "Home")
         self.tabs.addTab(self.glucose_tab, "Glucose")
@@ -46,4 +47,11 @@ class MainWindow(QMainWindow):
         self.tabs.addTab(self.workouts_tab, "Workouts")
         self.tabs.addTab(self.nutrition_tab, "Nutrition")
 
+        self.tabs.currentChanged.connect(self.handle_tab_changed)
+
         self.setCentralWidget(self.tabs)
+
+    def handle_tab_changed(self, index: int) -> None:
+        """Refresh Home cards whenever the Home tab is selected."""
+        if self.tabs.widget(index) == self.home_tab:
+            self.home_tab.refresh_data()

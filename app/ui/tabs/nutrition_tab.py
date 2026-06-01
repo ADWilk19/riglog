@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from PySide6.QtCore import Qt
+from PySide6.QtCore import QDateTime, Qt, Signal
 from PySide6.QtWidgets import (
     QDoubleSpinBox,
     QFormLayout,
@@ -19,12 +19,15 @@ from PySide6.QtWidgets import (
     QVBoxLayout,
     QWidget,
     QComboBox,
+    QDateTimeEdit,
 )
 
 from app.services.nutrition.analysis import (
     add_food,
+    create_meal_log,
     create_meal_template,
     get_food_options,
+    get_meal_template_options,
     get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
     get_recent_meal_logs,
@@ -35,10 +38,13 @@ from app.ui.widgets.summary_card import SummaryCard
 class NutritionTab(QWidget):
     """Read-only nutrition dashboard tab."""
 
+    data_updated = Signal()
+
     def __init__(self) -> None:
         super().__init__()
 
         self.pending_meal_items: list[dict] = []
+        self.meal_template_options: list[dict] = []
 
         outer_layout = QVBoxLayout(self)
         outer_layout.setContentsMargins(0, 0, 0, 0)
@@ -61,6 +67,7 @@ class NutritionTab(QWidget):
         self._build_summary_panel()
         self._build_add_food_form()
         self._build_meal_template_form()
+        self._build_log_meal_form()
         self._build_recent_meals_table()
         self._build_template_totals_table()
 
@@ -207,6 +214,7 @@ class NutritionTab(QWidget):
     def load_data(self) -> None:
         """Refresh summary cards and nutrition tables."""
         self._load_food_options()
+        self._load_meal_template_options()
         self._load_summary_cards()
         self._load_recent_meals_table()
         self._load_template_totals_table()
@@ -388,6 +396,13 @@ class NutritionTab(QWidget):
         self._clear_add_food_form()
         self._load_food_options()
         self.load_data()
+        self.data_updated.emit()
+
+        QMessageBox.information(self, "Meal saved", "Meal template saved successfully.")
+        self._clear_meal_template_form()
+        self._load_meal_template_options()
+        self.load_data()
+        self.data_updated.emit()
 
     def _build_meal_template_form(self) -> None:
         self.layout.addWidget(self._create_section_title("Build Meal"))
@@ -576,4 +591,169 @@ class NutritionTab(QWidget):
 
         QMessageBox.information(self, "Meal saved", "Meal template saved successfully.")
         self._clear_meal_template_form()
+        self.load_data()
+        self.data_updated.emit()
+
+
+    def _build_log_meal_form(self) -> None:
+        self.layout.addWidget(self._create_section_title("Log Meal"))
+
+        form_container = QWidget()
+        form_container.setObjectName("nutritionForm")
+
+        form_layout = QFormLayout(form_container)
+        form_layout.setSpacing(10)
+        form_layout.setContentsMargins(12, 12, 12, 12)
+
+        self.log_meal_template_selector = QComboBox()
+        self.log_meal_template_selector.setMinimumWidth(300)
+        self.log_meal_template_selector.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
+        self.log_meal_template_selector.currentIndexChanged.connect(
+            self.handle_log_meal_template_changed
+        )
+
+        self.log_meal_datetime_input = QDateTimeEdit()
+        self.log_meal_datetime_input.setCalendarPopup(True)
+        self.log_meal_datetime_input.setDisplayFormat("yyyy-MM-dd HH:mm")
+        self.log_meal_datetime_input.setDateTime(QDateTime.currentDateTime())
+
+        self.log_meal_event_input = QComboBox()
+        self.log_meal_event_input.setMinimumWidth(180)
+        self.log_meal_event_input.setSizeAdjustPolicy(
+            QComboBox.SizeAdjustPolicy.AdjustToContents
+        )
+        self.log_meal_event_input.addItems(
+            [
+                "",
+                "Pre-Breakfast",
+                "Post-Breakfast",
+                "Pre-Lunch",
+                "Post-Lunch",
+                "Pre-Dinner",
+                "Post-Dinner",
+                "Before Bed",
+                "Night",
+            ]
+        )
+
+        self.log_portion_multiplier_input = QDoubleSpinBox()
+        self.log_portion_multiplier_input.setRange(0.01, 20)
+        self.log_portion_multiplier_input.setDecimals(2)
+        self.log_portion_multiplier_input.setSingleStep(0.25)
+        self.log_portion_multiplier_input.setValue(1.0)
+
+        self.log_meal_notes_input = QTextEdit()
+        self.log_meal_notes_input.setPlaceholderText("Optional notes...")
+        self.log_meal_notes_input.setMaximumHeight(80)
+
+        button_row = QHBoxLayout()
+        button_row.addStretch()
+
+        self.save_meal_log_button = QPushButton("Save Meal Log")
+        self.save_meal_log_button.setObjectName("primaryAction")
+        self.save_meal_log_button.clicked.connect(self.handle_save_meal_log)
+
+        button_row.addWidget(self.save_meal_log_button)
+
+        form_layout.addRow("Meal Template", self.log_meal_template_selector)
+        form_layout.addRow("Logged At", self.log_meal_datetime_input)
+        form_layout.addRow("Meal Event", self.log_meal_event_input)
+        form_layout.addRow("Portion Multiplier", self.log_portion_multiplier_input)
+        form_layout.addRow("Notes", self.log_meal_notes_input)
+        form_layout.addRow("", button_row)
+
+        self.layout.addWidget(form_container)
+
+    def _load_meal_template_options(self) -> None:
+        """Refresh the meal template selector used by the Log Meal form."""
+        if not hasattr(self, "log_meal_template_selector"):
+            return
+
+        self.meal_template_options = get_meal_template_options()
+
+        self.log_meal_template_selector.blockSignals(True)
+        self.log_meal_template_selector.clear()
+
+        for meal_template in self.meal_template_options:
+            self.log_meal_template_selector.addItem(
+                meal_template["display_name"],
+                meal_template["id"],
+            )
+
+        self.log_meal_template_selector.blockSignals(False)
+        self.handle_log_meal_template_changed()
+
+
+    def _set_log_meal_event(self, meal_event: str | None) -> None:
+        target = meal_event or ""
+        index = self.log_meal_event_input.findText(target)
+
+        if index >= 0:
+            self.log_meal_event_input.setCurrentIndex(index)
+        else:
+            self.log_meal_event_input.setCurrentIndex(0)
+
+    def handle_log_meal_template_changed(self) -> None:
+        """Default the log meal event from the selected meal template."""
+        if not hasattr(self, "log_meal_template_selector"):
+            return
+
+        selected_id = self.log_meal_template_selector.currentData()
+
+        selected_template = next(
+            (
+                meal_template
+                for meal_template in self.meal_template_options
+                if meal_template["id"] == selected_id
+            ),
+            None,
+        )
+
+        if selected_template is None:
+            self._set_log_meal_event(None)
+            return
+
+        self._set_log_meal_event(selected_template["default_meal_event"])
+
+
+    def _clear_log_meal_form(self) -> None:
+        self.log_meal_datetime_input.setDateTime(QDateTime.currentDateTime())
+        self.log_portion_multiplier_input.setValue(1.0)
+        self.log_meal_notes_input.clear()
+        self.handle_log_meal_template_changed()
+
+
+    def handle_save_meal_log(self) -> None:
+        """Persist a logged meal from the selected meal template."""
+        meal_template_id = self.log_meal_template_selector.currentData()
+
+        if meal_template_id is None:
+            QMessageBox.warning(
+                self,
+                "No meal selected",
+                "Please build or select a meal template first.",
+            )
+            return
+
+        logged_at = self.log_meal_datetime_input.dateTime().toPython()
+
+        try:
+            create_meal_log(
+                meal_template_id=meal_template_id,
+                logged_at=logged_at,
+                meal_event=self.log_meal_event_input.currentText() or None,
+                portion_multiplier=self.log_portion_multiplier_input.value(),
+                notes=self.log_meal_notes_input.toPlainText(),
+            )
+        except ValueError as exc:
+            QMessageBox.warning(self, "Invalid meal log", str(exc))
+            return
+        except Exception as exc:
+            QMessageBox.critical(self, "Save failed", f"Could not save meal log:\n{exc}")
+            return
+
+        QMessageBox.information(self, "Meal logged", "Meal log saved successfully.")
+        self._clear_log_meal_form()
         self.load_data()
