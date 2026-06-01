@@ -951,30 +951,17 @@ This backlog is organised by architectural layer and implementation priority.
 
 #### Nutrition → CSV Import Layer
 
-* [ ] Add food CSV import
-  * Import reusable foods from CSV
-  * Validate required columns:
-    * name
-    * calories_per_100g
-    * carbs_per_100g
-    * protein_per_100g
-    * fat_per_100g
-    * fibre_per_100g
-    * salt_per_100g
-  * Resolve duplicate foods safely
-  * Return imported count
-  * Keep import idempotent where practical
+* [x] Add Nutrition tab food CSV import action
+  * Select CSV file from the UI
+  * Import reusable foods
+  * Show imported count
+  * Refresh food selector after import
+  * Preserve duplicate-skipping behaviour
 
-* [ ] Add meal template CSV import
-  * Import reusable meal templates from CSV
-  * Resolve foods by stable key or name
-  * Import meal template items with quantities in grams
+Future / Deferred:
 
-* [ ] Add meal log CSV import
-  * Import logged meals from CSV
-  * Resolve meal templates by name or stable key
-  * Support logged_at, meal_event, portion_multiplier, and notes
-  * Defer complex conflict handling until real data shape is known
+* Meal template CSV import, if bulk migration becomes useful
+* Meal log CSV import, if importing historical meal diaries becomes useful
 
 ---
 
@@ -1092,7 +1079,7 @@ This backlog is organised by architectural layer and implementation priority.
 * [ ] Add pytest-qt support for UI interaction tests
   * Provide shared `qapp` / `qtbot` fixtures
   * Mock service-layer calls to avoid database dependency
-  Cover HomeTab, ActivityTab, GlucoseTab, WorkoutTab, and NutritionTab
+  * Cover HomeTab, ActivityTab, GlucoseTab, WorkoutTab, and NutritionTab
   * Keep tests focused on widget state and signal behaviour
 
 ---
