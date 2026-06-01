@@ -947,12 +947,20 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-### Slice 6 — Manual Food / Meal Import Path — Deferred
+### Slice 6 — Nutrition CSV Import and External Dataset Conversion
 
-#### Nutrition → Import Layer
+#### Nutrition → CSV Import Layer
 
 * [ ] Add food CSV import
   * Import reusable foods from CSV
+  * Validate required columns:
+    * name
+    * calories_per_100g
+    * carbs_per_100g
+    * protein_per_100g
+    * fat_per_100g
+    * fibre_per_100g
+    * salt_per_100g
   * Resolve duplicate foods safely
   * Return imported count
   * Keep import idempotent where practical
@@ -967,6 +975,47 @@ This backlog is organised by architectural layer and implementation priority.
   * Resolve meal templates by name or stable key
   * Support logged_at, meal_event, portion_multiplier, and notes
   * Defer complex conflict handling until real data shape is known
+
+---
+
+#### Nutrition → External Dataset Converter
+
+* [ ] Add external food dataset converter
+  * Convert trusted external nutrition datasets into RigLog-compatible food CSV format
+  * Initial target:
+    * vegetables / common whole foods
+  * Preferred sources:
+    * official food composition datasets
+    * open food databases
+    * API/export-based sources rather than web scraping
+
+* [ ] Add converter output contract
+  * Output CSV should match RigLog food import format:
+    * food_key
+    * name
+    * brand
+    * serving_notes
+    * calories_per_100g
+    * carbs_per_100g
+    * protein_per_100g
+    * fat_per_100g
+    * fibre_per_100g
+    * salt_per_100g
+    * source
+    * notes
+
+* [ ] Add review step before import
+  * Generated CSV should be manually inspectable before being imported
+  * Avoid writing external data directly into the database without review
+
+* [ ] Future:
+  * Add branded food support via API/export source
+  * Add barcode-based lookup if a reliable data source is chosen
+  * Add food-label photo extraction with user confirmation
+
+* Prefer dataset/API conversion over web scraping for nutrition data.
+  * External converters should produce CSV files.
+  * RigLog should import reviewed CSVs rather than scrape websites directly.
 
 ---
 
