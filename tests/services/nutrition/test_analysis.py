@@ -17,7 +17,9 @@ from app.services.nutrition.analysis import (
     calculate_meal_template_totals,
     get_logged_meal_totals,
     get_meal_template_totals,
+    get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
+    get_recent_meal_logs,
 )
 
 
@@ -520,3 +522,161 @@ def test_get_nutrition_summary_metrics_groups_missing_meal_event_as_uncategorise
     assert result["carbs_by_meal_event"] == {
         "Uncategorised": 20.0,
     }
+
+
+def test_get_recent_meal_logs_returns_display_rows(test_session):
+    food = Food(
+        name="Test food",
+        calories_per_100g=200,
+        carbs_per_100g=30,
+        protein_per_100g=10,
+        fat_per_100g=5,
+        fibre_per_100g=4,
+        salt_per_100g=0.2,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event="Pre-Lunch",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    meal_log = MealLog(
+        logged_at=datetime(2026, 5, 26, 12, 30),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=1.5,
+        notes="Test meal log",
+        source="test",
+    )
+
+    test_session.add(meal_log)
+    test_session.commit()
+
+    result = get_recent_meal_logs()
+
+    assert result == [
+        {
+            "id": meal_log.id,
+            "logged_at": datetime(2026, 5, 26, 12, 30),
+            "meal_name": "Test meal",
+            "meal_event": "Pre-Lunch",
+            "portion_multiplier": 1.5,
+            "calories": 300.0,
+            "carbs_g": 45.0,
+            "protein_g": 15.0,
+            "fat_g": 7.5,
+            "notes": "Test meal log",
+        }
+    ]
+
+
+def test_get_recent_meal_logs_respects_limit(test_session):
+    food = Food(
+        name="Test food",
+        calories_per_100g=100,
+        carbs_per_100g=10,
+        protein_per_100g=5,
+        fat_per_100g=2,
+        fibre_per_100g=1,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event="Pre-Lunch",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    test_session.add_all(
+        [
+            MealLog(
+                logged_at=datetime(2026, 5, 24, 12, 0),
+                meal_template=meal_template,
+                meal_event="Pre-Lunch",
+                portion_multiplier=1.0,
+                source="test",
+            ),
+            MealLog(
+                logged_at=datetime(2026, 5, 25, 12, 0),
+                meal_template=meal_template,
+                meal_event="Pre-Lunch",
+                portion_multiplier=1.0,
+                source="test",
+            ),
+            MealLog(
+                logged_at=datetime(2026, 5, 26, 12, 0),
+                meal_template=meal_template,
+                meal_event="Pre-Lunch",
+                portion_multiplier=1.0,
+                source="test",
+            ),
+        ]
+    )
+    test_session.commit()
+
+    result = get_recent_meal_logs(limit=2)
+
+    assert len(result) == 2
+    assert [row["logged_at"] for row in result] == [
+        datetime(2026, 5, 26, 12, 0),
+        datetime(2026, 5, 25, 12, 0),
+    ]
+
+
+def test_get_meal_template_totals_rows_returns_display_rows(test_session):
+    food = Food(
+        name="Test food",
+        calories_per_100g=150,
+        carbs_per_100g=20,
+        protein_per_100g=8,
+        fat_per_100g=4,
+        fibre_per_100g=3,
+        salt_per_100g=0.2,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Template meal",
+        default_meal_event="Pre-Dinner",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=200,
+            display_order=1,
+        )
+    ]
+
+    test_session.add(meal_template)
+    test_session.commit()
+
+    result = get_meal_template_totals_rows()
+
+    assert result == [
+        {
+            "id": meal_template.id,
+            "name": "Template meal",
+            "default_meal_event": "Pre-Dinner",
+            "calories": 300.0,
+            "carbs_g": 40.0,
+            "protein_g": 16.0,
+            "fat_g": 8.0,
+            "fibre_g": 6.0,
+            "salt_g": 0.4,
+        }
+    ]

@@ -241,4 +241,89 @@ def get_nutrition_summary_metrics(days: int | None = None) -> dict[str, Any]:
     finally:
         session.close()
 
-        
+
+def get_recent_meal_logs(limit: int = 10) -> list[dict[str, Any]]:
+    """
+    Return recent logged meals with calculated nutrition totals.
+
+    Args:
+        limit: Maximum number of meal logs to return.
+
+    Returns:
+        List of dictionaries for UI display.
+    """
+    session = SessionLocal()
+
+    try:
+        meal_logs = (
+            session.query(MealLog)
+            .order_by(MealLog.logged_at.desc())
+            .limit(limit)
+            .all()
+        )
+
+        rows = []
+
+        for meal_log in meal_logs:
+            totals = calculate_logged_meal_totals(meal_log)
+
+            rows.append(
+                {
+                    "id": meal_log.id,
+                    "logged_at": meal_log.logged_at,
+                    "meal_name": meal_log.meal_template.name,
+                    "meal_event": meal_log.meal_event,
+                    "portion_multiplier": meal_log.portion_multiplier,
+                    "calories": totals["calories"],
+                    "carbs_g": totals["carbs_g"],
+                    "protein_g": totals["protein_g"],
+                    "fat_g": totals["fat_g"],
+                    "notes": meal_log.notes,
+                }
+            )
+
+        return rows
+
+    finally:
+        session.close()
+
+
+def get_meal_template_totals_rows() -> list[dict[str, Any]]:
+    """
+    Return all meal templates with calculated nutrition totals.
+
+    Returns:
+        List of dictionaries for UI display.
+    """
+    session = SessionLocal()
+
+    try:
+        meal_templates = (
+            session.query(MealTemplate)
+            .order_by(MealTemplate.name.asc())
+            .all()
+        )
+
+        rows = []
+
+        for meal_template in meal_templates:
+            totals = calculate_meal_template_totals(meal_template)
+
+            rows.append(
+                {
+                    "id": meal_template.id,
+                    "name": meal_template.name,
+                    "default_meal_event": meal_template.default_meal_event,
+                    "calories": totals["calories"],
+                    "carbs_g": totals["carbs_g"],
+                    "protein_g": totals["protein_g"],
+                    "fat_g": totals["fat_g"],
+                    "fibre_g": totals["fibre_g"],
+                    "salt_g": totals["salt_g"],
+                }
+            )
+
+        return rows
+
+    finally:
+        session.close()
