@@ -18,6 +18,7 @@ from app.services.activity.analysis import (
     get_daily_activity,
 )
 from app.services.workouts.analysis import get_workout_summary_metrics
+from app.services.nutrition.analysis import get_nutrition_summary_metrics
 from app.ui.widgets.summary_card import SummaryCard
 
 
@@ -161,8 +162,8 @@ class HomeTab(QWidget):
         )
         self.nutrition_card = SummaryCard(
             title="Nutrition",
-            value="Coming soon",
-            subtitle="Log meals and calorie trends",
+            value="Loading...",
+            subtitle="Checking meal logs",
             on_click=self.on_open_nutrition,
         )
 
@@ -200,6 +201,7 @@ class HomeTab(QWidget):
             self._refresh_glucose_card(session)
             self._refresh_activity_card()
             self._refresh_workouts_card()
+            self._refresh_nutrition_card()
         finally:
             session.close()
 
@@ -271,6 +273,26 @@ class HomeTab(QWidget):
         self.workouts_card.set_content(
             f"{total_sessions:,} sessions",
             f"{weekly_sessions} this week • {total_volume:,.0f} kg",
+        )
+
+    def _refresh_nutrition_card(self) -> None:
+        metrics = get_nutrition_summary_metrics(days=7)
+
+        total_meals = metrics["total_meals"]
+
+        if total_meals == 0:
+            self.nutrition_card.set_content(
+                "No meals",
+                "Add foods and build meals",
+            )
+            return
+
+        total_carbs = metrics["total_carbs_g"]
+        average_daily_carbs = metrics["average_daily_carbs_g"]
+
+        self.nutrition_card.set_content(
+            f"{total_meals:,} meals",
+            f"{total_carbs:.1f}g carbs • {average_daily_carbs:.1f}g/day",
         )
 
     def refresh_data(self) -> None:
