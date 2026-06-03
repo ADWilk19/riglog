@@ -127,6 +127,9 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Meal template totals table
   - Food CSV import from the Nutrition tab
   - External dataset conversion workflow for CoFID-style food data
+  - Post-meal glucose response analysis
+  - Macro response summaries by meal event
+  - Meal template glucose response summaries
 - Unified home dashboard:
   - Live summary cards for glucose and activity
   - Quick navigation between modules
@@ -576,6 +579,21 @@ Future work will expand this into broader insight views as additional modules ar
   - volume detail table
   - calorie analysis table
 - Clear imported workout data action that preserves catalogue/routine data
+
+---
+
+### 🍽️ Nutrition Module (Initial Scope — Complete)
+
+- Reusable food database with manual food entry
+- Meal templates built from stored foods and gram-based quantities
+- Logged meals with timestamps, meal events, portion multipliers, and notes
+- Nutrition summary cards and read-only meal/template tables
+- Food CSV import from the Nutrition tab
+- External CoFID-style dataset conversion into reviewable RigLog food CSVs
+- Nutrition ↔ Glucose analysis:
+  - post-meal glucose response rows
+  - macro response summaries by meal event
+  - meal template glucose response summaries
 
 ---
 
