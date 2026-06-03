@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from app.db.base import Base
-from app.db.models import Food, MealLog, MealTemplate, MealTemplateItem
+from app.db.models import Food, GlucoseReading, MealLog, MealTemplate, MealTemplateItem
 import app.services.nutrition.analysis as nutrition_analysis
 
 from app.services.nutrition.analysis import (
@@ -25,6 +25,9 @@ from app.services.nutrition.analysis import (
     get_food_options,
     create_meal_log,
     get_meal_template_options,
+    get_macro_glucose_response_by_meal_event,
+    get_meal_template_glucose_response_summary,
+    get_post_meal_glucose_response_rows,
 )
 
 
@@ -1102,3 +1105,314 @@ def test_create_meal_log_rejects_missing_meal_template(test_session):
         assert str(exc) == "Meal template ID 999 was not found."
     else:
         raise AssertionError("Expected ValueError")
+
+
+def test_get_post_meal_glucose_response_rows_calculates_per_meal_response(
+    test_session,
+):
+    food = Food(
+        name="Porridge oats",
+        calories_per_100g=370,
+        carbs_per_100g=60,
+        protein_per_100g=12,
+        fat_per_100g=8,
+        fibre_per_100g=6,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Porridge breakfast",
+        default_meal_event="Pre-Breakfast",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=50,
+            display_order=1,
+        )
+    ]
+
+    meal_log = MealLog(
+        logged_at=datetime(2026, 6, 1, 8, 0),
+        meal_template=meal_template,
+        meal_event="Pre-Breakfast",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    test_session.add_all(
+        [
+            meal_log,
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 7, 50),
+                glucose_value=6.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 8, 30),
+                glucose_value=7.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 9, 0),
+                glucose_value=8.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 10, 0),
+                glucose_value=9.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 11, 1),
+                glucose_value=12.0,
+                source="test",
+            ),
+        ]
+    )
+    test_session.commit()
+
+    result = get_post_meal_glucose_response_rows()
+
+    assert result == [
+        {
+            "meal_log_id": meal_log.id,
+            "logged_at": datetime(2026, 6, 1, 8, 0),
+            "meal_template_id": meal_template.id,
+            "meal_template_name": "Porridge breakfast",
+            "meal_event": "Pre-Breakfast",
+            "portion_multiplier": 1.0,
+            "calories": 185.0,
+            "carbs_g": 30.0,
+            "protein_g": 6.0,
+            "fat_g": 4.0,
+            "fibre_g": 3.0,
+            "salt_g": 0.1,
+            "pre_meal_glucose": 6.0,
+            "pre_meal_recorded_at": datetime(2026, 6, 1, 7, 50),
+            "avg_post_meal_glucose": 8.5,
+            "peak_post_meal_glucose": 9.0,
+            "glucose_delta": 2.5,
+            "reading_count": 2,
+        }
+    ]
+
+
+def test_get_post_meal_glucose_response_rows_handles_missing_glucose_data(
+    test_session,
+):
+    food = Food(
+        name="Test food",
+        calories_per_100g=100,
+        carbs_per_100g=20,
+        protein_per_100g=5,
+        fat_per_100g=2,
+        fibre_per_100g=1,
+        salt_per_100g=0.1,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event="Pre-Lunch",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    meal_log = MealLog(
+        logged_at=datetime(2026, 6, 1, 12, 0),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    test_session.add(meal_log)
+    test_session.commit()
+
+    result = get_post_meal_glucose_response_rows()
+
+    assert result[0]["pre_meal_glucose"] is None
+    assert result[0]["pre_meal_recorded_at"] is None
+    assert result[0]["avg_post_meal_glucose"] is None
+    assert result[0]["peak_post_meal_glucose"] is None
+    assert result[0]["glucose_delta"] is None
+    assert result[0]["reading_count"] == 0
+
+
+def test_get_macro_glucose_response_by_meal_event_groups_logged_meals(
+    test_session,
+):
+    food = Food(
+        name="Test food",
+        calories_per_100g=200,
+        carbs_per_100g=40,
+        protein_per_100g=10,
+        fat_per_100g=4,
+        fibre_per_100g=3,
+        salt_per_100g=0.2,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Test meal",
+        default_meal_event="Pre-Lunch",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=100,
+            display_order=1,
+        )
+    ]
+
+    first_log = MealLog(
+        logged_at=datetime(2026, 6, 1, 12, 0),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    second_log = MealLog(
+        logged_at=datetime(2026, 6, 2, 12, 0),
+        meal_template=meal_template,
+        meal_event="Pre-Lunch",
+        portion_multiplier=0.5,
+        source="test",
+    )
+
+    test_session.add_all(
+        [
+            first_log,
+            second_log,
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 11, 50),
+                glucose_value=6.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 13, 0),
+                glucose_value=8.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 14, 0),
+                glucose_value=9.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 2, 11, 50),
+                glucose_value=7.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 2, 13, 0),
+                glucose_value=10.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 2, 14, 0),
+                glucose_value=11.0,
+                source="test",
+            ),
+        ]
+    )
+    test_session.commit()
+
+    result = get_macro_glucose_response_by_meal_event()
+
+    assert result == [
+        {
+            "meal_event": "Pre-Lunch",
+            "logged_count": 2,
+            "average_calories": 150.0,
+            "average_carbs_g": 30.0,
+            "average_protein_g": 7.5,
+            "average_fat_g": 3.0,
+            "average_fibre_g": 2.2,
+            "average_post_meal_glucose": 9.5,
+            "average_glucose_delta": 3.0,
+            "peak_post_meal_glucose": 11.0,
+            "total_reading_count": 4,
+        }
+    ]
+
+
+def test_get_meal_template_glucose_response_summary_groups_by_template(
+    test_session,
+):
+    food = Food(
+        name="Rice",
+        calories_per_100g=130,
+        carbs_per_100g=28,
+        protein_per_100g=2.7,
+        fat_per_100g=0.3,
+        fibre_per_100g=0.4,
+        salt_per_100g=0.0,
+        source="test",
+    )
+
+    meal_template = MealTemplate(
+        name="Rice bowl",
+        default_meal_event="Pre-Dinner",
+    )
+    meal_template.items = [
+        MealTemplateItem(
+            food=food,
+            quantity_g=250,
+            display_order=1,
+        )
+    ]
+
+    meal_log = MealLog(
+        logged_at=datetime(2026, 6, 1, 18, 0),
+        meal_template=meal_template,
+        meal_event="Pre-Dinner",
+        portion_multiplier=1.0,
+        source="test",
+    )
+
+    test_session.add_all(
+        [
+            meal_log,
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 17, 45),
+                glucose_value=6.5,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 19, 0),
+                glucose_value=9.0,
+                source="test",
+            ),
+            GlucoseReading(
+                recorded_at=datetime(2026, 6, 1, 20, 0),
+                glucose_value=10.0,
+                source="test",
+            ),
+        ]
+    )
+    test_session.commit()
+
+    result = get_meal_template_glucose_response_summary()
+
+    assert result == [
+        {
+            "meal_template_id": meal_template.id,
+            "meal_template_name": "Rice bowl",
+            "logged_count": 1,
+            "average_carbs_g": 70.0,
+            "average_calories": 325.0,
+            "average_post_meal_glucose": 9.5,
+            "average_glucose_delta": 3.0,
+            "peak_post_meal_glucose": 10.0,
+            "total_reading_count": 2,
+        }
+    ]

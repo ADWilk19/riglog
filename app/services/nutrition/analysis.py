@@ -6,7 +6,7 @@ from datetime import datetime, timedelta
 from typing import Any
 
 from app.db.database import SessionLocal
-from app.db.models import Food, MealLog, MealTemplate, MealTemplateItem
+from app.db.models import Food, GlucoseReading, MealLog, MealTemplate, MealTemplateItem
 
 NUTRITION_FIELDS = [
     "calories",
@@ -608,3 +608,274 @@ def add_food(
 
     finally:
         session.close()
+
+
+def _round_optional(value: float | None, digits: int = 1) -> float | None:
+    """Round a numeric value when present, otherwise return None."""
+    if value is None:
+        return None
+
+    return round(value, digits)
+
+
+def _average(values: list[float]) -> float | None:
+    """Return the average of a list of numeric values, or None when empty."""
+    if not values:
+        return None
+
+    return sum(values) / len(values)
+
+
+def _calculate_post_meal_response_for_log(
+    meal_log: MealLog,
+    glucose_readings: list[GlucoseReading],
+    post_window_start_hours: int = 1,
+    post_window_end_hours: int = 3,
+) -> dict[str, Any]:
+    """
+    Calculate post-meal glucose response metrics for a single logged meal.
+
+    The response window intentionally starts one hour after the meal and ends
+    three hours after the meal, so immediate pre/post readings are not mixed
+    into the post-meal response period.
+    """
+    totals = calculate_logged_meal_totals(meal_log)
+
+    pre_meal_readings = [
+        reading
+        for reading in glucose_readings
+        if reading.recorded_at <= meal_log.logged_at
+    ]
+
+    nearest_pre_meal = (
+        max(pre_meal_readings, key=lambda reading: reading.recorded_at)
+        if pre_meal_readings
+        else None
+    )
+
+    post_window_start = meal_log.logged_at + timedelta(hours=post_window_start_hours)
+    post_window_end = meal_log.logged_at + timedelta(hours=post_window_end_hours)
+
+    post_meal_readings = [
+        reading
+        for reading in glucose_readings
+        if post_window_start <= reading.recorded_at <= post_window_end
+    ]
+
+    post_values = [reading.glucose_value for reading in post_meal_readings]
+
+    pre_meal_glucose = (
+        nearest_pre_meal.glucose_value
+        if nearest_pre_meal is not None
+        else None
+    )
+    avg_post_meal_glucose = _average(post_values)
+    peak_post_meal_glucose = max(post_values) if post_values else None
+
+    glucose_delta = (
+        avg_post_meal_glucose - pre_meal_glucose
+        if avg_post_meal_glucose is not None and pre_meal_glucose is not None
+        else None
+    )
+
+    return {
+        "meal_log_id": meal_log.id,
+        "logged_at": meal_log.logged_at,
+        "meal_template_id": meal_log.meal_template_id,
+        "meal_template_name": meal_log.meal_template.name,
+        "meal_event": meal_log.meal_event,
+        "portion_multiplier": meal_log.portion_multiplier,
+        "calories": totals["calories"],
+        "carbs_g": totals["carbs_g"],
+        "protein_g": totals["protein_g"],
+        "fat_g": totals["fat_g"],
+        "fibre_g": totals["fibre_g"],
+        "salt_g": totals["salt_g"],
+        "pre_meal_glucose": _round_optional(pre_meal_glucose),
+        "pre_meal_recorded_at": (
+            nearest_pre_meal.recorded_at
+            if nearest_pre_meal is not None
+            else None
+        ),
+        "avg_post_meal_glucose": _round_optional(avg_post_meal_glucose),
+        "peak_post_meal_glucose": _round_optional(peak_post_meal_glucose),
+        "glucose_delta": _round_optional(glucose_delta),
+        "reading_count": len(post_values),
+    }
+
+
+def get_post_meal_glucose_response_rows(
+    days: int | None = None,
+    post_window_start_hours: int = 1,
+    post_window_end_hours: int = 3,
+) -> list[dict[str, Any]]:
+    """
+    Return per-meal nutrition and post-meal glucose response rows.
+
+    For each logged meal, this calculates:
+    - nearest prior glucose reading
+    - average glucose 1–3 hours after the meal
+    - peak glucose 1–3 hours after the meal
+    - glucose delta versus nearest prior reading
+    - post-window reading count
+    """
+    session = SessionLocal()
+
+    try:
+        meal_query = session.query(MealLog).order_by(MealLog.logged_at.asc())
+
+        if days is not None:
+            cutoff = datetime.now() - timedelta(days=days)
+            meal_query = meal_query.filter(MealLog.logged_at >= cutoff)
+
+        meal_logs = meal_query.all()
+
+        if not meal_logs:
+            return []
+
+        earliest_meal_time = min(meal_log.logged_at for meal_log in meal_logs)
+        latest_meal_time = max(meal_log.logged_at for meal_log in meal_logs)
+
+        glucose_readings = (
+            session.query(GlucoseReading)
+            .filter(
+                GlucoseReading.recorded_at >= earliest_meal_time - timedelta(days=1),
+                GlucoseReading.recorded_at <= (
+                    latest_meal_time + timedelta(hours=post_window_end_hours)
+                ),
+            )
+            .order_by(GlucoseReading.recorded_at.asc())
+            .all()
+        )
+
+        return [
+            _calculate_post_meal_response_for_log(
+                meal_log=meal_log,
+                glucose_readings=glucose_readings,
+                post_window_start_hours=post_window_start_hours,
+                post_window_end_hours=post_window_end_hours,
+            )
+            for meal_log in meal_logs
+        ]
+
+    finally:
+        session.close()
+
+
+def get_macro_glucose_response_by_meal_event(
+    days: int | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Summarise nutrition and post-meal glucose response by meal event.
+
+    Rows without post-meal glucose readings are excluded from the grouped
+    response metrics.
+    """
+    rows = [
+        row
+        for row in get_post_meal_glucose_response_rows(days=days)
+        if row["reading_count"] > 0
+    ]
+
+    grouped: dict[str, list[dict[str, Any]]] = {}
+
+    for row in rows:
+        meal_event = row["meal_event"] or "Uncategorised"
+        grouped.setdefault(meal_event, []).append(row)
+
+    results = []
+
+    for meal_event, event_rows in grouped.items():
+        deltas = [
+            row["glucose_delta"]
+            for row in event_rows
+            if row["glucose_delta"] is not None
+        ]
+
+        results.append(
+            {
+                "meal_event": meal_event,
+                "logged_count": len(event_rows),
+                "average_calories": _round_optional(
+                    _average([row["calories"] for row in event_rows])
+                ),
+                "average_carbs_g": _round_optional(
+                    _average([row["carbs_g"] for row in event_rows])
+                ),
+                "average_protein_g": _round_optional(
+                    _average([row["protein_g"] for row in event_rows])
+                ),
+                "average_fat_g": _round_optional(
+                    _average([row["fat_g"] for row in event_rows])
+                ),
+                "average_fibre_g": _round_optional(
+                    _average([row["fibre_g"] for row in event_rows])
+                ),
+                "average_post_meal_glucose": _round_optional(
+                    _average([row["avg_post_meal_glucose"] for row in event_rows])
+                ),
+                "average_glucose_delta": _round_optional(_average(deltas)),
+                "peak_post_meal_glucose": _round_optional(
+                    max(row["peak_post_meal_glucose"] for row in event_rows)
+                ),
+                "total_reading_count": sum(row["reading_count"] for row in event_rows),
+            }
+        )
+
+    return sorted(results, key=lambda row: row["meal_event"])
+
+
+def get_meal_template_glucose_response_summary(
+    days: int | None = None,
+) -> list[dict[str, Any]]:
+    """
+    Summarise typical glucose response by reusable meal template.
+
+    Rows without post-meal glucose readings are excluded from the grouped
+    response metrics.
+    """
+    rows = [
+        row
+        for row in get_post_meal_glucose_response_rows(days=days)
+        if row["reading_count"] > 0
+    ]
+
+    grouped: dict[int, list[dict[str, Any]]] = {}
+
+    for row in rows:
+        grouped.setdefault(row["meal_template_id"], []).append(row)
+
+    results = []
+
+    for meal_template_id, template_rows in grouped.items():
+        deltas = [
+            row["glucose_delta"]
+            for row in template_rows
+            if row["glucose_delta"] is not None
+        ]
+
+        results.append(
+            {
+                "meal_template_id": meal_template_id,
+                "meal_template_name": template_rows[0]["meal_template_name"],
+                "logged_count": len(template_rows),
+                "average_carbs_g": _round_optional(
+                    _average([row["carbs_g"] for row in template_rows])
+                ),
+                "average_calories": _round_optional(
+                    _average([row["calories"] for row in template_rows])
+                ),
+                "average_post_meal_glucose": _round_optional(
+                    _average([row["avg_post_meal_glucose"] for row in template_rows])
+                ),
+                "average_glucose_delta": _round_optional(_average(deltas)),
+                "peak_post_meal_glucose": _round_optional(
+                    max(row["peak_post_meal_glucose"] for row in template_rows)
+                ),
+                "total_reading_count": sum(
+                    row["reading_count"] for row in template_rows
+                ),
+            }
+        )
+
+    return sorted(results, key=lambda row: row["meal_template_name"])
