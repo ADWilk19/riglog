@@ -947,7 +947,7 @@ This backlog is organised by architectural layer and implementation priority.
 
 ---
 
-### Slice 6 — Nutrition CSV Import and External Dataset Conversion
+### Slice 6 — Nutrition CSV Import and External Dataset Conversion ✅ COMPLETE
 
 #### Nutrition → CSV Import Layer
 
@@ -975,13 +975,13 @@ Future / Deferred:
   * Writes reviewable CSV output
   * Does not write directly to the database
 
-* [ ] Add provider-specific adapter
+* [x] Add provider-specific adapter
   * Initial candidate:
     * CoFID / UK food composition dataset
   * Convert raw provider export into normalised converter input
   * Keep provider-specific parsing separate from RigLog food import
 
-* [ ] Add converter output contract
+* [x] Add converter output contract
   * Output CSV should match RigLog food import format:
     * food_key
     * name
@@ -996,7 +996,7 @@ Future / Deferred:
     * source
     * notes
 
-* [ ] Add review step before import
+* [x] Add review step before import
   * Generated CSV should be manually inspectable before being imported
   * Avoid writing external data directly into the database without review
 

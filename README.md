@@ -2,7 +2,7 @@
 
 ![RigLog Logo](assets/branding/logo_full.png)
 
-RigLog is a desktop health analytics application for analysing glucose, activity, and cross-module health patterns.
+RigLog is a desktop health analytics application for analysing glucose, activity, workouts, nutrition, and cross-module health patterns.
 
 It transforms raw health data into structured insights through:
 
@@ -117,6 +117,16 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Recent workout sessions table
   - Workout calorie analysis table using intraday activity calories
   - Clear imported workout data action
+- Nutrition tracking:
+  - Reusable food database
+  - Manual food entry from label values per 100g
+  - Reusable meal templates built from stored foods
+  - Logged meals with timestamps, meal events, and portion multipliers
+  - Nutrition summary cards for meals, calories, carbs, protein, fat, and average daily carbs
+  - Recent meal logs table
+  - Meal template totals table
+  - Food CSV import from the Nutrition tab
+  - External dataset conversion workflow for CoFID-style food data
 - Unified home dashboard:
   - Live summary cards for glucose and activity
   - Quick navigation between modules
@@ -283,6 +293,7 @@ flowchart TD
         glucose_ui["tabs/glucose_tab.py"]
         activity_ui["tabs/activity_tab.py"]
         workouts_ui["tabs/workouts_tab.py"]
+        nutrition_ui["tabs/nutrition_tab.py"]
         card["widgets/summary_card.py"]
     end
 
@@ -298,6 +309,10 @@ flowchart TD
         workout_importer["workouts/importer.py"]
         workout_seed["workouts/seed_data.py"]
         workout_maintenance["workouts/maintenance.py"]
+        nutrition_analysis["nutrition/analysis.py"]
+        nutrition_importer["nutrition/importer.py"]
+        nutrition_converter["nutrition/converter.py"]
+        nutrition_demo_seed["nutrition/demo_seed.py"]
     end
 
     subgraph db["app/db"]
@@ -309,6 +324,9 @@ flowchart TD
     diabetes["Diabetes:M CSV"]
     fitbit["Fitbit API"]
     workout_csv["Workout CSV"]
+    nutrition_csv["Nutrition Food CSV"]
+    cofid_csv["CoFID-style CSV"]
+    cofid_script["scripts/convert_cofid_foods.py"]
     sqlite["data/riglog.db"]
 
     main --> window
@@ -319,6 +337,7 @@ flowchart TD
     window --> glucose_ui
     window --> activity_ui
     window --> workouts_ui
+    window --> nutrition_ui
 
     home --> card
     glucose_ui --> card
@@ -338,6 +357,7 @@ flowchart TD
     activity_ui --> fitbit_importer
     activity_ui --> activity_analysis
     home --> activity_analysis
+    home --> nutrition_analysis
     fitbit_importer --> database
     activity_analysis --> database
 
@@ -349,6 +369,17 @@ flowchart TD
     workout_analysis --> database
     workout_maintenance --> database
     workout_seed --> database
+
+    nutrition_csv --> nutrition_importer
+    cofid_csv --> cofid_script
+    cofid_script --> nutrition_converter
+    nutrition_converter --> nutrition_csv
+
+    nutrition_ui --> nutrition_analysis
+    nutrition_ui --> nutrition_importer
+    nutrition_analysis --> database
+    nutrition_importer --> database
+    nutrition_demo_seed --> database
 
     cross_module_analysis --> activity_analysis
     cross_module_analysis --> glucose_analysis
@@ -444,6 +475,27 @@ This principle drives the design of features such as:
 - Time-in-range analysis
 - Meal-event breakdowns
 - AGP visualisation
+
+---
+
+### Convert CoFID food data for RigLog
+
+RigLog does not import CoFID data directly into the database. Instead, convert a CoFID-style CSV into a reviewable RigLog food CSV, inspect it, then import it through the Nutrition tab.
+
+Example:
+
+```bash
+python scripts/convert_cofid_foods.py \
+  --input data/external/cofid_vegetables.csv \
+  --normalised-output data/generated/cofid_vegetables_normalised.csv \
+  --riglog-output data/generated/cofid_vegetables_riglog_foods.csv \
+  --source-name cofid \
+  --food-group Vegetables
+```
+
+After reviewing the generated RigLog CSV, open RigLog, go to the Nutrition tab, click **Import Foods CSV**, and select the generated `data/generated/cofid_vegetables_riglog_foods.csv` file.
+
+---
 
 ## Project Status
 
