@@ -1015,7 +1015,7 @@ Future / Deferred:
 
 #### Nutrition ↔ Glucose Service Layer
 
-* [ ] Add post-meal glucose response analysis
+* [x] Add post-meal glucose response analysis
   * For each logged meal, calculate:
     * pre-meal / nearest prior glucose
     * average glucose 1–3 hours after meal
@@ -1023,11 +1023,11 @@ Future / Deferred:
     * glucose delta
     * reading count
 
-* [ ] Add carbs / macros by glucose meal event
+* [x] Add carbs / macros by glucose meal event
   * Group logged meals by meal event
   * Compare carbs, calories, protein, fat, and fibre against post-meal glucose response
 
-* [ ] Add meal template glucose response summary
+* [x] Add meal template glucose response summary
   * Compare reusable meal templates against typical post-meal glucose outcomes
   * Return:
     * meal template
@@ -1041,6 +1041,24 @@ Future / Deferred:
   * Identify meals associated with stable glucose response
   * Identify meals associated with elevated post-meal glucose
   * Add nutrition insights to a future dedicated Insights tab
+
+### Future Nutrition ↔ Activity Energy Balance
+
+* [ ] Add daily calorie intake vs calorie burn analysis
+  * Compare logged nutrition calories against activity calories burned
+  * Use:
+    * logged meal calories from Nutrition module
+    * daily calories burned from Activity / Fitbit data
+  * Return:
+    * date
+    * total calories consumed
+    * total activity calories burned
+    * net calorie balance
+    * meal count
+  * Future:
+    * show weekly calorie balance trend
+    * flag low-fuel or high-surplus days
+    * compare workout days vs rest days
 
 ---
 

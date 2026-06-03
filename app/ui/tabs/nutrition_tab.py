@@ -28,9 +28,12 @@ from app.services.nutrition.analysis import (
     create_meal_log,
     create_meal_template,
     get_food_options,
+    get_macro_glucose_response_by_meal_event,
+    get_meal_template_glucose_response_summary,
     get_meal_template_options,
     get_meal_template_totals_rows,
     get_nutrition_summary_metrics,
+    get_post_meal_glucose_response_rows,
     get_recent_meal_logs,
 )
 from app.services.nutrition.importer import import_foods_csv
@@ -72,6 +75,9 @@ class NutritionTab(QWidget):
         self._build_log_meal_form()
         self._build_recent_meals_table()
         self._build_template_totals_table()
+        self._build_post_meal_glucose_response_table()
+        self._build_macro_glucose_response_table()
+        self._build_meal_template_glucose_response_table()
 
         self.load_data()
 
@@ -130,7 +136,6 @@ class NutritionTab(QWidget):
         field.setPlaceholderText(placeholder)
         return field
 
-
     def _create_macro_input(self, suffix: str = "") -> QDoubleSpinBox:
         field = QDoubleSpinBox()
         field.setRange(0, 10000)
@@ -141,6 +146,27 @@ class NutritionTab(QWidget):
             field.setSuffix(f" {suffix}")
 
         return field
+
+    def _create_read_only_table(
+        self,
+        object_name: str,
+        column_count: int,
+        headers: list[str],
+        minimum_height: int = 260,
+    ) -> QTableWidget:
+        """Create a shared read-only nutrition table."""
+        table = QTableWidget()
+        table.setObjectName(object_name)
+        table.setColumnCount(column_count)
+        table.setHorizontalHeaderLabels(headers)
+        table.verticalHeader().setVisible(False)
+        table.setEditTriggers(QTableWidget.NoEditTriggers)
+        table.setSelectionBehavior(QTableWidget.SelectRows)
+        table.setAlternatingRowColors(True)
+        table.setMinimumHeight(minimum_height)
+        table.setSortingEnabled(True)
+
+        return table
 
     def _build_recent_meals_table(self) -> None:
         self.layout.addWidget(self._create_section_title("Recent Meal Logs"))
@@ -218,13 +244,115 @@ class NutritionTab(QWidget):
 
         self.layout.addWidget(self.template_totals_table)
 
+    def _build_post_meal_glucose_response_table(self) -> None:
+        self.layout.addWidget(
+            self._create_section_title("Post-Meal Glucose Response")
+        )
+
+        self.post_meal_response_table = self._create_read_only_table(
+            object_name="nutritionTable",
+            column_count=13,
+            headers=[
+                "Logged At",
+                "Meal",
+                "Meal Event",
+                "Calories",
+                "Carbs (g)",
+                "Protein (g)",
+                "Fat (g)",
+                "Pre Glucose",
+                "Avg Post",
+                "Peak Post",
+                "Delta",
+                "Readings",
+                "Portion",
+            ],
+            minimum_height=300,
+        )
+
+        header = self.post_meal_response_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)
+        header.setSectionResizeMode(1, QHeaderView.Stretch)
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)
+
+        for column_index in range(3, 13):
+            header.setSectionResizeMode(column_index, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.post_meal_response_table)
+
+
+    def _build_macro_glucose_response_table(self) -> None:
+        self.layout.addWidget(
+            self._create_section_title("Macro Response by Meal Event")
+        )
+
+        self.macro_response_table = self._create_read_only_table(
+            object_name="nutritionTable",
+            column_count=11,
+            headers=[
+                "Meal Event",
+                "Logs",
+                "Avg Calories",
+                "Avg Carbs (g)",
+                "Avg Protein (g)",
+                "Avg Fat (g)",
+                "Avg Fibre (g)",
+                "Avg Post",
+                "Avg Delta",
+                "Peak Post",
+                "Readings",
+            ],
+            minimum_height=260,
+        )
+
+        header = self.macro_response_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        for column_index in range(1, 11):
+            header.setSectionResizeMode(column_index, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.macro_response_table)
+
+
+    def _build_meal_template_glucose_response_table(self) -> None:
+        self.layout.addWidget(
+            self._create_section_title("Meal Template Glucose Response")
+        )
+
+        self.meal_template_response_table = self._create_read_only_table(
+            object_name="nutritionTable",
+            column_count=8,
+            headers=[
+                "Meal Template",
+                "Logs",
+                "Avg Calories",
+                "Avg Carbs (g)",
+                "Avg Post",
+                "Avg Delta",
+                "Peak Post",
+                "Readings",
+            ],
+            minimum_height=260,
+        )
+
+        header = self.meal_template_response_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.Stretch)
+
+        for column_index in range(1, 8):
+            header.setSectionResizeMode(column_index, QHeaderView.ResizeToContents)
+
+        self.layout.addWidget(self.meal_template_response_table)
+
     def load_data(self) -> None:
-        """Refresh summary cards and nutrition tables."""
+        """Refresh summary cards, nutrition tables, and glucose-response tables."""
         self._load_food_options()
         self._load_meal_template_options()
         self._load_summary_cards()
         self._load_recent_meals_table()
         self._load_template_totals_table()
+        self._load_post_meal_glucose_response_table()
+        self._load_macro_glucose_response_table()
+        self._load_meal_template_glucose_response_table()
 
     def _load_summary_cards(self) -> None:
         metrics = get_nutrition_summary_metrics()
@@ -313,6 +441,135 @@ class NutritionTab(QWidget):
 
         self.template_totals_table.setSortingEnabled(True)
         self.template_totals_table.sortItems(0, Qt.SortOrder.AscendingOrder)
+
+    def _load_post_meal_glucose_response_table(self) -> None:
+        rows = get_post_meal_glucose_response_rows()
+
+        self.post_meal_response_table.setSortingEnabled(False)
+        self.post_meal_response_table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            values = [
+                row["logged_at"].strftime("%Y-%m-%d %H:%M"),
+                row["meal_template_name"],
+                row["meal_event"] or "-",
+                self._format_optional_number(row["calories"]),
+                self._format_optional_number(row["carbs_g"]),
+                self._format_optional_number(row["protein_g"]),
+                self._format_optional_number(row["fat_g"]),
+                self._format_optional_number(row["pre_meal_glucose"]),
+                self._format_optional_number(row["avg_post_meal_glucose"]),
+                self._format_optional_number(row["peak_post_meal_glucose"]),
+                self._format_optional_number(row["glucose_delta"]),
+                str(row["reading_count"]),
+                self._format_optional_number(row["portion_multiplier"], decimals=2),
+            ]
+
+            for column_index, value in enumerate(values):
+                item = QTableWidgetItem(value)
+
+                if column_index in {3, 4, 5, 6, 7, 8, 9, 10, 11, 12}:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignRight
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+                else:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+
+                self.post_meal_response_table.setItem(
+                    row_index,
+                    column_index,
+                    item,
+                )
+
+        self.post_meal_response_table.setSortingEnabled(True)
+        self.post_meal_response_table.sortItems(0, Qt.SortOrder.DescendingOrder)
+
+
+    def _load_macro_glucose_response_table(self) -> None:
+        rows = get_macro_glucose_response_by_meal_event()
+
+        self.macro_response_table.setSortingEnabled(False)
+        self.macro_response_table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            values = [
+                row["meal_event"],
+                str(row["logged_count"]),
+                self._format_optional_number(row["average_calories"]),
+                self._format_optional_number(row["average_carbs_g"]),
+                self._format_optional_number(row["average_protein_g"]),
+                self._format_optional_number(row["average_fat_g"]),
+                self._format_optional_number(row["average_fibre_g"]),
+                self._format_optional_number(row["average_post_meal_glucose"]),
+                self._format_optional_number(row["average_glucose_delta"]),
+                self._format_optional_number(row["peak_post_meal_glucose"]),
+                str(row["total_reading_count"]),
+            ]
+
+            for column_index, value in enumerate(values):
+                item = QTableWidgetItem(value)
+
+                if column_index == 0:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+                else:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignRight
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+
+                self.macro_response_table.setItem(row_index, column_index, item)
+
+        self.macro_response_table.setSortingEnabled(True)
+        self.macro_response_table.sortItems(0, Qt.SortOrder.AscendingOrder)
+
+
+    def _load_meal_template_glucose_response_table(self) -> None:
+        rows = get_meal_template_glucose_response_summary()
+
+        self.meal_template_response_table.setSortingEnabled(False)
+        self.meal_template_response_table.setRowCount(len(rows))
+
+        for row_index, row in enumerate(rows):
+            values = [
+                row["meal_template_name"],
+                str(row["logged_count"]),
+                self._format_optional_number(row["average_calories"]),
+                self._format_optional_number(row["average_carbs_g"]),
+                self._format_optional_number(row["average_post_meal_glucose"]),
+                self._format_optional_number(row["average_glucose_delta"]),
+                self._format_optional_number(row["peak_post_meal_glucose"]),
+                str(row["total_reading_count"]),
+            ]
+
+            for column_index, value in enumerate(values):
+                item = QTableWidgetItem(value)
+
+                if column_index == 0:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignLeft
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+                else:
+                    item.setTextAlignment(
+                        Qt.AlignmentFlag.AlignRight
+                        | Qt.AlignmentFlag.AlignVCenter
+                    )
+
+                self.meal_template_response_table.setItem(
+                    row_index,
+                    column_index,
+                    item,
+                )
+
+        self.meal_template_response_table.setSortingEnabled(True)
+        self.meal_template_response_table.sortItems(0, Qt.SortOrder.AscendingOrder)
 
     def _build_add_food_form(self) -> None:
         self.layout.addWidget(self._create_section_title("Add Food"))
@@ -512,6 +769,16 @@ class NutritionTab(QWidget):
         for food in foods:
             self.meal_food_selector.addItem(food["display_name"], food["id"])
 
+    def _format_optional_number(
+        self,
+        value: float | int | None,
+        decimals: int = 1,
+    ) -> str:
+        """Format optional numeric values for display in read-only tables."""
+        if value is None:
+            return "-"
+
+        return f"{value:.{decimals}f}"
 
     def _refresh_pending_items_table(self) -> None:
         self.pending_items_table.setRowCount(len(self.pending_meal_items))
@@ -528,7 +795,6 @@ class NutritionTab(QWidget):
             self.pending_items_table.setItem(row_index, 0, food_item)
             self.pending_items_table.setItem(row_index, 1, quantity_item)
             self.pending_items_table.setItem(row_index, 2, food_id_item)
-
 
     def _clear_pending_meal_items(self) -> None:
         self.pending_meal_items = []
@@ -564,14 +830,12 @@ class NutritionTab(QWidget):
         self.meal_quantity_input.setValue(0)
         self._refresh_pending_items_table()
 
-
     def _clear_meal_template_form(self) -> None:
         self.meal_name_input.clear()
         self.meal_description_input.clear()
         self.meal_event_input.setCurrentIndex(0)
         self.meal_quantity_input.setValue(0)
         self._clear_pending_meal_items()
-
 
     def handle_save_meal_template(self) -> None:
         """Persist a reusable meal template from the pending food items."""
@@ -600,7 +864,6 @@ class NutritionTab(QWidget):
         self._clear_meal_template_form()
         self.load_data()
         self.data_updated.emit()
-
 
     def _build_log_meal_form(self) -> None:
         self.layout.addWidget(self._create_section_title("Log Meal"))
@@ -692,7 +955,6 @@ class NutritionTab(QWidget):
         self.log_meal_template_selector.blockSignals(False)
         self.handle_log_meal_template_changed()
 
-
     def _set_log_meal_event(self, meal_event: str | None) -> None:
         target = meal_event or ""
         index = self.log_meal_event_input.findText(target)
@@ -724,13 +986,11 @@ class NutritionTab(QWidget):
 
         self._set_log_meal_event(selected_template["default_meal_event"])
 
-
     def _clear_log_meal_form(self) -> None:
         self.log_meal_datetime_input.setDateTime(QDateTime.currentDateTime())
         self.log_portion_multiplier_input.setValue(1.0)
         self.log_meal_notes_input.clear()
         self.handle_log_meal_template_changed()
-
 
     def handle_save_meal_log(self) -> None:
         """Persist a logged meal from the selected meal template."""
