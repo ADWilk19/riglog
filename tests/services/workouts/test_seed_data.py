@@ -21,14 +21,14 @@ def test_seed_workout_catalogue_creates_expected_records():
         counts = seed_workout_catalogue(session=session)
 
         assert counts == {
-            "exercises": 17,
-            "routines": 3,
-            "routine_exercises": 19,
+            "exercises": 22,
+            "routines": 4,
+            "routine_exercises": 25,
         }
 
-        assert session.query(Exercise).count() == 17
-        assert session.query(WorkoutRoutine).count() == 3
-        assert session.query(WorkoutRoutineExercise).count() == 19
+        assert session.query(Exercise).count() == 22
+        assert session.query(WorkoutRoutine).count() == 4
+        assert session.query(WorkoutRoutineExercise).count() == 25
 
     finally:
         session.close()
@@ -42,9 +42,9 @@ def test_seed_workout_catalogue_is_idempotent():
         second_counts = seed_workout_catalogue(session=session)
 
         assert first_counts == {
-            "exercises": 17,
-            "routines": 3,
-            "routine_exercises": 19,
+            "exercises": 22,
+            "routines": 4,
+            "routine_exercises": 25,
         }
 
         assert second_counts == {
@@ -53,9 +53,9 @@ def test_seed_workout_catalogue_is_idempotent():
             "routine_exercises": 0,
         }
 
-        assert session.query(Exercise).count() == 17
-        assert session.query(WorkoutRoutine).count() == 3
-        assert session.query(WorkoutRoutineExercise).count() == 19
+        assert session.query(Exercise).count() == 22
+        assert session.query(WorkoutRoutine).count() == 4
+        assert session.query(WorkoutRoutineExercise).count() == 25
 
     finally:
         session.close()
@@ -84,13 +84,68 @@ def test_seed_workout_catalogue_preserves_routine_order():
 
         assert push_exercises == [
             "Barbell Squat",
+            "Leg Press",
             "Barbell Bench Press",
             "Standing Overhead Press",
             "Incline Press",
             "Cable Lateral Raise",
             "Face Pull",
             "Cable Triceps Pushdown",
+            "Kettlebell Press",
         ]
 
+    finally:
+        session.close()
+
+
+def test_seed_workout_catalogue_creates_rotator_cuff_routine():
+    session = create_test_session()
+
+    try:
+        seed_workout_catalogue(session=session)
+
+        routine = (
+            session.query(WorkoutRoutine)
+            .filter(WorkoutRoutine.name == "Rotator Cuff")
+            .one()
+        )
+
+        links = (
+            session.query(WorkoutRoutineExercise)
+            .filter(WorkoutRoutineExercise.routine_id == routine.id)
+            .order_by(WorkoutRoutineExercise.display_order)
+            .all()
+        )
+
+        exercise_names = [link.exercise.name for link in links]
+
+        assert exercise_names == [
+            "Full Can",
+            "Side Lying External Rotation",
+            "External Rotation Press",
+        ]
+    finally:
+        session.close()
+
+
+def test_seed_workout_catalogue_includes_new_exercises():
+    session = create_test_session()
+
+    try:
+        seed_workout_catalogue(session=session)
+
+        exercise_keys = {
+            exercise.exercise_key
+            for exercise in session.query(Exercise).all()
+        }
+
+        assert {
+            "leg_press",
+            "kettlebell_press",
+            "full_can",
+            "side_lying_external_rotation",
+            "external_rotation_press",
+            "seated_row",
+        }.issubset(exercise_keys)
     finally:
         session.close()
