@@ -99,6 +99,53 @@ erDiagram
     WORKOUT_ROUTINES ||--o{ WORKOUT_SESSIONS : templates
     WORKOUT_SESSIONS ||--o{ WORKOUT_SETS : contains
     EXERCISES ||--o{ WORKOUT_SETS : performed_as
+
+    FOODS {
+        integer id PK
+        string food_key
+        string name
+        string brand
+        string serving_notes
+        float calories_per_100g
+        float carbs_per_100g
+        float protein_per_100g
+        float fat_per_100g
+        float fibre_per_100g
+        float salt_per_100g
+        string source
+        string notes
+    }
+
+    MEAL_TEMPLATES {
+        integer id PK
+        string name
+        string description
+        string default_meal_event
+        string notes
+    }
+
+    MEAL_TEMPLATE_ITEMS {
+        integer id PK
+        integer meal_template_id FK
+        integer food_id FK
+        float quantity_g
+        integer display_order
+        string notes
+    }
+
+    MEAL_LOGS {
+        integer id PK
+        datetime logged_at
+        integer meal_template_id FK
+        string meal_event
+        float portion_multiplier
+        string notes
+        string source
+    }
+
+    MEAL_TEMPLATES ||--o{ MEAL_TEMPLATE_ITEMS : contains
+    FOODS ||--o{ MEAL_TEMPLATE_ITEMS : used_in
+    MEAL_TEMPLATES ||--o{ MEAL_LOGS : logged_as
 ```
 
 ## 🔗 Relationship Notes
@@ -119,3 +166,4 @@ erDiagram
   - planned structure: `workout_routines`, `workout_routine_exercises`, `exercises`
   - completed activity: `workout_sessions`, `workout_sets`
 - Workout calorie analysis is derived in the service layer by aligning `workout_sessions.started_at` / `ended_at` with `activity_intraday.recorded_at`; it is not represented as a physical table relationship.
+- Nutrition/glucose analysis is handled in the service layer by aligning `meal_logs.logged_at` with `glucose_readings.recorded_at`; there is no physical foreign-key relationship between meals and glucose readings.

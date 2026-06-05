@@ -162,6 +162,73 @@ This document describes RigLog’s database tables, their grain, and the meaning
 
 ---
 
+## 🍽️ `foods`
+
+**Grain:** One reusable food item.
+
+| Column | Type | Nullable | Meaning |
+| --- | --- | ---: | --- |
+| `id` | Integer | No | Primary key |
+| `food_key` | String | Yes | Stable food identifier used by imports |
+| `name` | String | No | Human-readable food name |
+| `brand` | String | Yes | Brand or manufacturer |
+| `serving_notes` | String | Yes | Serving-size notes from label/source |
+| `calories_per_100g` | Float | Yes | Calories per 100g |
+| `carbs_per_100g` | Float | Yes | Carbohydrates per 100g |
+| `protein_per_100g` | Float | Yes | Protein per 100g |
+| `fat_per_100g` | Float | Yes | Fat per 100g |
+| `fibre_per_100g` | Float | Yes | Fibre per 100g |
+| `salt_per_100g` | Float | Yes | Salt per 100g |
+| `source` | String | Yes | Source system, e.g. `manual`, `csv`, `demo`, `cofid` |
+| `notes` | String | Yes | Free-text notes |
+
+---
+
+## 🍽️ `meal_templates`
+
+**Grain:** One reusable meal definition/template.
+
+| Column | Type | Nullable | Meaning |
+| --- | --- | ---: | --- |
+| `id` | Integer | No | Primary key |
+| `name` | String | No | Meal template name |
+| `description` | String | Yes | Description of the meal |
+| `default_meal_event` | String | Yes | Default glucose meal-event label/key |
+| `notes` | String | Yes | Free-text notes |
+
+---
+
+## 🍽️ `meal_template_items`
+
+**Grain:** One food assigned to one meal template.
+
+| Column | Type | Nullable | Meaning |
+| --- | --- | ---: | --- |
+| `id` | Integer | No | Primary key |
+| `meal_template_id` | Integer | No | Foreign key to `meal_templates.id` |
+| `food_id` | Integer | No | Foreign key to `foods.id` |
+| `quantity_g` | Float | No | Quantity of the food in grams |
+| `display_order` | Integer | Yes | Order in which the food appears in the meal template |
+| `notes` | String | Yes | Free-text notes |
+
+---
+
+## 🍽️ `meal_logs`
+
+**Grain:** One logged meal occurrence.
+
+| Column | Type | Nullable | Meaning |
+| --- | --- | ---: | --- |
+| `id` | Integer | No | Primary key |
+| `logged_at` | DateTime | No | Timestamp of the logged meal |
+| `meal_template_id` | Integer | Yes | Foreign key to `meal_templates.id` |
+| `meal_event` | String | Yes | Meal-event classification for glucose/nutrition analysis |
+| `portion_multiplier` | Float | No | Multiplier applied to the meal template totals |
+| `notes` | String | Yes | Free-text notes |
+| `source` | String | Yes | Source system, e.g. `manual`, `demo`, `csv` |
+
+---
+
 ## 📝 Grain Notes
 
 - `workout_sessions` stores the workout-level event.
@@ -169,3 +236,8 @@ This document describes RigLog’s database tables, their grain, and the meaning
 - `exercises` stores reusable catalogue metadata.
 - `workout_routines` and `workout_routine_exercises` define templates, not completed workouts.
 - Activity and environment tables are separated by grain: daily summaries versus intraday/activity buckets.
+- `foods` stores reusable nutrition metadata per 100g.
+- `meal_templates` and `meal_template_items` define reusable meals.
+- `meal_logs` stores completed meal events and links them to glucose analysis by timestamp/meal event in the service layer.
+
+---

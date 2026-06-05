@@ -108,7 +108,7 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
   - Daily and weekly charts with hover insights
 - Workout analytics:
   - Spreadsheet-style workout CSV import
-  - Seeded Push / Pull / Legs exercise catalogue
+  - Seeded workout exercise catalogue with Push, Pull, Legs, and Rotator Cuff routines
   - Stable exercise identifiers via `exercise_key`
   - Read-only Workout dashboard
   - Workout summary cards
@@ -564,7 +564,7 @@ Future work will expand this into broader insight views as additional modules ar
   - routine/exercise mappings
   - workout sessions
   - workout sets
-- Seeded Push / Pull / Legs workout catalogue
+- Seeded workout exercise catalogue with Push, Pull, Legs, and Rotator Cuff routines
 - Spreadsheet-style workout CSV import
 - Optional session timing support:
   - Start Time
