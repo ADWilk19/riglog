@@ -20,6 +20,8 @@ from statistics import mean
 from pathlib import Path
 import json
 
+from sqlalchemy import exc
+
 from app.services.activity.analysis import (
     aggregate_weekly_steps,
     get_activity_insight_metrics,
@@ -121,7 +123,7 @@ class ActivityRefreshWorker(QObject):
     finished = Signal(int)
     auth_error = Signal()
     rate_limit_error = Signal()
-    network_error = Signal()
+    network_error = Signal(str)
     api_error = Signal(str)
     unexpected_error = Signal(str)
 
@@ -164,8 +166,8 @@ class ActivityRefreshWorker(QObject):
         except FitbitRateLimitError:
             self.rate_limit_error.emit()
 
-        except FitbitNetworkError:
-            self.network_error.emit()
+        except FitbitNetworkError as exc:
+            self.network_error.emit(str(exc))
 
         except FitbitAPIError as exc:
             self.api_error.emit(str(exc))
@@ -1015,13 +1017,12 @@ class ActivityTab(QWidget):
             "Fitbit rate-limited the request. Please wait a moment and try again.",
         )
 
-    def _on_refresh_network_error(self) -> None:
-        self._set_sync_status("Sync failed", "#E53935")
+    def _on_refresh_network_error(self, message: str) -> None:
         QMessageBox.warning(
-            self,
-            "Network error",
-            "RigLog could not reach Fitbit. Check your connection and try again.",
-        )
+                self,
+                "Network error",
+                f"RigLog could not reach Fitbit.\n\nDetails:\n{message}",
+            )
 
     def _on_refresh_api_error(self, message: str) -> None:
         self._set_sync_status("Sync failed", "#E53935")
