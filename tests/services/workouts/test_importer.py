@@ -372,3 +372,50 @@ def test_import_workout_csv_accepts_short_uk_dash_date(tmp_path):
 
     finally:
         session.close()
+
+
+def test_import_workout_csv_skips_duplicate_set_rows(tmp_path):
+    session = create_test_session()
+
+    try:
+        seed_catalogue(session)
+
+        csv_path = tmp_path / "workout_log.csv"
+        write_workout_csv(
+            csv_path,
+            [
+                {
+                    "Date": "2026-06-12",
+                    "Workout": "Push",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "50",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+                {
+                    "Date": "2026-06-12",
+                    "Workout": "Push",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "50",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+            ],
+        )
+
+        counts = import_workout_csv(str(csv_path), session=session)
+
+        assert counts == {
+            "sessions": 1,
+            "sets": 1,
+            "skipped_sets": 1,
+        }
+
+        assert session.query(WorkoutSet).count() == 1
+
+    finally:
+        session.close()
