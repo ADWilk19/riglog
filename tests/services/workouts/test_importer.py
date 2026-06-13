@@ -334,3 +334,41 @@ def test_import_workout_csv_preserves_existing_default_time_behaviour(tmp_path):
 
     finally:
         session.close()
+
+
+def test_import_workout_csv_accepts_short_uk_dash_date(tmp_path):
+    session = create_test_session()
+
+    try:
+        seed_catalogue(session)
+
+        csv_path = tmp_path / "workout_log.csv"
+        write_workout_csv(
+            csv_path,
+            [
+                {
+                    "Date": "11-6-26",
+                    "Workout": "Push",
+                    "Exercise": "Barbell Bench Press",
+                    "Exercise ID": "barbell_bench_press",
+                    "Set #": "1",
+                    "Weight": "60",
+                    "Reps": "8",
+                    "Notes": "",
+                },
+            ],
+        )
+
+        counts = import_workout_csv(str(csv_path), session=session)
+
+        assert counts == {
+            "sessions": 1,
+            "sets": 1,
+            "skipped_sets": 0,
+        }
+
+        workout_session = session.query(WorkoutSession).one()
+        assert workout_session.started_at == datetime(2026, 6, 11, 9, 0)
+
+    finally:
+        session.close()

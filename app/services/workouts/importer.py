@@ -27,7 +27,13 @@ def _parse_date(value: str):
     """Parse supported workout date formats."""
     value = _clean_text(value)
 
-    for date_format in ("%Y-%m-%d", "%d/%m/%Y", "%d-%m-%Y"):
+    for date_format in (
+        "%Y-%m-%d",
+        "%d/%m/%Y",
+        "%d-%m-%Y",
+        "%d/%m/%y",
+        "%d-%m-%y",
+    ):
         try:
             return datetime.strptime(value, date_format).date()
         except ValueError:

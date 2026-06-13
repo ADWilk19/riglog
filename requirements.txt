@@ -7,3 +7,5 @@ requests
 requests-oauthlib
 fitbit
 reportlab
+pytest
+pytest-mock
