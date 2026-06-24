@@ -1,10 +1,22 @@
 from pathlib import Path
 
 import pytest
+from PySide6.QtWidgets import QApplication
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 
 from app.db.base import Base
+
+
+@pytest.fixture(scope="session")
+def qapp():
+    """Provide a QApplication instance for widget tests."""
+    app = QApplication.instance()
+
+    if app is None:
+        app = QApplication([])
+
+    return app
 
 
 @pytest.fixture
