@@ -9,3 +9,4 @@ fitbit
 reportlab
 pytest
 pytest-mock
+pytest-qt
