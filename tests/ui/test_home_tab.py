@@ -1,9 +1,25 @@
 from PySide6.QtCore import Qt
+from PySide6.QtWidgets import QLabel
 
 from app.ui.tabs.home_tab import HomeTab
 
 
+def _card_texts(card) -> set[str]:
+    """Return all visible label text contained in a SummaryCard."""
+    return {
+        label.text()
+        for label in card.findChildren(QLabel)
+        if label.text()
+    }
+
+
 def _mock_home_tab_services(mocker):
+    session = mocker.Mock()
+    mocker.patch(
+        "app.ui.tabs.home_tab.SessionLocal",
+        return_value=session,
+    )
+
     mocker.patch(
         "app.ui.tabs.home_tab.HomeTab._refresh_glucose_card",
         autospec=True,
@@ -54,14 +70,39 @@ def _mock_home_tab_services(mocker):
         },
     )
 
+    return session
+
 
 def test_home_tab_renders(qtbot, mocker):
+    session = _mock_home_tab_services(mocker)
+
+    tab = HomeTab()
+    qtbot.addWidget(tab)
+
+    assert tab.glucose_card is not None
+    assert tab.activity_card is not None
+    assert tab.workouts_card is not None
+    assert tab.nutrition_card is not None
+
+    session.close.assert_called_once_with()
+
+
+def test_home_cards_render_service_layer_summaries(qtbot, mocker):
     _mock_home_tab_services(mocker)
 
     tab = HomeTab()
     qtbot.addWidget(tab)
 
-    assert tab is not None
+    assert "5 / 7" in _card_texts(tab.activity_card)
+    assert "7-day goal adherence" in _card_texts(tab.activity_card)
+
+    assert "3 sessions" in _card_texts(tab.workouts_card)
+    assert "1 this week • 12,500 kg" in _card_texts(tab.workouts_card)
+
+    assert "4 meals" in _card_texts(tab.nutrition_card)
+    assert "7d: 210.0g carbs • 180.0g/day" in _card_texts(
+        tab.nutrition_card
+    )
 
 
 def test_home_summary_cards_call_navigation_callbacks(qtbot, mocker):
