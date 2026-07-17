@@ -1066,17 +1066,17 @@ Future / Deferred:
 
 ### UI Layer
 
-* [ ] Add lightweight GlucoseTab interaction tests
+* [x] Add lightweight GlucoseTab interaction tests
   * Clear Filters resets range filter and meal-event dropdown
   * Range card click toggles selected range state
   * Meal-event breakdown click updates dropdown selection
 
-* [ ] Add lightweight ActivityTab interaction tests
+* [x] Add lightweight ActivityTab interaction tests
   * Chart mode toggle updates visible chart state
   * Refresh action updates summary cards
   * Selected-day interaction updates detail panel once implemented
 
-* [ ] Add lightweight WorkoutTab interaction tests
+* [x] Add lightweight WorkoutTab interaction tests
   * Workout tab renders without crashing
   * Refresh action updates summary cards
   * Recent sessions table populates from mocked service-layer output
@@ -1084,12 +1084,12 @@ Future / Deferred:
   * CSV import success refreshes workout data
   * CSV import failure shows an error message
 
-* [ ] Add HomeTab navigation tests
+* [x] Add HomeTab navigation tests
   * Glucose card navigates to Glucose tab
   * Activity card navigates to Activity tab
   * Home cards render live service-layer summaries
 
-* [ ] Add lightweight NutritionTab interaction tests
+* [x] Add lightweight NutritionTab interaction tests
   * Nutrition tab renders without crashing
   * Add Food form validates required name
   * Build Meal form adds selected foods to pending meal
@@ -1099,7 +1099,7 @@ Future / Deferred:
 
 ### Test Infrastructure
 
-* [ ] Add pytest-qt support for UI interaction tests
+* [x] Add pytest-qt support for UI interaction tests
   * Provide shared `qapp` / `qtbot` fixtures
   * Mock service-layer calls to avoid database dependency
   * Cover HomeTab, ActivityTab, GlucoseTab, WorkoutTab, and NutritionTab
