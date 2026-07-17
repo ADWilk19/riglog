@@ -662,12 +662,6 @@ class NutritionTab(QWidget):
         self.load_data()
         self.data_updated.emit()
 
-        QMessageBox.information(self, "Meal saved", "Meal template saved successfully.")
-        self._clear_meal_template_form()
-        self._load_meal_template_options()
-        self.load_data()
-        self.data_updated.emit()
-
     def _build_meal_template_form(self) -> None:
         self.layout.addWidget(self._create_section_title("Build Meal"))
 
@@ -1024,6 +1018,7 @@ class NutritionTab(QWidget):
         QMessageBox.information(self, "Meal logged", "Meal log saved successfully.")
         self._clear_log_meal_form()
         self.load_data()
+        self.data_updated.emit()
 
     def handle_import_foods_csv(self) -> None:
         """Import reusable foods from a CSV file."""

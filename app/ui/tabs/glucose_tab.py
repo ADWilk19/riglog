@@ -1959,6 +1959,7 @@ class GlucoseTab(QWidget):
         self.meal_event_filter.setCurrentIndex(0)  # All
         self.meal_event_filter.blockSignals(False)
 
+        self.active_filter_label.clear()
         self._update_range_card_selection_state()
         self.load_readings()
 
