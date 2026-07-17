@@ -2,6 +2,27 @@
 
 This document describes RigLog’s database tables, their grain, and the meaning of each field.
 
+---
+
+## Table of Contents
+
+- [Glucose Readings](#-glucose_readings)
+- [Daily Activity](#-daily_activity)
+- [Intraday Activity](#-activity_intraday)
+- [Daily Environment](#️-daily_environment)
+- [Exercises](#️-exercises)
+- [Workout Routines](#️-workout_routines)
+- [Workout Routine Exercises](#️-workout_routine_exercises)
+- [Workout Sessions](#️-workout_sessions)
+- [Workout Sets](#️-workout_sets)
+- [Foods](#️-foods)
+- [Meal Templates](#️-meal_templates)
+- [Meal Template Items](#️-meal_template_items)
+- [Meal Logs](#️-meal_logs)
+- [Grain Notes](#-grain-notes)
+
+---
+
 ## 🩸 `glucose_readings`
 
 **Grain:** One glucose reading.
@@ -58,20 +79,25 @@ This document describes RigLog’s database tables, their grain, and the meaning
 
 **Grain:** One daily environment record per date, location, and source.
 
-| Column | Type | Nullable | Meaning |
-| --- | --- | ---: | --- |
-| `id` | Integer | No | Primary key |
-| `environment_date` | Date | No | Environment/weather date |
-| `location_label` | String | No | Logical location label, e.g. `home` |
-| `latitude` | Float | Yes | Latitude for the weather source |
-| `longitude` | Float | Yes | Longitude for the weather source |
-| `avg_temperature_c` | Float | No | Mean daily temperature in Celsius |
-| `min_temperature_c` | Float | Yes | Minimum daily temperature in Celsius |
-| `max_temperature_c` | Float | Yes | Maximum daily temperature in Celsius |
-| `source` | String | Yes | Source system, e.g. `manual_csv` or `open_meteo` |
-| `notes` | String | Yes | Free-text notes |
+| Column | Type | Nullable | Default | Meaning |
+| --- | --- | ---: | ---: | --- |
+| `id` | Integer | No | — | Primary key |
+| `environment_date` | Date | No | — | Environment or weather date |
+| `location_label` | String | No | `"default"` | Logical location label, e.g. `home` |
+| `latitude` | Float | Yes | — | Latitude for the weather source |
+| `longitude` | Float | Yes | — | Longitude for the weather source |
+| `avg_temperature_c` | Float | No | — | Mean daily temperature in Celsius |
+| `min_temperature_c` | Float | Yes | — | Minimum daily temperature in Celsius |
+| `max_temperature_c` | Float | Yes | — | Maximum daily temperature in Celsius |
+| `source` | String | Yes | — | Source system, e.g. `manual_csv` or `open_meteo` |
+| `notes` | String | Yes | — | Free-text notes |
 
 **Unique rule:** `environment_date` + `location_label` + `source`
+
+**Indexes:**
+
+- `id`
+- `environment_date`
 
 ---
 
@@ -166,35 +192,44 @@ This document describes RigLog’s database tables, their grain, and the meaning
 
 **Grain:** One reusable food item.
 
-| Column | Type | Nullable | Meaning |
-| --- | --- | ---: | --- |
-| `id` | Integer | No | Primary key |
-| `food_key` | String | Yes | Stable food identifier used by imports |
-| `name` | String | No | Human-readable food name |
-| `brand` | String | Yes | Brand or manufacturer |
-| `serving_notes` | String | Yes | Serving-size notes from label/source |
-| `calories_per_100g` | Float | Yes | Calories per 100g |
-| `carbs_per_100g` | Float | Yes | Carbohydrates per 100g |
-| `protein_per_100g` | Float | Yes | Protein per 100g |
-| `fat_per_100g` | Float | Yes | Fat per 100g |
-| `fibre_per_100g` | Float | Yes | Fibre per 100g |
-| `salt_per_100g` | Float | Yes | Salt per 100g |
-| `source` | String | Yes | Source system, e.g. `manual`, `csv`, `demo`, `cofid` |
-| `notes` | String | Yes | Free-text notes |
+| Column | Type | Nullable | Default | Meaning |
+| --- | --- | ---: | ---: | --- |
+| `id` | Integer | No | — | Primary key |
+| `name` | String | No | — | Human-readable food name |
+| `brand` | String | Yes | — | Brand or manufacturer |
+| `serving_notes` | Text | Yes | — | Serving-size notes from the label or source |
+| `calories_per_100g` | Float | No | `0.0` | Calories per 100g |
+| `carbs_per_100g` | Float | No | `0.0` | Carbohydrates per 100g |
+| `protein_per_100g` | Float | No | `0.0` | Protein per 100g |
+| `fat_per_100g` | Float | No | `0.0` | Fat per 100g |
+| `fibre_per_100g` | Float | No | `0.0` | Fibre per 100g |
+| `salt_per_100g` | Float | No | `0.0` | Salt per 100g |
+| `source` | String | Yes | — | Source system, e.g. `manual`, `csv`, `demo`, or `cofid` |
+| `notes` | Text | Yes | — | Free-text notes |
+
+**Indexes:**
+
+- `id`
+- `name`
 
 ---
 
 ## 🍽️ `meal_templates`
 
-**Grain:** One reusable meal definition/template.
+**Grain:** One reusable meal definition or template.
 
 | Column | Type | Nullable | Meaning |
 | --- | --- | ---: | --- |
 | `id` | Integer | No | Primary key |
-| `name` | String | No | Meal template name |
-| `description` | String | Yes | Description of the meal |
-| `default_meal_event` | String | Yes | Default glucose meal-event label/key |
-| `notes` | String | Yes | Free-text notes |
+| `name` | String | No | Human-readable meal-template name |
+| `description` | Text | Yes | Description of the meal |
+| `default_meal_event` | String | Yes | Default meal-event classification used when logging the meal |
+| `notes` | Text | Yes | Free-text notes |
+
+**Indexes:**
+
+- `id`
+- `name`
 
 ---
 
@@ -202,14 +237,20 @@ This document describes RigLog’s database tables, their grain, and the meaning
 
 **Grain:** One food assigned to one meal template.
 
-| Column | Type | Nullable | Meaning |
-| --- | --- | ---: | --- |
-| `id` | Integer | No | Primary key |
-| `meal_template_id` | Integer | No | Foreign key to `meal_templates.id` |
-| `food_id` | Integer | No | Foreign key to `foods.id` |
-| `quantity_g` | Float | No | Quantity of the food in grams |
-| `display_order` | Integer | Yes | Order in which the food appears in the meal template |
-| `notes` | String | Yes | Free-text notes |
+| Column | Type | Nullable | Default | Meaning |
+| --- | --- | ---: | ---: | --- |
+| `id` | Integer | No | — | Primary key |
+| `meal_template_id` | Integer | No | — | Foreign key to `meal_templates.id` |
+| `food_id` | Integer | No | — | Foreign key to `foods.id` |
+| `quantity_g` | Float | No | — | Quantity of the food in grams |
+| `display_order` | Integer | No | `0` | Order in which the food appears in the meal template |
+| `notes` | Text | Yes | — | Free-text notes |
+
+**Indexes:**
+
+- `id`
+- `meal_template_id`
+- `food_id`
 
 ---
 
@@ -217,15 +258,22 @@ This document describes RigLog’s database tables, their grain, and the meaning
 
 **Grain:** One logged meal occurrence.
 
-| Column | Type | Nullable | Meaning |
-| --- | --- | ---: | --- |
-| `id` | Integer | No | Primary key |
-| `logged_at` | DateTime | No | Timestamp of the logged meal |
-| `meal_template_id` | Integer | Yes | Foreign key to `meal_templates.id` |
-| `meal_event` | String | Yes | Meal-event classification for glucose/nutrition analysis |
-| `portion_multiplier` | Float | No | Multiplier applied to the meal template totals |
-| `notes` | String | Yes | Free-text notes |
-| `source` | String | Yes | Source system, e.g. `manual`, `demo`, `csv` |
+| Column | Type | Nullable | Default | Meaning |
+| --- | --- | ---: | ---: | --- |
+| `id` | Integer | No | — | Primary key |
+| `logged_at` | DateTime | No | — | Timestamp of the logged meal |
+| `meal_template_id` | Integer | No | — | Foreign key to `meal_templates.id` |
+| `meal_event` | String | Yes | — | Meal-event classification used in glucose/nutrition analysis |
+| `portion_multiplier` | Float | No | `1.0` | Multiplier applied to the meal-template nutrition totals |
+| `notes` | Text | Yes | — | Free-text notes |
+| `source` | String | Yes | — | Source system, e.g. `manual`, `demo`, or `csv` |
+
+**Indexes:**
+
+- `id`
+- `logged_at`
+- `meal_template_id`
+- `meal_event`
 
 ---
 
@@ -236,8 +284,10 @@ This document describes RigLog’s database tables, their grain, and the meaning
 - `exercises` stores reusable catalogue metadata.
 - `workout_routines` and `workout_routine_exercises` define templates, not completed workouts.
 - Activity and environment tables are separated by grain: daily summaries versus intraday/activity buckets.
-- `foods` stores reusable nutrition metadata per 100g.
-- `meal_templates` and `meal_template_items` define reusable meals.
-- `meal_logs` stores completed meal events and links them to glucose analysis by timestamp/meal event in the service layer.
+- `foods` stores reusable nutrition metadata with nutrient values expressed per 100g.
+- `meal_templates` defines reusable named meals.
+- `meal_template_items` links foods to meal templates and records the quantity in grams.
+- `meal_logs` stores completed meal occurrences and must reference an existing meal template.
+- Nutrition and glucose are linked analytically by meal-log timestamps and meal-event classifications; there is no direct foreign key from `meal_logs` to `glucose_readings`.
 
 ---
