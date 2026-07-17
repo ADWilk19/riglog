@@ -12,6 +12,28 @@ Its purpose is to make debugging quicker by answering:
 
 ---
 
+## Table of Contents
+
+- [Current App Shape](#-current-app-shape)
+- [Database Models](#-database-models)
+- [Glucose Services](#-glucose-services)
+- [Glucose UI](#-glucose-ui)
+- [Activity Services](#-activity-services)
+- [Cross-Module Activity and Glucose Services](#-cross-module-activity--glucose-services)
+- [Environment Services](#️-environment-services)
+- [Workout Services](#️-workout-services)
+- [Workout UI](#️-workout-ui)
+- [Nutrition Services](#️-nutrition-services)
+- [Nutrition UI](#️-nutrition-ui)
+- [Home UI](#-home-ui)
+- [Shared UI Widgets](#-shared-ui-widgets)
+- [Test Reference](#-test-reference)
+- [Debugging Playbook](#-debugging-playbook)
+- [Maintenance Notes](#-maintenance-notes)
+- [Known High-Value Files](#-known-high-value-files-to-review-during-refactors)
+
+---
+
 ## 🧭 Current App Shape
 
 RigLog is a local desktop health-analysis app built around a small set of domain modules:
@@ -39,7 +61,7 @@ Location: `app/db/models.py`
 
 ### `GlucoseReading`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one glucose reading imported from Diabetes:M or another future glucose source.
@@ -69,7 +91,7 @@ Represents one glucose reading imported from Diabetes:M or another future glucos
 
 ### `DailyActivity`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one daily activity summary, usually sourced from Fitbit.
@@ -97,7 +119,7 @@ Represents one daily activity summary, usually sourced from Fitbit.
 
 ### `IntradayActivity`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents intraday activity intervals such as 15-minute step-density and calorie-burn rows.
@@ -124,7 +146,7 @@ Represents intraday activity intervals such as 15-minute step-density and calori
 
 ### `DailyEnvironment`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents daily weather/environment data for one date, location, and source.
@@ -155,7 +177,7 @@ Represents daily weather/environment data for one date, location, and source.
 
 ### `Exercise`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one reusable exercise catalogue item.
@@ -183,7 +205,7 @@ Represents one reusable exercise catalogue item.
 
 ### `WorkoutRoutine`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents a reusable workout routine/template, such as Push, Pull, or Legs.
@@ -206,7 +228,7 @@ Represents a reusable workout routine/template, such as Push, Pull, or Legs.
 
 ### `WorkoutRoutineExercise`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Links one exercise to one workout routine.
@@ -226,7 +248,7 @@ Links one exercise to one workout routine.
 
 ### `WorkoutSession`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one completed workout occurrence.
@@ -256,7 +278,7 @@ Represents one completed workout occurrence.
 
 ### `WorkoutSet`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one performed set within a workout session.
@@ -286,7 +308,7 @@ Represents one performed set within a workout session.
 
 ### `Food`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one reusable food item with nutrition values stored per 100g.
@@ -315,7 +337,7 @@ Represents one reusable food item with nutrition values stored per 100g.
 
 ### `MealTemplate`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one reusable meal definition.
@@ -342,7 +364,7 @@ Represents one reusable meal definition.
 
 ### `MealTemplateItem`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Links one food to one meal template with a gram quantity.
@@ -362,7 +384,7 @@ Links one food to one meal template with a gram quantity.
 
 ### `MealLog`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/db/models.py`
 
 Represents one logged meal occurrence.
@@ -387,7 +409,7 @@ Represents one logged meal occurrence.
 
 ### `add_glucose_reading`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/importer.py`
 
 Creates and persists a single glucose reading.
@@ -412,7 +434,7 @@ Creates and persists a single glucose reading.
 
 ### `import_diabetes_m_csv`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/importer.py`
 
 Imports readings from a Diabetes:M CSV export.
@@ -443,7 +465,7 @@ Imports readings from a Diabetes:M CSV export.
 
 ### `get_all_glucose_readings`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Returns all stored glucose readings ordered newest first.
@@ -456,7 +478,7 @@ Returns all stored glucose readings ordered newest first.
 
 ### `get_all_glucose_readings_with_meal_event`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Returns glucose readings enriched with meal-event keys and labels.
@@ -491,7 +513,7 @@ Returns glucose readings enriched with meal-event keys and labels.
 
 ### `get_glucose_reading_by_id`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Fetches one glucose reading by database primary key.
@@ -504,7 +526,7 @@ Fetches one glucose reading by database primary key.
 
 ### `glucose_records_to_df`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Converts enriched glucose dictionaries into a cleaned pandas DataFrame.
@@ -527,7 +549,7 @@ Converts enriched glucose dictionaries into a cleaned pandas DataFrame.
 
 ### `calculate_agp`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Calculates AGP percentile bands by time of day.
@@ -557,7 +579,7 @@ Calculates AGP percentile bands by time of day.
 
 ### `calculate_time_in_range_breakdown`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Returns glucose band counts and percentages.
@@ -578,7 +600,7 @@ Returns glucose band counts and percentages.
 
 ### `calculate_glucose_variability_metrics`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Calculates core variability metrics.
@@ -599,7 +621,7 @@ Calculates core variability metrics.
 
 ### `calculate_insulin_effectiveness`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Summarises dose effectiveness by previous meal event.
@@ -628,7 +650,7 @@ Summarises dose effectiveness by previous meal event.
 
 ### `calculate_time_based_effectiveness`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Compares recent versus older dose outcomes by previous meal event.
@@ -653,7 +675,7 @@ Compares recent versus older dose outcomes by previous meal event.
 
 ### `calculate_glucose_dashboard_metrics`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Bundles common dashboard analytics.
@@ -668,7 +690,7 @@ Bundles common dashboard analytics.
 
 ### `get_glucose_summary`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Returns simple aggregate statistics across all glucose readings.
@@ -684,7 +706,7 @@ Returns simple aggregate statistics across all glucose readings.
 
 ### `get_daily_average_glucose`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Aggregates readings into daily averages for charting.
@@ -699,7 +721,7 @@ Aggregates readings into daily averages for charting.
 
 ### `get_time_of_day_profile`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Aggregates readings into time-of-day buckets.
@@ -721,7 +743,7 @@ Aggregates readings into time-of-day buckets.
 
 ### `get_meal_event_boxplot_data`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Groups glucose values by meal event for boxplot rendering.
@@ -735,7 +757,7 @@ Groups glucose values by meal event for boxplot rendering.
 
 ### `get_time_in_range_metrics`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Calculates time-in-range counts and percentages from reading dictionaries.
@@ -753,7 +775,7 @@ Calculates time-in-range counts and percentages from reading dictionaries.
 
 ### `update_glucose_note`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Updates or clears the free-text note attached to a glucose reading.
@@ -766,7 +788,7 @@ Updates or clears the free-text note attached to a glucose reading.
 
 ### `update_glucose_field`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/glucose/analysis.py`
 
 Updates a numeric contextual glucose field.
@@ -791,7 +813,7 @@ Updates a numeric contextual glucose field.
 
 ### `apply_chart_theme`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Applies the shared dark matplotlib chart theme.
@@ -805,7 +827,7 @@ Applies the shared dark matplotlib chart theme.
 
 ### `NumericTableWidgetItem`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 QTableWidget item that preserves numeric sorting for glucose values.
@@ -818,7 +840,7 @@ QTableWidget item that preserves numeric sorting for glucose values.
 
 ### `rolling_average`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Returns a trailing rolling average list for chart display.
@@ -829,7 +851,7 @@ Returns a trailing rolling average list for chart display.
 
 ### `draw_agp_figure`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Draws the AGP chart onto an existing matplotlib figure.
@@ -846,7 +868,7 @@ Draws the AGP chart onto an existing matplotlib figure.
 
 ### `GlucoseTrendChart`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Matplotlib canvas for daily average glucose chart.
@@ -864,7 +886,7 @@ Matplotlib canvas for daily average glucose chart.
 
 ### `GlucoseProfileChart`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Matplotlib canvas for average glucose by time of day.
@@ -877,7 +899,7 @@ Matplotlib canvas for average glucose by time of day.
 
 ### `MealEventBoxPlotChart`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Matplotlib canvas for glucose distribution by meal event.
@@ -890,7 +912,7 @@ Matplotlib canvas for glucose distribution by meal event.
 
 ### `GlucoseTab`
 
-**Type:** Class  
+**Type:** Class
 **Location:** `app/ui/tabs/glucose_tab.py`
 
 Main glucose analytics tab for import, review, analysis, note editing, inline dose/context editing, and PDF export.
@@ -1085,7 +1107,7 @@ Imports daily environment/weather rows from CSV.
 
 ### `seed_workout_catalogue`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/workouts/seed_data.py`
 
 Seeds the default workout exercise catalogue and Push/Pull/Legs routine mappings.
@@ -1117,7 +1139,7 @@ Seeds the default workout exercise catalogue and Push/Pull/Legs routine mappings
 
 ### `import_workout_csv`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/workouts/importer.py`
 
 Imports spreadsheet-style workout logs from CSV.
@@ -1163,7 +1185,7 @@ Imports spreadsheet-style workout logs from CSV.
 
 ### `clear_imported_workout_data`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/workouts/maintenance.py`
 
 Deletes imported workout sessions and associated sets for a given source.
@@ -1259,40 +1281,52 @@ Aligns workout session time windows with intraday activity calorie burn.
 
 ## 🏋️ Workout UI
 
-### Workout tab
+### `WorkoutTab`
 
-**Typical location:** `app/ui/tabs/workout_tab.py`
+**Type:** Class
+**Location:** `app/ui/tabs/workouts_tab.py`
 
-**What it does:**
+Main workout analysis tab for importing workout logs, reviewing summary metrics, analysing training volume and progression, and comparing workout sessions with activity-derived calorie burn.
 
-- Displays workout summary metrics.
-- Shows volume by exercise.
-- Shows selected-exercise progression.
-- Shows recent workout sessions and calorie analysis.
-- Provides refresh/clear/import-style controls as implemented.
+**Core behaviours:**
 
-**Likely dependencies:**
+- Imports workout CSV files.
+- Refreshes all workout summary cards, charts, selectors, and tables.
+- Displays recent workout sessions.
+- Displays total training volume by exercise.
+- Supports exercise-specific progression analysis.
+- Displays workout-session calorie analysis using intraday activity data.
+- Shows validation and import-result messages through `QMessageBox`.
+
+**Key dependencies:**
 
 - `get_workout_summary_metrics`
+- `get_recent_workout_sessions`
 - `get_volume_by_exercise`
 - `get_exercises_with_workout_data`
 - `get_exercise_progression`
 - `get_exercise_progression_summary`
 - `get_workout_session_calorie_analysis`
-- `clear_imported_workout_data`
+- `import_workout_csv`
+
+**Important handlers:**
+
+- `refresh_data`
+- `handle_import_csv`
+- `handle_exercise_changed`
 
 **Debugging notes:**
 
-- Empty progression dropdown usually means no `workout_sets` exist yet, even if the catalogue is seeded.
-- Empty calorie table usually means missing workout session timing or missing intraday calories.
-
----
+- `refresh_data` is the central reload path for summary cards, charts, selectors, and tables.
+- An empty progression selector usually means no exercises have associated workout-set data.
+- Empty calorie-analysis results usually indicate missing workout start/end timestamps or missing overlapping intraday activity rows.
+- CSV import tests should mock both `QFileDialog` and the importer so UI tests remain independent of the filesystem and database.
 
 ## 🍽️ Nutrition Services
 
 ### `calculate_food_totals`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Calculates calories and macros for one food at a given quantity in grams.
@@ -1319,7 +1353,7 @@ Calculates calories and macros for one food at a given quantity in grams.
 
 ### `calculate_meal_template_totals`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Calculates total calories and macros for all foods in a meal template.
@@ -1334,7 +1368,7 @@ Calculates total calories and macros for all foods in a meal template.
 
 ### `calculate_logged_meal_totals`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Calculates nutrition totals for a logged meal, applying `portion_multiplier`.
@@ -1350,7 +1384,7 @@ Calculates nutrition totals for a logged meal, applying `portion_multiplier`.
 
 ### `get_nutrition_summary_metrics`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Returns summary-card metrics for Nutrition tab and Home dashboard.
@@ -1366,7 +1400,7 @@ Returns summary-card metrics for Nutrition tab and Home dashboard.
 
 ### `get_recent_meal_logs`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Returns recent logged meals for table display.
@@ -1380,7 +1414,7 @@ Returns recent logged meals for table display.
 
 ### `get_meal_template_totals_rows`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Returns reusable meal template totals for the Nutrition tab.
@@ -1395,7 +1429,7 @@ Returns reusable meal template totals for the Nutrition tab.
 
 ### `get_post_meal_glucose_response_rows`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Aligns logged meals with subsequent glucose readings after the meal window.
@@ -1416,7 +1450,7 @@ Aligns logged meals with subsequent glucose readings after the meal window.
 
 ### `get_macro_glucose_response_by_meal_event`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Groups macro totals and post-meal glucose response by meal event.
@@ -1430,7 +1464,7 @@ Groups macro totals and post-meal glucose response by meal event.
 
 ### `get_meal_template_glucose_response_summary`
 
-**Type:** Function  
+**Type:** Function
 **Location:** `app/services/nutrition/analysis.py`
 
 Summarises typical glucose response by reusable meal template.
@@ -1481,50 +1515,102 @@ Imports foods and/or nutrition data from CSV.
 
 ## 🍽️ Nutrition UI
 
-### Nutrition tab
+### `NutritionTab`
 
-**Typical location:** `app/ui/tabs/nutrition_tab.py`
+**Type:** Class
+**Location:** `app/ui/tabs/nutrition_tab.py`
 
-**What it does:**
+Main nutrition tab for reviewing nutrition summaries, importing foods, creating foods and meal templates, logging meals, and analysing nutrition-related glucose responses.
+
+**Core behaviours:**
 
 - Displays nutrition summary cards.
 - Shows recent meal logs.
-- Shows meal template totals.
-- Surfaces Nutrition ↔ Glucose response tables where implemented.
+- Shows calculated meal-template nutrition totals.
+- Imports foods from CSV.
+- Supports manual food creation.
+- Builds reusable meal templates from selected foods and quantities.
+- Logs meals from existing templates.
+- Displays post-meal glucose response rows.
+- Displays macro response grouped by meal event.
+- Displays glucose response summaries by meal template.
+- Emits `data_updated` after successful data-changing actions.
 
-**Likely dependencies:**
+**Key dependencies:**
 
 - `get_nutrition_summary_metrics`
+- `get_food_options`
+- `get_meal_template_options`
 - `get_recent_meal_logs`
 - `get_meal_template_totals_rows`
 - `get_post_meal_glucose_response_rows`
 - `get_macro_glucose_response_by_meal_event`
 - `get_meal_template_glucose_response_summary`
+- `add_food`
+- `create_meal_template`
+- `create_meal_log`
+- `import_foods_csv`
+
+**Important handlers:**
+
+- `load_data`
+- `handle_import_foods_csv`
+- `handle_save_food`
+- `handle_add_meal_item`
+- `handle_save_meal_template`
+- `handle_save_meal_log`
+
+**Signals:**
+
+- `data_updated` — emitted after successful food creation, meal-template creation, meal logging, and other completed data-changing actions where implemented.
 
 **Debugging notes:**
 
-- If the tab is empty, check demo seed/import status before changing UI code.
-- If glucose response tables are empty, inspect meal log timestamps versus glucose reading timestamps.
-
----
+- `load_data` is the central refresh path for summary cards and analysis tables.
+- Food nutrition values are stored per 100g and scaled by entered quantity.
+- Meal-template totals depend on valid food selections and quantities.
+- Logged-meal totals apply `portion_multiplier` exactly once.
+- Empty glucose-response tables usually indicate missing meal logs, missing later glucose readings, or non-overlapping timestamps.
+- UI tests should mock service functions and message boxes so they remain independent of the database and filesystem.
 
 ## 🏠 Home UI
 
-### Home tab
+### `HomeTab`
 
-**Typical location:** `app/ui/tabs/home_tab.py`
+**Type:** Class
+**Location:** `app/ui/tabs/home_tab.py`
 
-**What it does:**
+Main dashboard tab that presents high-level summaries across RigLog’s core domains and provides navigation into the detailed tabs.
 
-- Shows high-level app/dashboard cards.
-- Surfaces glucose, activity, workout, and nutrition readiness/summary states.
-- Refreshes after data import/sync events where wired.
+**Core behaviours:**
+
+- Displays glucose, activity, workout, and nutrition summary cards.
+- Loads card values from service-layer functions.
+- Refreshes dashboard summaries after relevant data updates.
+- Provides clickable navigation from dashboard cards to the corresponding detailed tab.
+- Keeps dashboard calculations out of the UI where service-layer summaries already exist.
+
+**Key dependencies:**
+
+- Glucose summary services.
+- Activity summary-card services.
+- Workout summary metrics.
+- Nutrition summary metrics.
+- Database session access where required for dashboard state.
+
+**Navigation callbacks:**
+
+- Glucose card opens the Glucose tab.
+- Activity card opens the Activity tab.
+- Workout card opens the Workout tab.
+- Nutrition card opens the Nutrition tab and refreshes its data where wired.
 
 **Debugging notes:**
 
-- Home card values should generally come from service-layer functions, not duplicated UI calculations.
-
----
+- Incorrect card values usually indicate a service mock or service output mismatch rather than a rendering problem.
+- UI tests should patch `SessionLocal` and service-layer calls so the dashboard can render without a real database.
+- Navigation tests should assert that each card invokes the correct callback.
+- Avoid formatting raw mocks directly; provide concrete numeric return values in tests.
 
 ## 🧩 Shared UI Widgets
 
@@ -1547,6 +1633,103 @@ Reusable card widget for dashboard metrics.
 ---
 
 ## 🧪 Test Reference
+
+### UI test infrastructure
+
+**Primary locations:**
+
+- `tests/ui/conftest.py`
+- `tests/ui/test_qt_smoke.py`
+
+**What it provides:**
+
+- `pytest-qt` integration through the `qtbot` fixture.
+- Shared Qt application setup for widget tests.
+- Message-box suppression so modal dialogs do not block automated tests.
+- Service-layer mocking so UI tests do not depend on the real database, filesystem, Fitbit, or external services.
+- Deterministic widget-state and signal assertions.
+
+**Testing approach:**
+
+- Instantiate the tab under test.
+- Register it with `qtbot`.
+- Mock imported service functions at the UI-module boundary.
+- Trigger interactions with `qtbot.mouseClick`, selector changes, or direct widget input.
+- Assert rendered values, callback invocation, emitted signals, table state, and error handling.
+- Keep business-logic assertions in service tests rather than duplicating them in UI tests.
+
+**Debugging notes:**
+
+- A hanging UI test often indicates an unsuppressed modal dialog.
+- Patch functions where they are imported by the UI module, not only where they are originally defined.
+- Mock return values should use concrete strings and numbers rather than bare `Mock` objects, especially when the UI formats values.
+- Use `qtbot.waitSignal` when testing asynchronous or explicit Qt signal emission.
+
+### HomeTab UI tests
+
+**Location:** `tests/ui/test_home_tab.py`
+
+**Covers:**
+
+- Rendering without a real database session.
+- Service-backed summary-card values.
+- Glucose card navigation.
+- Activity card navigation.
+- Workout card navigation.
+- Nutrition card navigation.
+- Navigation callback invocation.
+
+### GlucoseTab UI tests
+
+**Location:** `tests/ui/test_glucose_tab.py`
+
+**Covers:**
+
+- Rendering with mocked glucose services.
+- Clearing active filters.
+- Time-in-range card interaction.
+- Meal-event chart interaction.
+- Widget state updates after filter changes.
+
+### ActivityTab UI tests
+
+**Location:** `tests/ui/test_activity_tab.py`
+
+**Covers:**
+
+- Rendering with mocked activity services.
+- Summary-card population.
+- Refresh behaviour.
+- Daily/weekly display interactions where implemented.
+- Signal and widget-state behaviour without Fitbit or database access.
+
+### WorkoutTab UI tests
+
+**Location:** `tests/ui/test_workout_tab.py`
+
+**Covers:**
+
+- Rendering with mocked workout services.
+- Summary-card and table population.
+- Refresh behaviour.
+- Successful CSV import handling.
+- Failed CSV import handling.
+- Message-box and refresh-path behaviour.
+
+### NutritionTab UI tests
+
+**Location:** `tests/ui/test_nutrition_tab.py`
+
+**Covers:**
+
+- Rendering with mocked nutrition services.
+- Summary-card and table population.
+- Add Food validation.
+- Successful food creation.
+- Meal-template item construction.
+- Meal-log creation.
+- `data_updated` signal emission.
+- Refresh behaviour.
 
 ### Glucose tests
 
@@ -1829,9 +2012,8 @@ app/services/nutrition/demo_seed.py
 app/services/nutrition/importer.py
 app/ui/tabs/glucose_tab.py
 app/ui/tabs/activity_tab.py
-app/ui/tabs/workout_tab.py
+app/ui/tabs/workouts_tab.py
 app/ui/tabs/nutrition_tab.py
 app/ui/tabs/home_tab.py
 app/ui/widgets/summary_card.py
 ```
-
