@@ -130,3 +130,117 @@ def test_home_summary_cards_call_navigation_callbacks(qtbot, mocker):
     on_open_activity.assert_called_once_with()
     on_open_workouts.assert_called_once_with()
     on_open_nutrition.assert_called_once_with()
+
+
+def test_home_tab_renders_only_enabled_module_cards(
+    qtbot,
+    mocker,
+):
+    session_local = mocker.patch(
+        "app.ui.tabs.home_tab.SessionLocal",
+    )
+    glucose_refresh = mocker.patch(
+        "app.ui.tabs.home_tab.HomeTab._refresh_glucose_card",
+        autospec=True,
+    )
+
+    get_daily_activity = mocker.patch(
+        "app.ui.tabs.home_tab.get_daily_activity",
+        return_value=[
+            {
+                "date": "2026-07-28",
+                "steps": 8500,
+            }
+        ],
+    )
+    get_activity_summary_cards = mocker.patch(
+        "app.ui.tabs.home_tab.get_activity_summary_cards",
+        return_value=[
+            {
+                "key": "goal_adherence",
+                "title": "Goal Adherence",
+                "value": "5 / 7",
+                "subtitle": "71.4%",
+                "variant": "success",
+            }
+        ],
+    )
+    get_workout_summary_metrics = mocker.patch(
+        "app.ui.tabs.home_tab.get_workout_summary_metrics",
+    )
+    get_nutrition_summary_metrics = mocker.patch(
+        "app.ui.tabs.home_tab.get_nutrition_summary_metrics",
+        return_value={
+            "total_meals": 4,
+            "total_carbs_g": 210,
+            "average_daily_carbs_g": 180,
+        },
+    )
+
+    tab = HomeTab(
+        enabled_module_keys=("activity", "nutrition"),
+    )
+    qtbot.addWidget(tab)
+
+    assert set(tab.summary_cards) == {
+        "activity",
+        "nutrition",
+    }
+
+    assert tab.activity_card is tab.summary_cards["activity"]
+    assert tab.nutrition_card is tab.summary_cards["nutrition"]
+
+    assert not hasattr(tab, "glucose_card")
+    assert not hasattr(tab, "workouts_card")
+
+    session_local.assert_not_called()
+    glucose_refresh.assert_not_called()
+    get_workout_summary_metrics.assert_not_called()
+
+    get_daily_activity.assert_called_once_with()
+    get_activity_summary_cards.assert_called_once()
+    get_nutrition_summary_metrics.assert_called_once_with(days=7)
+
+
+def test_refresh_data_only_refreshes_enabled_modules(
+    qtbot,
+    mocker,
+):
+    mocker.patch(
+        "app.ui.tabs.home_tab.SessionLocal",
+    )
+    refresh_glucose = mocker.patch(
+        "app.ui.tabs.home_tab.HomeTab._refresh_glucose_card",
+        autospec=True,
+    )
+    refresh_activity = mocker.patch(
+        "app.ui.tabs.home_tab.HomeTab._refresh_activity_card",
+        autospec=True,
+    )
+    refresh_workouts = mocker.patch(
+        "app.ui.tabs.home_tab.HomeTab._refresh_workouts_card",
+        autospec=True,
+    )
+    refresh_nutrition = mocker.patch(
+        "app.ui.tabs.home_tab.HomeTab._refresh_nutrition_card",
+        autospec=True,
+    )
+
+    tab = HomeTab(
+        enabled_module_keys=("activity",),
+    )
+    qtbot.addWidget(tab)
+
+    refresh_glucose.assert_not_called()
+    refresh_workouts.assert_not_called()
+    refresh_nutrition.assert_not_called()
+    refresh_activity.assert_called_once_with(tab)
+
+    refresh_activity.reset_mock()
+
+    tab.refresh_data()
+
+    refresh_activity.assert_called_once_with(tab)
+    refresh_glucose.assert_not_called()
+    refresh_workouts.assert_not_called()
+    refresh_nutrition.assert_not_called()

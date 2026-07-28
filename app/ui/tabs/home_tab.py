@@ -11,6 +11,13 @@ from PySide6.QtWidgets import (
     QSizePolicy,
 )
 
+from collections.abc import Iterable
+
+from app.core.modules import (
+    DEFAULT_ENABLED_MODULE_KEYS,
+    normalise_enabled_module_keys,
+)
+
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
 from app.services.activity.analysis import (
@@ -29,6 +36,7 @@ class HomeTab(QWidget):
         on_open_activity=None,
         on_open_workouts=None,
         on_open_nutrition=None,
+        enabled_module_keys: Iterable[str] | None = None,
     ) -> None:
         super().__init__()
 
@@ -37,8 +45,21 @@ class HomeTab(QWidget):
         self.on_open_workouts = on_open_workouts
         self.on_open_nutrition = on_open_nutrition
 
+        self.enabled_module_keys = (
+            DEFAULT_ENABLED_MODULE_KEYS
+            if enabled_module_keys is None
+            else normalise_enabled_module_keys(enabled_module_keys)
+        )
+
+        self.summary_cards: dict[str, SummaryCard] = {}
+
         project_root = Path(__file__).resolve().parents[3]
-        logo_path = project_root / "assets" / "branding" / "logo_full.png"
+        logo_path = (
+            project_root
+            / "assets"
+            / "branding"
+            / "logo_full.png"
+        )
 
         main_layout = QVBoxLayout()
         main_layout.setContentsMargins(32, 28, 32, 32)
@@ -61,11 +82,14 @@ class HomeTab(QWidget):
         )
         container.setMaximumWidth(1600)
 
-        main_layout.addWidget(container, alignment=Qt.AlignHCenter)
+        main_layout.addWidget(
+            container,
+            alignment=Qt.AlignmentFlag.AlignHCenter,
+        )
         main_layout.addStretch(1)
 
-        self._refresh_card_data()
         self.setLayout(main_layout)
+        self._refresh_card_data()
 
     def _build_header(self, logo_path: Path) -> QHBoxLayout:
         header_layout = QHBoxLayout()
@@ -142,52 +166,62 @@ class HomeTab(QWidget):
         grid.setHorizontalSpacing(16)
         grid.setVerticalSpacing(16)
 
-        self.glucose_card = SummaryCard(
-            title="Glucose",
-            value="Loading...",
-            subtitle="Checking readings",
-            on_click=self.on_open_glucose,
-        )
-        self.activity_card = SummaryCard(
-            title="Activity",
-            value="Loading...",
-            subtitle="Checking Fitbit data",
-            on_click=self.on_open_activity,
-        )
-        self.workouts_card = SummaryCard(
-            title="Workouts",
-            value="Loading...",
-            subtitle="Checking workout data",
-            on_click=self.on_open_workouts,
-        )
-        self.nutrition_card = SummaryCard(
-            title="Nutrition",
-            value="Loading...",
-            subtitle="Checking meal logs",
-            on_click=self.on_open_nutrition,
-        )
+        card_definitions = {
+            "glucose": {
+                "title": "Glucose",
+                "subtitle": "Checking readings",
+                "callback": self.on_open_glucose,
+            },
+            "activity": {
+                "title": "Activity",
+                "subtitle": "Checking activity data",
+                "callback": self.on_open_activity,
+            },
+            "workouts": {
+                "title": "Workouts",
+                "subtitle": "Checking workout data",
+                "callback": self.on_open_workouts,
+            },
+            "nutrition": {
+                "title": "Nutrition",
+                "subtitle": "Checking meal logs",
+                "callback": self.on_open_nutrition,
+            },
+        }
 
-        self.glucose_card.set_variant("primary")
-        self.activity_card.set_variant("primary")
-        self.workouts_card.set_variant("primary")
-        self.nutrition_card.set_variant("primary")
+        enabled_count = len(self.enabled_module_keys)
 
-        for card in (
-            self.glucose_card,
-            self.activity_card,
-            self.workouts_card,
-            self.nutrition_card,
-        ):
+        for index, module_key in enumerate(self.enabled_module_keys):
+            definition = card_definitions[module_key]
+
+            card = SummaryCard(
+                title=definition["title"],
+                value="Loading...",
+                subtitle=definition["subtitle"],
+                on_click=definition["callback"],
+            )
+            card.set_variant("primary")
             card.setSizePolicy(
                 QSizePolicy.Policy.Expanding,
                 QSizePolicy.Policy.Fixed,
             )
             card.setMinimumHeight(110)
 
-        grid.addWidget(self.glucose_card, 0, 0)
-        grid.addWidget(self.activity_card, 0, 1)
-        grid.addWidget(self.workouts_card, 1, 0)
-        grid.addWidget(self.nutrition_card, 1, 1)
+            self.summary_cards[module_key] = card
+
+            # Preserve existing public attributes for enabled cards.
+            setattr(
+                self,
+                f"{module_key}_card",
+                card,
+            )
+
+            if enabled_count == 1:
+                grid.addWidget(card, 0, 0, 1, 2)
+            else:
+                row = index // 2
+                column = index % 2
+                grid.addWidget(card, row, column)
 
         grid.setColumnStretch(0, 1)
         grid.setColumnStretch(1, 1)
@@ -195,15 +229,22 @@ class HomeTab(QWidget):
         return grid
 
     def _refresh_card_data(self) -> None:
-        session = SessionLocal()
+        if "glucose" in self.enabled_module_keys:
+            session = SessionLocal()
 
-        try:
-            self._refresh_glucose_card(session)
+            try:
+                self._refresh_glucose_card(session)
+            finally:
+                session.close()
+
+        if "activity" in self.enabled_module_keys:
             self._refresh_activity_card()
+
+        if "workouts" in self.enabled_module_keys:
             self._refresh_workouts_card()
+
+        if "nutrition" in self.enabled_module_keys:
             self._refresh_nutrition_card()
-        finally:
-            session.close()
 
     def _refresh_glucose_card(self, session) -> None:
         reading_count = session.query(GlucoseReading).count()

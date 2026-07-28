@@ -23,12 +23,15 @@ class FakeHomeTab(QWidget):
     def __init__(
         self,
         *,
+        enabled_module_keys,
         on_open_glucose,
         on_open_activity,
         on_open_workouts,
         on_open_nutrition,
     ):
         super().__init__()
+
+        self.enabled_module_keys = tuple(enabled_module_keys)
 
         self.navigation_callbacks = {
             "glucose": on_open_glucose,
@@ -40,7 +43,6 @@ class FakeHomeTab(QWidget):
 
     def refresh_data(self):
         self.refresh_calls += 1
-
 
 class FakeModuleTab(QWidget):
     """Lightweight configurable module tab."""
@@ -140,6 +142,10 @@ def test_only_enabled_module_tabs_are_instantiated(
         "Nutrition",
     ]
 
+    assert window.home_tab.enabled_module_keys == (
+        "activity",
+        "nutrition",
+    )
 
 def test_enabled_modules_keep_existing_public_attributes(
     qtbot,

@@ -83,11 +83,13 @@ class MainWindow(QMainWindow):
         self._create_enabled_module_tabs()
 
         self.home_tab = HomeTab(
+            enabled_module_keys=self.enabled_module_keys,
             on_open_glucose=lambda: self.open_module("glucose"),
             on_open_activity=lambda: self.open_module("activity"),
             on_open_workouts=lambda: self.open_module("workouts"),
             on_open_nutrition=lambda: self.open_module("nutrition"),
         )
+
 
         self._connect_home_refresh_signals()
 
