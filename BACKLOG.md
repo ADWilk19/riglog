@@ -548,7 +548,6 @@ This backlog is organised by architectural layer and implementation priority.
     * lines
     * points
 
-
 * [ ] Restore Daily Selection After Weekly Toggle
 
   * When a daily activity point is selected:
@@ -1187,21 +1186,21 @@ Allow users to configure RigLog around the health areas they want to monitor.
 
 ### Dynamic UI Construction
 
-* [ ] Render only enabled module tabs
+* [x] Render only enabled module tabs
 
   * Load enabled module keys from application settings
   * Instantiate only enabled tabs
   * Preserve stable tab order
   * Avoid creating disabled tabs and hiding them afterwards
 
-* [ ] Update Home dashboard for enabled modules
+* [x] Update Home dashboard for enabled modules
 
   * Display summary cards only for enabled modules
   * Preserve navigation from Home cards to their corresponding tabs
   * Avoid loading metrics for disabled modules
   * Handle configurations with only one enabled module cleanly
 
-* [ ] Preserve stored health data when modules are disabled
+* [x] Preserve stored health data when modules are disabled
 
   * Disabling a module must not delete its database records
   * Re-enabling a module should restore access to existing data
@@ -1257,7 +1256,7 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Module keys are unique
   * Default ordering remains stable
 
-* [ ] Add dynamic tab tests
+* [x] Add dynamic tab tests
 
   * Only enabled tabs are created
   * Home remains visible
