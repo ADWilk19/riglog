@@ -1113,14 +1113,14 @@ Allow users to configure RigLog around the health areas they want to monitor.
 
 ### Application Settings Foundation
 
-* [ ] Add application settings service
+* [x] Add application settings service
 
   * Load and save user preferences
   * Provide safe defaults when no settings file exists
   * Recover gracefully from invalid or incomplete settings
   * Keep settings access outside the UI layer
 
-* [ ] Add cross-platform application data path
+* [x] Add cross-platform application data path
 
   * Use a user-safe application data directory
   * Avoid storing writable settings inside the repository
@@ -1130,7 +1130,7 @@ Allow users to configure RigLog around the health areas they want to monitor.
     * Linux
   * Keep the path injectable during tests
 
-* [ ] Add initial settings contract
+* [x] Add initial settings contract
 
   * Store:
     * `setup_complete`
@@ -1139,11 +1139,18 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Preserve backwards compatibility for existing users
   * Default existing installations to all current modules enabled
 
+  * Implemented:
+    * Added `app/core/app_paths.py`
+    * Added `app/core/settings.py`
+    * Added safe defaults for existing users
+    * Added atomic JSON persistence
+    * Added injectable paths for isolated tests
+
 ---
 
 ### Module Registry
 
-* [ ] Add central module registry
+* [x] Add central module registry
 
   * Initial configurable modules:
     * Activity
@@ -1163,11 +1170,18 @@ Allow users to configure RigLog around the health areas they want to monitor.
     * optional Home summary card
     * future dependency information
 
-* [ ] Add module validation
+* [x] Add module validation
 
   * Ignore or reject unknown module keys safely
   * Require at least one health module to remain enabled
   * Avoid duplicating module configuration logic across the UI
+
+  * Implemented:
+    * Added `app/core/modules.py`
+    * Preserves current module ordering
+    * Defaults all existing modules to enabled
+    * Normalises duplicate, invalid, and unknown module keys safely
+    * Keeps registry definitions independent from UI tab imports
 
 ---
 
@@ -1229,7 +1243,7 @@ Allow users to configure RigLog around the health areas they want to monitor.
 
 ### Testing
 
-* [ ] Add settings service tests
+* [x] Add settings service tests
 
   * Missing settings file returns safe defaults
   * Settings can be saved and reloaded
@@ -1237,7 +1251,7 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Unknown module keys are handled cleanly
   * Test paths use isolated temporary directories
 
-* [ ] Add module registry tests
+* [x] Add module registry tests
 
   * Registry contains all expected modules
   * Module keys are unique
