@@ -203,3 +203,10 @@ def save_settings(
         if temporary_path is not None:
             temporary_path.unlink(missing_ok=True)
         raise
+
+
+def should_show_setup(
+    settings: AppSettings,
+) -> bool:
+    """Return whether first-run setup should be displayed."""
+    return not settings.setup_complete

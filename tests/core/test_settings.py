@@ -8,6 +8,7 @@ from app.core.modules import DEFAULT_ENABLED_MODULE_KEYS
 from app.core.settings import (
     DEFAULT_STEP_TARGET,
     AppSettings,
+    should_show_setup,
     get_default_settings,
     load_settings,
     save_settings,
@@ -242,3 +243,19 @@ def test_atomic_save_leaves_no_temporary_file(tmp_path):
     )
 
     assert temporary_files == []
+
+
+def test_setup_is_required_when_setup_is_incomplete():
+    settings = AppSettings(
+        setup_complete=False,
+    )
+
+    assert should_show_setup(settings) is True
+
+
+def test_setup_is_not_required_when_setup_is_complete():
+    settings = AppSettings(
+        setup_complete=True,
+    )
+
+    assert should_show_setup(settings) is False
