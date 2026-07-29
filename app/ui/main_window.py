@@ -2,6 +2,7 @@
 
 from collections.abc import Callable, Mapping
 from pathlib import Path
+from importlib import import_module
 
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import (
@@ -11,6 +12,7 @@ from PySide6.QtWidgets import (
 )
 
 from app.core.modules import (
+    AppModule,
     get_module,
     normalise_enabled_module_keys,
 )
@@ -18,24 +20,42 @@ from app.core.settings import (
     AppSettings,
     get_default_settings,
 )
-from app.ui.tabs.activity_tab import ActivityTab
-from app.ui.tabs.glucose_tab import GlucoseTab
 from app.ui.tabs.home_tab import HomeTab
-from app.ui.tabs.nutrition_tab import NutritionTab
-from app.ui.tabs.workouts_tab import WorkoutTab
+
 
 
 TabFactory = Callable[[], QWidget]
 
 
-def get_default_tab_factories() -> dict[str, TabFactory]:
-    """Return factories for each configurable RigLog module tab."""
-    return {
-        "glucose": GlucoseTab,
-        "activity": ActivityTab,
-        "workouts": WorkoutTab,
-        "nutrition": NutritionTab,
-    }
+def resolve_tab_factory(module: AppModule) -> TabFactory:
+    """Resolve a module's tab factory from its registered import path."""
+    module_path, separator, class_name = (
+        module.tab_class_path.rpartition(".")
+    )
+
+    if not separator or not module_path or not class_name:
+        raise ValueError(
+            f"Invalid tab class path for module {module.key!r}: "
+            f"{module.tab_class_path!r}"
+        )
+
+    imported_module = import_module(module_path)
+
+    try:
+        tab_factory = getattr(imported_module, class_name)
+    except AttributeError as exc:
+        raise ImportError(
+            f"Could not resolve tab class "
+            f"{module.tab_class_path!r}."
+        ) from exc
+
+    if not callable(tab_factory):
+        raise TypeError(
+            f"Registered tab factory for module "
+            f"{module.key!r} is not callable."
+        )
+
+    return tab_factory
 
 
 class MainWindow(QMainWindow):
@@ -70,7 +90,7 @@ class MainWindow(QMainWindow):
         self._tab_factories = (
             dict(tab_factories)
             if tab_factories is not None
-            else get_default_tab_factories()
+            else None
         )
 
         self.setWindowTitle("RigLog")
@@ -104,23 +124,31 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
 
-    def _create_enabled_module_tabs(self) -> None:
-        """Instantiate only the configured health-module tabs."""
-        for module_key in self.enabled_module_keys:
+    def _get_tab_factory(
+        self,
+        module_key: str,
+    ) -> TabFactory:
+        """Return an injected or registry-backed module tab factory."""
+        if self._tab_factories is not None:
             try:
-                tab_factory = self._tab_factories[module_key]
+                return self._tab_factories[module_key]
             except KeyError as exc:
                 raise KeyError(
                     f"No tab factory registered for module "
                     f"{module_key!r}."
                 ) from exc
 
+        module = get_module(module_key)
+        return resolve_tab_factory(module)
+
+    def _create_enabled_module_tabs(self) -> None:
+        """Instantiate only the configured health-module tabs."""
+        for module_key in self.enabled_module_keys:
+            tab_factory = self._get_tab_factory(module_key)
             module_tab = tab_factory()
 
             self.module_tabs[module_key] = module_tab
 
-            # Preserve existing public attributes for enabled modules, such as
-            # ``activity_tab`` and ``nutrition_tab``.
             setattr(
                 self,
                 f"{module_key}_tab",

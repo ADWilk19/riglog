@@ -252,3 +252,39 @@ def test_missing_enabled_module_factory_raises_clear_error(
             ),
             tab_factories={},
         )
+
+
+def test_default_factory_resolution_only_loads_enabled_modules(
+    qtbot,
+    fake_home_tab,
+    monkeypatch,
+):
+    resolved_modules = []
+
+    def fake_resolve_tab_factory(module):
+        resolved_modules.append(module.key)
+
+        return lambda: FakeModuleTab(module.key)
+
+    monkeypatch.setattr(
+        main_window_module,
+        "resolve_tab_factory",
+        fake_resolve_tab_factory,
+    )
+
+    window = MainWindow(
+        settings=AppSettings(
+            enabled_modules=("activity", "nutrition"),
+        ),
+    )
+    qtbot.addWidget(window)
+
+    assert resolved_modules == [
+        "activity",
+        "nutrition",
+    ]
+
+    assert set(window.module_tabs) == {
+        "activity",
+        "nutrition",
+    }

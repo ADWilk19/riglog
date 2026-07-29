@@ -94,3 +94,23 @@ def test_normalise_enabled_module_keys_can_allow_empty_selection():
     )
 
     assert result == ()
+
+
+def test_module_registry_contains_complete_metadata():
+    for module in MODULE_REGISTRY:
+        assert module.key
+        assert module.label
+        assert module.description
+        assert module.tab_class_path.startswith(
+            "app.ui.tabs."
+        )
+        assert module.home_card_key == module.key
+
+
+def test_module_tab_class_paths_are_unique():
+    tab_class_paths = [
+        module.tab_class_path
+        for module in MODULE_REGISTRY
+    ]
+
+    assert len(tab_class_paths) == len(set(tab_class_paths))

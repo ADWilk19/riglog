@@ -10,6 +10,8 @@ class AppModule:
 
     key: str
     label: str
+    description: str
+    tab_class_path: str
     default_enabled: bool = True
     home_card_key: str | None = None
     dependencies: tuple[str, ...] = ()
@@ -20,21 +22,48 @@ MODULE_REGISTRY: tuple[AppModule, ...] = (
     AppModule(
         key="glucose",
         label="Glucose",
+        description=(
+            "Import and analyse glucose readings, time in range, "
+            "variability, and meal-related patterns."
+        ),
+        tab_class_path=(
+            "app.ui.tabs.glucose_tab.GlucoseTab"
+        ),
         home_card_key="glucose",
     ),
     AppModule(
         key="activity",
         label="Activity",
+        description=(
+            "Review steps, goal adherence, streaks, and activity trends."
+        ),
+        tab_class_path=(
+            "app.ui.tabs.activity_tab.ActivityTab"
+        ),
         home_card_key="activity",
     ),
     AppModule(
         key="workouts",
         label="Workouts",
+        description=(
+            "Review workout history, training volume, progression, "
+            "and session insights."
+        ),
+        tab_class_path=(
+            "app.ui.tabs.workouts_tab.WorkoutTab"
+        ),
         home_card_key="workouts",
     ),
     AppModule(
         key="nutrition",
         label="Nutrition",
+        description=(
+            "Manage foods and meals and review nutrition totals "
+            "and meal patterns."
+        ),
+        tab_class_path=(
+            "app.ui.tabs.nutrition_tab.NutritionTab"
+        ),
         home_card_key="nutrition",
     ),
 )
