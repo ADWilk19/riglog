@@ -548,7 +548,6 @@ This backlog is organised by architectural layer and implementation priority.
     * lines
     * points
 
-
 * [ ] Restore Daily Selection After Weekly Toggle
 
   * When a daily activity point is selected:
@@ -1107,7 +1106,172 @@ Future / Deferred:
 
 ---
 
-## 🧠 Phase 10 — Advanced Features
+## 🧩 Phase 10A — Modular Application Configuration
+
+Allow users to configure RigLog around the health areas they want to monitor.
+
+### Application Settings Foundation
+
+* [x] Add application settings service
+
+  * Load and save user preferences
+  * Provide safe defaults when no settings file exists
+  * Recover gracefully from invalid or incomplete settings
+  * Keep settings access outside the UI layer
+
+* [x] Add cross-platform application data path
+
+  * Use a user-safe application data directory
+  * Avoid storing writable settings inside the repository
+  * Support:
+    * macOS
+    * Windows
+    * Linux
+  * Keep the path injectable during tests
+
+* [x] Add initial settings contract
+
+  * Store:
+    * `setup_complete`
+    * `enabled_modules`
+    * `step_target`
+  * Preserve backwards compatibility for existing users
+  * Default existing installations to all current modules enabled
+
+  * Implemented:
+    * Added `app/core/app_paths.py`
+    * Added `app/core/settings.py`
+    * Added safe defaults for existing users
+    * Added atomic JSON persistence
+    * Added injectable paths for isolated tests
+
+---
+
+### Module Registry
+
+* [x] Add central module registry
+
+  * Initial configurable modules:
+    * Activity
+    * Nutrition
+    * Workouts
+    * Glucose
+  * Home remains permanently enabled
+  * Environment remains part of the Glucose module initially
+
+* [ ] Define module metadata
+
+  * Include:
+    * stable module key
+    * display label
+    * tab class or factory
+    * default enabled state
+    * optional Home summary card
+    * future dependency information
+
+* [x] Add module validation
+
+  * Ignore or reject unknown module keys safely
+  * Require at least one health module to remain enabled
+  * Avoid duplicating module configuration logic across the UI
+
+  * Implemented:
+    * Added `app/core/modules.py`
+    * Preserves current module ordering
+    * Defaults all existing modules to enabled
+    * Normalises duplicate, invalid, and unknown module keys safely
+    * Keeps registry definitions independent from UI tab imports
+
+---
+
+### Dynamic UI Construction
+
+* [x] Render only enabled module tabs
+
+  * Load enabled module keys from application settings
+  * Instantiate only enabled tabs
+  * Preserve stable tab order
+  * Avoid creating disabled tabs and hiding them afterwards
+
+* [x] Update Home dashboard for enabled modules
+
+  * Display summary cards only for enabled modules
+  * Preserve navigation from Home cards to their corresponding tabs
+  * Avoid loading metrics for disabled modules
+  * Handle configurations with only one enabled module cleanly
+
+* [x] Preserve stored health data when modules are disabled
+
+  * Disabling a module must not delete its database records
+  * Re-enabling a module should restore access to existing data
+
+---
+
+### First-Run Setup
+
+* [ ] Add first-run setup detection
+
+  * Show setup only when `setup_complete` is false
+  * Preserve the existing full-module experience for current users
+
+* [ ] Add module-selection setup wizard
+
+  * Allow users to select the modules they want to use
+  * Explain each module in plain language
+  * Require at least one health module
+  * Save the selected modules before opening the main application
+
+* [ ] Add initial personalisation options
+
+  * Configure step target when Activity is selected
+  * Keep optional service integrations separate from module selection
+  * Do not require Fitbit or another external account to complete setup
+
+---
+
+### Ongoing Module Management
+
+* [ ] Add module-management UI
+
+  * Allow modules to be enabled or disabled after setup
+  * Apply changes safely
+  * Clarify that disabling a module does not delete its data
+  * Decide whether changes apply immediately or after application restart
+
+---
+
+### Testing
+
+* [x] Add settings service tests
+
+  * Missing settings file returns safe defaults
+  * Settings can be saved and reloaded
+  * Invalid settings recover safely
+  * Unknown module keys are handled cleanly
+  * Test paths use isolated temporary directories
+
+* [x] Add module registry tests
+
+  * Registry contains all expected modules
+  * Module keys are unique
+  * Default ordering remains stable
+
+* [x] Add dynamic tab tests
+
+  * Only enabled tabs are created
+  * Home remains visible
+  * Home cards match enabled modules
+  * Navigation callbacks resolve the correct dynamic tab index
+
+* [ ] Add setup wizard tests
+
+  * At least one module must be selected
+  * Selected modules are persisted
+  * Completing setup prevents the wizard reopening unnecessarily
+
+---
+
+## 🧠 Phase 10B — Personalisation, Reporting & Advanced Analytics
 
 ### Export / Reporting
 
@@ -1115,7 +1279,6 @@ Future / Deferred:
 
   * CSV / PDF
   * Include:
-
     * summary metrics
     * trends
 
@@ -1126,6 +1289,13 @@ Future / Deferred:
 * [ ] Configurable Step Target
 
   * Replace fixed 10k with user setting
+  * Reuse the application settings service introduced in Phase 10A
+  * Apply the configured target consistently across:
+    * goal adherence
+    * streak calculations
+    * summary cards
+    * charts
+    * exports
 
 ---
 
@@ -1133,9 +1303,9 @@ Future / Deferred:
 
 * [ ] Anomaly Detection
 
-  * Flag unusually high/low days
-
----
+  * Flag unusually high or low days
+  * Use an explainable statistical method
+  * Avoid introducing machine-learning dependencies prematurely
 
 ## 🧭 Implementation Notes
 

@@ -42,3 +42,6 @@ data/*
 # Local demo files generated from README examples
 data/demo/demo_glucose.csv
 data/demo/sample_workout_log.csv
+
+# Generated reports
+riglog_glucose_report.pdf
