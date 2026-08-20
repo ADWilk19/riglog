@@ -4,9 +4,10 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from importlib import import_module
 
-from PySide6.QtGui import QIcon
+from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import (
     QMainWindow,
+    QMessageBox,
     QTabWidget,
     QWidget,
 )
@@ -19,9 +20,10 @@ from app.core.modules import (
 from app.core.settings import (
     AppSettings,
     get_default_settings,
+    save_settings,
 )
 from app.ui.tabs.home_tab import HomeTab
-
+from app.ui.module_management_dialog import ModuleManagementDialog
 
 
 TabFactory = Callable[[], QWidget]
@@ -124,6 +126,8 @@ class MainWindow(QMainWindow):
 
         self.setCentralWidget(self.tabs)
 
+        self._build_settings_menu()
+
     def _get_tab_factory(
         self,
         module_key: str,
@@ -191,3 +195,31 @@ class MainWindow(QMainWindow):
         """Refresh Home cards whenever the Home tab is selected."""
         if self.tabs.widget(index) == self.home_tab:
             self.home_tab.refresh_data()
+
+    def _build_settings_menu(self) -> None:
+        """Build application settings menu actions."""
+        settings_menu = self.menuBar().addMenu("Settings")
+
+        manage_modules_action = QAction("Manage Modules...", self)
+        manage_modules_action.setObjectName("manageModulesAction")
+        manage_modules_action.triggered.connect(self.handle_manage_modules)
+
+        settings_menu.addAction(manage_modules_action)
+
+    def handle_manage_modules(self) -> None:
+        """Open module-management dialog and persist accepted changes."""
+        dialog = ModuleManagementDialog(settings=self.settings, parent=self)
+
+        if dialog.exec() != dialog.DialogCode.Accepted:
+            return
+
+        updated_settings = dialog.to_settings()
+        save_settings(updated_settings)
+        self.settings = updated_settings
+
+        QMessageBox.information(
+            self,
+            "Modules updated",
+            "Your module settings have been saved. "
+            "Restart RigLog for the changes to take effect.",
+        )

@@ -3,6 +3,7 @@
 import pytest
 from PySide6.QtCore import Signal
 from PySide6.QtWidgets import QWidget
+from PySide6.QtGui import QAction
 
 from app.core.settings import AppSettings
 from app.ui import main_window as main_window_module
@@ -288,3 +289,18 @@ def test_default_factory_resolution_only_loads_enabled_modules(
         "activity",
         "nutrition",
     }
+
+
+def test_main_window_has_manage_modules_action(qtbot):
+    window = MainWindow(
+        settings=AppSettings(
+            setup_complete=True,
+            enabled_modules=("glucose", "activity"),
+        )
+    )
+    qtbot.addWidget(window)
+
+    action = window.findChild(QAction, "manageModulesAction")
+
+    assert action is not None
+    assert action.text() == "Manage Modules..."
