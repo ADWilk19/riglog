@@ -74,7 +74,7 @@ If the video does not display, <a href="assets/docs/riglog_demo.mp4">click here 
 
 ## ⚙️ Features
 
-- Import glucose data from Diabetes:M (CSV)
+- Import glucose data from Diabetes:M and Dexcom Clarity CSV exports
 - Interactive glucose dashboard with:
   - Ambulatory Glucose Profile (AGP)
   - Time-in-range metrics
@@ -303,6 +303,7 @@ flowchart TD
     subgraph services["app/services"]
         glucose_analysis["glucose/analysis.py"]
         glucose_importer["glucose/importer.py"]
+        glucose_dexcom_importer["glucose/dexcom_importer.py"]
         activity_analysis["activity/analysis.py"]
         cross_module_analysis["cross_module/analysis.py"]
         fitbit_importer["activity/fitbit_importer.py"]
@@ -325,6 +326,7 @@ flowchart TD
     end
 
     diabetes["Diabetes:M CSV"]
+    dexcom["Dexcom Clarity CSV"]
     fitbit["Fitbit API"]
     workout_csv["Workout CSV"]
     nutrition_csv["Nutrition Food CSV"]
@@ -348,10 +350,15 @@ flowchart TD
     workouts_ui --> card
 
     diabetes --> glucose_importer
+    dexcom --> glucose_dexcom_importer
+
     glucose_ui --> glucose_importer
+    glucose_ui --> glucose_dexcom_importer
     glucose_ui --> glucose_analysis
     glucose_ui --> cross_module_analysis
+
     glucose_importer --> database
+    glucose_dexcom_importer --> database
     glucose_analysis --> database
 
     fitbit --> fitbit_client
@@ -506,7 +513,9 @@ RigLog is currently in active development, with glucose, activity, and early cro
 
 ### 🩸 Glucose Module (v1 — Complete)
 
-- End-to-end data pipeline (Diabetes:M CSV → SQLite)
+- End-to-end data pipeline:
+  - Diabetes:M CSV → SQLite
+  - Dexcom Clarity CSV → SQLite
 - Interactive dashboard:
   - AGP (Ambulatory Glucose Profile)
   - Time-in-range analysis

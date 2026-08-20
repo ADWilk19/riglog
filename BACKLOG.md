@@ -205,6 +205,19 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## 🔗 Phase 4 — Cross-Module Intelligence ✅ COMPLETE
 
+### 🩸 Glucose Import Expansion
+
+* [x] Add Dexcom Clarity CSV import
+  * Added dedicated `app/services/glucose/dexcom_importer.py`
+  * Stores imported readings with source `dexcom_clarity`
+  * Supports common Dexcom timestamp columns including `Timestamp` and `Display Time`
+  * Converts mg/dL readings to mmol/L
+  * Supports mmol/L exports without conversion
+  * Skips non-glucose event rows and invalid glucose values
+  * Skips duplicate readings by timestamp, glucose value, and source
+  * Added service-layer test coverage
+  * Wired Dexcom import into the Glucose tab alongside Diabetes:M import
+
 ### Activity ↔ Glucose Integration
 
 * [x] Overlay Activity on Glucose Charts
