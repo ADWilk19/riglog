@@ -209,3 +209,61 @@ def test_import_dexcom_clarity_csv_returns_zero_for_header_only_file(tmp_path):
     imported_count = import_dexcom_clarity_csv(str(csv_path))
 
     assert imported_count == 0
+
+
+def test_import_dexcom_clarity_csv_imports_mmol_l_values_without_conversion(tmp_path):
+    csv_path = tmp_path / "dexcom.csv"
+
+    csv_path.write_text(
+        "Timestamp (YYYY-MM-DDThh:mm:ss),Glucose Value (mmol/L),Event Type\n"
+        "2026-08-12T16:00:00,6.7,EGV\n",
+        encoding="utf-8",
+    )
+
+    imported_count = import_dexcom_clarity_csv(str(csv_path))
+
+    assert imported_count == 1
+
+    session = SessionLocal()
+
+    try:
+        reading = (
+            session.query(GlucoseReading)
+            .filter(GlucoseReading.source == DEXCOM_SOURCE)
+            .one()
+        )
+
+        assert reading.recorded_at == datetime(2026, 8, 12, 16, 0)
+        assert reading.glucose_value == pytest.approx(6.7)
+    finally:
+        session.close()
+
+
+def test_import_dexcom_clarity_csv_skips_low_and_dash_glucose_values(tmp_path):
+    csv_path = tmp_path / "dexcom.csv"
+
+    csv_path.write_text(
+        "Timestamp (YYYY-MM-DDThh:mm:ss),Glucose Value (mg/dL),Event Type\n"
+        "2026-08-12T17:00:00,Low,EGV\n"
+        "2026-08-12T17:05:00,--,EGV\n"
+        "2026-08-12T17:10:00,108,EGV\n",
+        encoding="utf-8",
+    )
+
+    imported_count = import_dexcom_clarity_csv(str(csv_path))
+
+    assert imported_count == 1
+
+    session = SessionLocal()
+
+    try:
+        reading = (
+            session.query(GlucoseReading)
+            .filter(GlucoseReading.source == DEXCOM_SOURCE)
+            .one()
+        )
+
+        assert reading.recorded_at == datetime(2026, 8, 12, 17, 10)
+        assert reading.glucose_value == pytest.approx(6.0)
+    finally:
+        session.close()

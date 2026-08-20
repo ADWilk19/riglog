@@ -59,6 +59,7 @@ from app.services.glucose.analysis import (
     update_glucose_note,
 )
 
+from app.services.glucose.dexcom_importer import import_dexcom_clarity_csv
 from app.services.glucose.importer import import_diabetes_m_csv
 
 from app.ui.widgets.summary_card import SummaryCard
@@ -956,6 +957,10 @@ class GlucoseTab(QWidget):
         self.import_button.setObjectName("primaryAction")
         self.import_button.clicked.connect(self.handle_import_csv)
 
+        self.import_dexcom_button = QPushButton("Import Dexcom Clarity CSV")
+        self.import_dexcom_button.setObjectName("primaryAction")
+        self.import_dexcom_button.clicked.connect(self.handle_import_dexcom_csv)
+
         self.refresh_button = QPushButton("Refresh")
         self.refresh_button.setObjectName("secondaryAction")
         self.refresh_button.clicked.connect(self.load_readings)
@@ -995,6 +1000,7 @@ class GlucoseTab(QWidget):
 
         toolbar.addStretch()
         toolbar.addWidget(self.import_button)
+        toolbar.addWidget(self.import_dexcom_button)
         toolbar.addWidget(self.refresh_button)
         toolbar.addWidget(self.clear_filters_button)
         toolbar.addWidget(self.export_pdf_button)
@@ -1771,6 +1777,31 @@ class GlucoseTab(QWidget):
             self,
             "Import complete",
             f"Imported {imported_count} new readings.",
+        )
+        self.load_readings()
+
+    def handle_import_dexcom_csv(self) -> None:
+        """Import a Dexcom Clarity CSV file and refresh the tab on success."""
+        file_path, _ = QFileDialog.getOpenFileName(
+            self,
+            "Select Dexcom Clarity CSV",
+            str(Path.home()),
+            "CSV Files (*.csv)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            imported_count = import_dexcom_clarity_csv(file_path)
+        except Exception as exc:
+            QMessageBox.critical(self, "Import failed", f"Could not import file:\n{exc}")
+            return
+
+        QMessageBox.information(
+            self,
+            "Import complete",
+            f"Imported {imported_count} new Dexcom readings.",
         )
         self.load_readings()
 

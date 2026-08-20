@@ -19,10 +19,12 @@ TIMESTAMP_COLUMNS = [
 
 GLUCOSE_COLUMNS = [
     "Glucose Value (mg/dL)",
+    "Glucose Value (mmol/L)",
     "Glucose Value",
     "Value",
     "value",
     "mg/dL",
+    "mmol/L",
 ]
 
 EVENT_COLUMNS = [
