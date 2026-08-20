@@ -1222,23 +1222,30 @@ Allow users to configure RigLog around the health areas they want to monitor.
 
 ### First-Run Setup
 
-* [ ] Add first-run setup detection
+* [x] Add first-run setup detection
 
-  * Show setup only when `setup_complete` is false
-  * Preserve the existing full-module experience for current users
+  * Implemented:
+    * Added startup routing via `should_show_setup(settings)`
+    * Shows setup only when `setup_complete=False`
+    * Opens `MainWindow` directly when setup is already complete
+    * Exits cleanly if setup is cancelled
+    * Added startup flow tests
 
-* [ ] Add module-selection setup wizard
+* [x] Add module-selection setup wizard
 
-  * Allow users to select the modules they want to use
-  * Explain each module in plain language
-  * Require at least one health module
-  * Save the selected modules before opening the main application
+  * Implemented:
+    * Added `app/ui/setup_wizard.py`
+    * Allows users to select enabled health modules during setup
+    * Requires at least one module to be selected
+    * Saves selected modules into application settings
+    * Preserves the existing full-module experience for current users
 
-* [ ] Add initial personalisation options
+* [x] Add initial personalisation options
 
-  * Configure step target when Activity is selected
-  * Keep optional service integrations separate from module selection
-  * Do not require Fitbit or another external account to complete setup
+  * Implemented:
+    * Added configurable daily step target during setup
+    * Shows step target control only when Activity is selected
+    * Stores the configured target in application settings
 
 ---
 
@@ -1276,11 +1283,14 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Home cards match enabled modules
   * Navigation callbacks resolve the correct dynamic tab index
 
-* [ ] Add setup wizard tests
+* [x] Add setup wizard tests
 
-  * At least one module must be selected
-  * Selected modules are persisted
-  * Completing setup prevents the wizard reopening unnecessarily
+  * Implemented:
+    * Setup wizard renders all registered modules
+    * Module selections initialise from settings
+    * Finish is disabled when no module is selected
+    * Activity-specific step target visibility follows Activity selection
+    * Completed wizard returns updated settings
 
 ---
 
