@@ -7,7 +7,12 @@ from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QDialog
 
-from app.core.settings import load_settings, save_settings, should_show_setup
+from app.core.settings import (
+    AppSettings,
+    load_settings,
+    save_settings,
+    should_show_setup
+)
 
 
 def init_db() -> None:
@@ -19,6 +24,41 @@ def init_db() -> None:
     from app.db.database import engine
 
     Base.metadata.create_all(bind=engine)
+
+
+def resolve_startup_settings(settings: AppSettings) -> AppSettings | None:
+    """
+    Return settings to use for MainWindow startup.
+
+    If setup is incomplete, run the setup wizard. Returning None means startup
+    should stop, usually because the user cancelled setup.
+    """
+    if not should_show_setup(settings):
+        return settings
+
+    # Delay the UI import until after .env has been loaded.
+    from app.ui.setup_wizard import SetupWizard
+
+    setup_wizard = SetupWizard(settings=settings)
+
+    if setup_wizard.exec() != QDialog.DialogCode.Accepted:
+        return None
+
+    completed_settings = setup_wizard.to_settings()
+    save_settings(completed_settings)
+
+    return completed_settings
+
+
+def create_main_window(settings: AppSettings):
+    """Create, show, and return the main application window."""
+    # Delay the UI import until after .env has been loaded.
+    from app.ui.main_window import MainWindow
+
+    window = MainWindow(settings=settings)
+    window.show()
+
+    return window
 
 
 def main() -> None:
@@ -55,17 +95,12 @@ def main() -> None:
 
     app.setWindowIcon(QIcon(str(icon_path)))
 
-    if should_show_setup(settings):
-        setup_wizard = SetupWizard(settings=settings)
+    settings = resolve_startup_settings(settings)
 
-        if setup_wizard.exec() != QDialog.DialogCode.Accepted:
-            return
+    if not settings:
+        return
 
-        settings = setup_wizard.to_settings()
-        save_settings(settings)
-
-    window = MainWindow(settings=settings)
-    window.show()
+    window = create_main_window(settings)
 
     sys.exit(app.exec())
 
