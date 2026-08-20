@@ -1295,6 +1295,24 @@ Allow users to configure RigLog around the health areas they want to monitor.
     * summary metrics
     * trends
 
+* [ ] Add report/export content settings
+  * Allow users to choose which charts, tables, and summary sections are included in PDF reports
+  * Allow users to choose which datasets or metric tables are included in CSV exports
+  * Reuse the visual/section registry where possible
+  * Mark each visual or section with export capabilities:
+    * app display
+    * PDF export
+    * CSV export
+  * Keep CSV exports data-first rather than image-based
+  * Preserve safe default report templates for users who do not customise exports
+  * Ensure hidden app visuals can still be exportable if the user chooses
+
+* [ ] Add report/export settings tests
+  * Non-exportable visuals cannot be selected for CSV/PDF export
+  * Missing export settings fall back to default report contents
+  * Unknown export keys are ignored safely
+  * Report section order is normalised against the registry
+
 ---
 
 ### Personalisation
@@ -1319,6 +1337,31 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Flag unusually high or low days
   * Use an explainable statistical method
   * Avoid introducing machine-learning dependencies prematurely
+
+---
+
+### Visual Personalisation
+
+* [ ] Add visual visibility settings
+  * Allow users to choose which charts, tables, and summary sections appear inside each enabled module
+  * Store stable visual keys in application settings
+  * Keep visual definitions in a registry rather than hard-coding settings in UI classes
+  * Preserve safe defaults for existing users
+  * Do not delete underlying data when a visual is hidden
+
+* [ ] Add visual ordering settings
+  * Allow users to configure the display order of enabled visuals within each module
+  * Start with simple move up / move down controls
+  * Defer drag-and-drop until the registry and rendering model are stable
+  * Preserve default order when no custom order is configured
+
+* [ ] Add visual personalisation tests
+  * Unknown visual keys are ignored safely
+  * Missing visual settings fall back to module defaults
+  * Disabled visuals are not rendered
+  * Visual order is normalised against the registry
+
+---
 
 ## 🧭 Implementation Notes
 
