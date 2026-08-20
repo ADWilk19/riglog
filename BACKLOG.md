@@ -1251,12 +1251,15 @@ Allow users to configure RigLog around the health areas they want to monitor.
 
 ### Ongoing Module Management
 
-* [ ] Add module-management UI
-
-  * Allow modules to be enabled or disabled after setup
-  * Apply changes safely
-  * Clarify that disabling a module does not delete its data
-  * Decide whether changes apply immediately or after application restart
+* [x] Add module-management UI
+  * Implemented:
+    * Added `ModuleManagementDialog`
+    * Allows enabled health modules to be changed after setup
+    * Requires at least one module to remain enabled
+    * Preserves existing module data when modules are hidden
+    * Saves updated module settings
+    * Changes apply after restarting RigLog
+    * Added UI test coverage
 
 ---
 
