@@ -5,9 +5,9 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication
+from PySide6.QtWidgets import QApplication, QDialog
 
-from app.core.settings import load_settings
+from app.core.settings import load_settings, save_settings, should_show_setup
 
 
 def init_db() -> None:
@@ -40,6 +40,7 @@ def main() -> None:
 
     # Delay the UI import until after .env has been loaded.
     from app.ui.main_window import MainWindow
+    from app.ui.setup_wizard import SetupWizard
 
     qss_path = project_root / "assets" / "branding" / "theme.qss"
     icon_path = (
@@ -53,6 +54,15 @@ def main() -> None:
         app.setStyleSheet(qss_file.read())
 
     app.setWindowIcon(QIcon(str(icon_path)))
+
+    if should_show_setup(settings):
+        setup_wizard = SetupWizard(settings=settings)
+
+        if setup_wizard.exec() != QDialog.DialogCode.Accepted:
+            return
+
+        settings = setup_wizard.to_settings()
+        save_settings(settings)
 
     window = MainWindow(settings=settings)
     window.show()
