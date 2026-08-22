@@ -1326,16 +1326,24 @@ Phase 10A is complete. RigLog now supports module-level configuration at setup a
 
 ### Personalisation
 
-* [ ] Configurable Step Target
+* [x] Configurable Step Target
 
-  * Replace fixed 10k with user setting
   * Reuse the application settings service introduced in Phase 10A
   * Apply the configured target consistently across:
     * goal adherence
     * streak calculations
     * summary cards
     * charts
-    * exports
+
+  * Implemented:
+    * Activity service functions accept configurable target steps
+    * Activity tab uses the configured step target
+    * Home Activity card uses the configured step target
+    * Activity chart daily and weekly target lines use the configured target
+    * Added service and UI test coverage
+
+  * Future:
+    * Apply configured step target to Activity exports when export/reporting is implemented
 
 ---
 
