@@ -1172,15 +1172,11 @@ Allow users to configure RigLog around the health areas they want to monitor.
   * Home remains permanently enabled
   * Environment remains part of the Glucose module initially
 
-* [ ] Define module metadata
-
-  * Include:
-    * stable module key
-    * display label
-    * tab class or factory
-    * default enabled state
-    * optional Home summary card
-    * future dependency information
+* [x] Define module metadata
+  * Implemented:
+    * Module metadata is defined via `AppModule`
+    * Includes stable key, display label, plain-language description, tab class path, default enabled state, optional Home card key, and dependency placeholder
+    * Added tests for metadata completeness, importable tab class paths, unique Home card keys, and valid dependency references
 
 * [x] Add module validation
 

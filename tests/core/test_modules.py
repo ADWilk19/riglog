@@ -1,6 +1,6 @@
 """Tests for configurable RigLog module definitions."""
 
-import pytest
+import pytest, importlib
 
 from app.core.modules import (
     DEFAULT_ENABLED_MODULE_KEYS,
@@ -114,3 +114,42 @@ def test_module_tab_class_paths_are_unique():
     ]
 
     assert len(tab_class_paths) == len(set(tab_class_paths))
+
+
+def test_module_metadata_contract_is_populated():
+    for module in MODULE_REGISTRY:
+        assert module.key
+        assert module.label
+        assert module.description
+        assert module.tab_class_path
+        assert isinstance(module.default_enabled, bool)
+        assert isinstance(module.dependencies, tuple)
+
+
+def test_module_tab_class_paths_are_importable():
+    for module in MODULE_REGISTRY:
+        module_path, class_name = module.tab_class_path.rsplit(".", 1)
+
+        imported_module = importlib.import_module(module_path)
+        tab_class = getattr(imported_module, class_name)
+
+        assert tab_class is not None
+
+
+def test_module_home_card_keys_are_unique_when_present():
+    home_card_keys = [
+        module.home_card_key
+        for module in MODULE_REGISTRY
+        if module.home_card_key is not None
+    ]
+
+    assert len(home_card_keys) == len(set(home_card_keys))
+
+
+def test_module_dependencies_reference_registered_modules():
+    registered_keys = {module.key for module in MODULE_REGISTRY}
+
+    for module in MODULE_REGISTRY:
+        for dependency_key in module.dependencies:
+            assert dependency_key in registered_keys
+            assert dependency_key != module.key
