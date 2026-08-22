@@ -1119,9 +1119,9 @@ Future / Deferred:
 
 ---
 
-## 🧩 Phase 10A — Modular Application Configuration
+## 🧩 Phase 10A — Modular Application Configuration ✅ COMPLETE
 
-Allow users to configure RigLog around the health areas they want to monitor.
+Phase 10A is complete. RigLog now supports module-level configuration at setup and after setup, with validated settings, dynamic tab construction, Home dashboard filtering, and test coverage for the settings, registry, startup, setup wizard, and module-management flows.
 
 ### Application Settings Foundation
 
