@@ -244,3 +244,42 @@ def test_refresh_data_only_refreshes_enabled_modules(
     refresh_glucose.assert_not_called()
     refresh_workouts.assert_not_called()
     refresh_nutrition.assert_not_called()
+
+
+def test_home_activity_card_uses_configured_step_target(qtbot, mocker):
+    rows = [
+        {
+            "activity_date": "2026-07-28",
+            "steps": 8500,
+            "source": "fitbit",
+        }
+    ]
+
+    mocker.patch(
+        "app.ui.tabs.home_tab.get_daily_activity",
+        return_value=rows,
+    )
+
+    get_activity_summary_cards = mocker.patch(
+        "app.ui.tabs.home_tab.get_activity_summary_cards",
+        return_value=[
+            {
+                "key": "goal_adherence",
+                "title": "Goal Adherence",
+                "value": "1 / 1",
+                "subtitle": "100%",
+                "variant": "success",
+            }
+        ],
+    )
+
+    tab = HomeTab(
+        enabled_module_keys=("activity",),
+        step_target=8_500,
+    )
+    qtbot.addWidget(tab)
+
+    get_activity_summary_cards.assert_called_once_with(
+        rows,
+        target_steps=8_500,
+    )

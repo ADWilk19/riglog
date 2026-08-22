@@ -25,6 +25,7 @@ class FakeHomeTab(QWidget):
         self,
         *,
         enabled_module_keys,
+        step_target,
         on_open_glucose,
         on_open_activity,
         on_open_workouts,
@@ -33,6 +34,7 @@ class FakeHomeTab(QWidget):
         super().__init__()
 
         self.enabled_module_keys = tuple(enabled_module_keys)
+        self.step_target = step_target
 
         self.navigation_callbacks = {
             "glucose": on_open_glucose,
@@ -304,3 +306,38 @@ def test_main_window_has_manage_modules_action(qtbot):
 
     assert action is not None
     assert action.text() == "Manage Modules..."
+
+
+def test_main_window_passes_step_target_to_home_and_activity_tab(
+    qtbot,
+    fake_home_tab,
+    monkeypatch,
+):
+    class FakeActivityTab(FakeModuleTab):
+        def __init__(self, step_target=10_000):
+            super().__init__("activity")
+            self.step_target = step_target
+
+    def fake_resolve_tab_factory(module):
+        if module.key == "activity":
+            return FakeActivityTab
+
+        return lambda: FakeModuleTab(module.key)
+
+    monkeypatch.setattr(
+        main_window_module,
+        "resolve_tab_factory",
+        fake_resolve_tab_factory,
+    )
+
+    window = MainWindow(
+        settings=AppSettings(
+            setup_complete=True,
+            enabled_modules=("activity",),
+            step_target=8_500,
+        ),
+    )
+    qtbot.addWidget(window)
+
+    assert window.home_tab.step_target == 8_500
+    assert window.activity_tab.step_target == 8_500

@@ -4,6 +4,8 @@ from collections.abc import Callable, Mapping
 from pathlib import Path
 from importlib import import_module
 
+import inspect
+
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import (
     QMainWindow,
@@ -106,6 +108,7 @@ class MainWindow(QMainWindow):
 
         self.home_tab = HomeTab(
             enabled_module_keys=self.enabled_module_keys,
+            step_target=self.settings.step_target,
             on_open_glucose=lambda: self.open_module("glucose"),
             on_open_activity=lambda: self.open_module("activity"),
             on_open_workouts=lambda: self.open_module("workouts"),
@@ -149,7 +152,7 @@ class MainWindow(QMainWindow):
         """Instantiate only the configured health-module tabs."""
         for module_key in self.enabled_module_keys:
             tab_factory = self._get_tab_factory(module_key)
-            module_tab = tab_factory()
+            module_tab = self._create_module_tab(module_key, tab_factory)
 
             self.module_tabs[module_key] = module_tab
 
@@ -223,3 +226,32 @@ class MainWindow(QMainWindow):
             "Your module settings have been saved. "
             "Restart RigLog for the changes to take effect.",
         )
+
+    def _create_module_tab(
+            self,
+            module_key: str,
+            tab_factory: TabFactory,
+        ) -> QWidget:
+        """Create a module tab, passing supported configuration where available."""
+        if module_key != "activity":
+            return tab_factory()
+
+        try:
+            signature = inspect.signature(tab_factory)
+        except (TypeError, ValueError):
+            return tab_factory()
+
+        parameters = signature.parameters
+
+        accepts_step_target = (
+            "step_target" in parameters
+            or any(
+                parameter.kind == inspect.Parameter.VAR_KEYWORD
+                for parameter in parameters.values()
+            )
+        )
+
+        if accepts_step_target:
+            return tab_factory(step_target=self.settings.step_target)
+
+        return tab_factory()

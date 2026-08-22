@@ -5,6 +5,8 @@ from app.services.activity.analysis import (
     calculate_step_consistency_metrics,
     calculate_weekly_summary_metrics,
     get_activity_insight_metrics,
+    get_activity_summary,
+    get_activity_summary_cards,
 )
 
 
@@ -218,3 +220,41 @@ def test_calculate_step_consistency_metrics_handles_single_day():
         "step_cv_pct": 0.0,
         "consistency_label": "Consistent",
     }
+
+
+def test_get_activity_summary_uses_custom_step_target():
+    rows = make_rows(
+        [
+            8500,
+            8600,
+            8700,
+        ]
+    )
+
+    result = get_activity_summary(rows, target_steps=8_500)
+
+    assert result["goal_days"] == 3
+    assert result["goal_adherence_pct"] == 100.0
+    assert result["streak_days"] == 3
+
+
+def test_get_activity_summary_cards_uses_custom_step_target_for_streaks():
+    rows = make_rows(
+        [
+            8500,
+            8600,
+            8700,
+        ]
+    )
+
+    cards = get_activity_summary_cards(rows, target_steps=8_500)
+
+    card_map = {
+        card["key"]: card
+        for card in cards
+    }
+
+    assert card_map["goal_days"]["value"] == "3"
+    assert card_map["goal_adherence"]["value"] == "100%"
+    assert card_map["current_streak"]["value"] == "3"
+    assert card_map["longest_streak"]["value"] == "3"

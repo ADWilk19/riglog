@@ -22,6 +22,8 @@ import json
 
 from sqlalchemy import exc
 
+from app.core.settings import DEFAULT_STEP_TARGET
+
 from app.services.activity.analysis import (
     aggregate_weekly_steps,
     get_activity_insight_metrics,
@@ -310,7 +312,12 @@ class ActivityTrendChart(FigureCanvasQTAgg):
 
             self.draw_idle()
 
-    def plot_steps(self, activity_rows: list[dict], chart_view: str = "Daily") -> None:
+    def plot_steps(
+        self,
+        activity_rows: list[dict],
+        chart_view: str = "Daily",
+        target_steps: int = DEFAULT_STEP_TARGET,
+    ) -> None:
         self.ax.clear()
         apply_chart_theme(self.figure, self.ax)
 
@@ -336,9 +343,9 @@ class ActivityTrendChart(FigureCanvasQTAgg):
             return
 
         if chart_view == "Weekly":
-            self._plot_weekly_steps(activity_rows)
+            self._plot_weekly_steps(activity_rows, target_steps=target_steps)
         else:
-            self._plot_daily_steps(activity_rows)
+            self._plot_daily_steps(activity_rows, target_steps=target_steps)
 
         legend = self.ax.legend(facecolor=CHART_BG, edgecolor=CHART_SPINE)
         for text in legend.get_texts():
@@ -348,7 +355,11 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.figure.subplots_adjust(bottom=0.20)
         self.draw()
 
-    def _plot_daily_steps(self, activity_rows: list[dict]) -> None:
+    def _plot_daily_steps(
+        self,
+        activity_rows: list[dict],
+        target_steps: int = DEFAULT_STEP_TARGET,
+    ) -> None:
         self.ax.set_title("Daily Steps", color=CHART_TEXT)
         self.ax.set_ylabel("Steps", color=CHART_TEXT)
 
@@ -358,7 +369,7 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         rolling_avg = rolling_average(self.steps, window=7)
 
         colors = [
-            ACCENT_GREEN if value >= 10000 else "#BBBBBB"
+            ACCENT_GREEN if value >= target_steps else "#BBBBBB"
             for value in self.steps
         ]
 
@@ -388,11 +399,11 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         )
 
         self.ax.axhline(
-            10000,
+            target_steps,
             color=ACCENT_GREEN,
             linestyle="--",
             linewidth=1.2,
-            label="10k Target",
+            label=f"{target_steps:,} Target",
         )
 
         self.annot = self.ax.annotate(
@@ -405,7 +416,12 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         )
         self.annot.set_visible(False)
 
-    def _plot_weekly_steps(self, activity_rows: list[dict]) -> None:
+    def _plot_weekly_steps(
+        self,
+        activity_rows: list[dict],
+        target_steps: int = DEFAULT_STEP_TARGET,
+    ) -> None:
+        weekly_target_steps = target_steps * 7
         self.ax.set_title("Weekly Steps", color=CHART_TEXT)
         self.ax.set_ylabel("Total Steps", color=CHART_TEXT)
 
@@ -415,7 +431,7 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.weekly_steps = [row["steps"] for row in weekly_rows]
 
         colors = [
-            ACCENT_GREEN if value >= 70000 else "#BBBBBB"
+            ACCENT_GREEN if value >= weekly_target_steps else "#BBBBBB"
             for value in self.weekly_steps
         ]
 
@@ -430,11 +446,11 @@ class ActivityTrendChart(FigureCanvasQTAgg):
         self.bar_patches = list(bars)
 
         self.ax.axhline(
-            70000,
+            weekly_target_steps,
             color=ACCENT_GREEN,
             linestyle="--",
             linewidth=1.2,
-            label="10k/day Equivalent",
+            label=f"{target_steps:,}/day Equivalent",
         )
 
         self.annot = self.ax.annotate(
@@ -459,8 +475,10 @@ class ActivityTab(QWidget):
         border-radius: 10px;
     """
 
-    def __init__(self) -> None:
+    def __init__(self, step_target: int = DEFAULT_STEP_TARGET) -> None:
         super().__init__()
+
+        self.step_target = step_target
 
         self.selected_activity_index: int | None = None
         self.selected_activity_date: date | None = None
@@ -568,12 +586,12 @@ class ActivityTab(QWidget):
 
         self.goal_days_label = SummaryCard(title="Goal Days (7d)", value="-")
         self.goal_days_label.setToolTip(
-            "Number of days in the last 7 recorded days where steps met or exceeded the 10,000-step target."
+            f"Number of days in the last 7 recorded days where steps met or exceeded the {self.step_target:,}-step target."
         )
 
         self.goal_adherence_label = SummaryCard(title="Goal Adherence", value="-")
         self.goal_adherence_label.setToolTip(
-            "Percentage of the last 7 recorded days where steps met or exceeded the 10,000-step target."
+            f"Percentage of the last 7 recorded days where steps met or exceeded the {self.step_target:,}-step target."
         )
 
         self.avg_steps_label = SummaryCard(title="Average Steps", value="-")
@@ -593,12 +611,12 @@ class ActivityTab(QWidget):
 
         self.current_streak_label = SummaryCard(title="Current Streak", value="-")
         self.current_streak_label.setToolTip(
-            "Number of consecutive recorded days, ending with the latest day, where steps met or exceeded the 10,000-step target."
+            f"Number of consecutive recorded days, ending with the latest day, where steps met or exceeded the {self.step_target:,}-step target."
         )
 
         self.longest_streak_label = SummaryCard(title="Longest Streak", value="-")
         self.longest_streak_label.setToolTip(
-            "Longest run of consecutive recorded days where steps met or exceeded the 10,000-step target."
+            f"Longest run of consecutive recorded days where steps met or exceeded the {self.step_target:,}-step target."
         )
 
         self.best_week_label = SummaryCard(title="Best Week", value="-")
@@ -697,7 +715,7 @@ class ActivityTab(QWidget):
         selected_rolling_avg = rolling_avg[index]
 
         delta_vs_avg = selected_steps - selected_rolling_avg
-        goal_hit = selected_steps >= 10_000
+        goal_hit = selected_steps >= self.step_target
 
         self.selected_day_date_label.setText(
             f"Selected day: {selected_date.strftime('%Y-%m-%d')}"
@@ -786,7 +804,10 @@ class ActivityTab(QWidget):
                 card.clear()
             return
 
-        cards_data = get_activity_summary_cards(rows)
+        cards_data = get_activity_summary_cards(
+            rows,
+            target_steps=self.step_target,
+        )
 
         for card, data in zip(self.summary_cards, cards_data):
             card.set_content(
@@ -795,7 +816,10 @@ class ActivityTab(QWidget):
             )
             card.set_variant(data.get("variant", "neutral"))
 
-        insight_metrics = get_activity_insight_metrics(rows)
+        insight_metrics = get_activity_insight_metrics(
+            rows,
+            target_steps=self.step_target,
+        )
 
         best_week_steps = insight_metrics["best_week_steps"]
         best_week_start = insight_metrics["best_week_start"]
@@ -857,7 +881,11 @@ class ActivityTab(QWidget):
         self._update_summary(rows)
 
         chart_view = self.chart_view_filter.currentText()
-        self.chart.plot_steps(rows, chart_view=chart_view)
+        self.chart.plot_steps(
+            rows,
+            chart_view=chart_view,
+            target_steps=self.step_target,
+        )
 
         if chart_view == "Daily":
             self._restore_selected_day_panel()

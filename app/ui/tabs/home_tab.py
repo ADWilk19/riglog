@@ -18,6 +18,8 @@ from app.core.modules import (
     normalise_enabled_module_keys,
 )
 
+from app.core.settings import DEFAULT_STEP_TARGET
+
 from app.db.database import SessionLocal
 from app.db.models import GlucoseReading
 from app.services.activity.analysis import (
@@ -31,19 +33,22 @@ from app.ui.widgets.summary_card import SummaryCard
 
 class HomeTab(QWidget):
     def __init__(
-        self,
-        on_open_glucose=None,
-        on_open_activity=None,
-        on_open_workouts=None,
-        on_open_nutrition=None,
-        enabled_module_keys: Iterable[str] | None = None,
-    ) -> None:
+            self,
+            on_open_glucose=None,
+            on_open_activity=None,
+            on_open_workouts=None,
+            on_open_nutrition=None,
+            enabled_module_keys: Iterable[str] | None = None,
+            step_target: int = DEFAULT_STEP_TARGET,
+        ) -> None:
         super().__init__()
 
         self.on_open_glucose = on_open_glucose
         self.on_open_activity = on_open_activity
         self.on_open_workouts = on_open_workouts
         self.on_open_nutrition = on_open_nutrition
+
+        self.step_target = step_target
 
         self.enabled_module_keys = (
             DEFAULT_ENABLED_MODULE_KEYS
@@ -279,7 +284,10 @@ class HomeTab(QWidget):
             )
             return
 
-        cards_data = get_activity_summary_cards(rows)
+        cards_data = get_activity_summary_cards(
+            rows,
+            target_steps=self.step_target,
+        )
 
         card_map = {card["key"]: card for card in cards_data}
         goal_adherence_card = card_map.get("goal_adherence")
