@@ -9,6 +9,7 @@ from PySide6.QtWidgets import (
     QGridLayout,
     QLabel,
     QSizePolicy,
+    QPushButton,
 )
 
 from collections.abc import Iterable
@@ -33,20 +34,22 @@ from app.ui.widgets.summary_card import SummaryCard
 
 class HomeTab(QWidget):
     def __init__(
-            self,
-            on_open_glucose=None,
-            on_open_activity=None,
-            on_open_workouts=None,
-            on_open_nutrition=None,
-            enabled_module_keys: Iterable[str] | None = None,
-            step_target: int = DEFAULT_STEP_TARGET,
-        ) -> None:
+        self,
+        on_open_glucose=None,
+        on_open_activity=None,
+        on_open_workouts=None,
+        on_open_nutrition=None,
+        on_export_pdf=None,
+        enabled_module_keys: Iterable[str] | None = None,
+        step_target: int = DEFAULT_STEP_TARGET,
+    ) -> None:
         super().__init__()
 
         self.on_open_glucose = on_open_glucose
         self.on_open_activity = on_open_activity
         self.on_open_workouts = on_open_workouts
         self.on_open_nutrition = on_open_nutrition
+        self.on_export_pdf = on_export_pdf
 
         self.step_target = step_target
 
@@ -92,6 +95,9 @@ class HomeTab(QWidget):
             alignment=Qt.AlignmentFlag.AlignHCenter,
         )
         main_layout.addStretch(1)
+
+        main_layout.addSpacing(12)
+        main_layout.addLayout(self._build_report_actions())
 
         self.setLayout(main_layout)
         self._refresh_card_data()
@@ -346,3 +352,27 @@ class HomeTab(QWidget):
 
     def refresh_data(self) -> None:
         self._refresh_card_data()
+
+    def _build_report_actions(self) -> QHBoxLayout:
+        """Build Home-level report/export actions."""
+        report_layout = QHBoxLayout()
+        report_layout.setSpacing(12)
+
+        self.export_pdf_button = QPushButton("Export PDF Report")
+        self.export_pdf_button.setObjectName("homeExportPdfButton")
+        self.export_pdf_button.setToolTip(
+            "Create a PDF report from selected enabled-module sections."
+        )
+        self.export_pdf_button.clicked.connect(self.handle_export_pdf)
+
+        report_layout.addStretch()
+        report_layout.addWidget(self.export_pdf_button)
+        report_layout.addStretch()
+
+        return report_layout
+
+
+    def handle_export_pdf(self) -> None:
+        """Request Home-level PDF report generation."""
+        if self.on_export_pdf is not None:
+            self.on_export_pdf()

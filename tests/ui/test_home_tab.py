@@ -132,6 +132,24 @@ def test_home_summary_cards_call_navigation_callbacks(qtbot, mocker):
     on_open_nutrition.assert_called_once_with()
 
 
+def test_home_export_pdf_button_calls_callback(qtbot, mocker):
+    _mock_home_tab_services(mocker)
+
+    on_export_pdf = mocker.Mock()
+
+    tab = HomeTab(
+        on_export_pdf=on_export_pdf,
+    )
+    qtbot.addWidget(tab)
+
+    qtbot.mouseClick(
+        tab.export_pdf_button,
+        Qt.MouseButton.LeftButton,
+    )
+
+    on_export_pdf.assert_called_once_with()
+
+
 def test_home_tab_renders_only_enabled_module_cards(
     qtbot,
     mocker,
