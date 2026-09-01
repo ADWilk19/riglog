@@ -1297,24 +1297,29 @@ Phase 10A is complete. RigLog now supports module-level configuration at setup a
 
 ### Export / Reporting
 
-* [ ] Activity Report Export
+* [x] Activity Report Export — PDF
 
-  * CSV / PDF
-  * Include:
-    * summary metrics
-    * trends
+  * Implemented Home-level PDF export flow
+  * Users can select PDF-capable report sections from enabled modules
+  * Added report section registry with stable section keys
+  * Added PDF report generation service
+  * Initial generated sections include:
+    * Activity summary metrics
+    * Daily steps chart
+    * Weekly steps chart
+    * Daily activity table
+
+* [ ] Activity Report Export — CSV
+
+  * Deferred until CSV export requirements are clearer
 
 * [ ] Add report/export content settings
-  * Allow users to choose which charts, tables, and summary sections are included in PDF reports
-  * Allow users to choose which datasets or metric tables are included in CSV exports
-  * Reuse the visual/section registry where possible
-  * Mark each visual or section with export capabilities:
-    * app display
-    * PDF export
-    * CSV export
-  * Keep CSV exports data-first rather than image-based
-  * Preserve safe default report templates for users who do not customise exports
-  * Ensure hidden app visuals can still be exportable if the user chooses
+  * [x] Added report section registry with stable visual/section keys
+  * [x] Marked sections with PDF / CSV export capabilities
+  * [x] Home export flow filters sections to enabled modules
+  * [ ] Persist user report/export preferences in application settings
+  * [ ] Allow users to choose default report/export content
+  * [ ] Ensure hidden app visuals can still be exportable if the user chooses
 
 * [ ] Add report/export settings tests
   * Non-exportable visuals cannot be selected for CSV/PDF export

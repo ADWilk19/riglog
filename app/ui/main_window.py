@@ -1,6 +1,7 @@
 """Main application window and configurable module-tab construction."""
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from pathlib import Path
 from importlib import import_module
 
@@ -8,6 +9,7 @@ import inspect
 
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtWidgets import (
+    QFileDialog,
     QMainWindow,
     QMessageBox,
     QTabWidget,
@@ -24,6 +26,8 @@ from app.core.settings import (
     get_default_settings,
     save_settings,
 )
+from app.services.reporting.pdf_report import generate_pdf_report
+from app.ui.report_selection_dialog import ReportSelectionDialog
 from app.ui.tabs.home_tab import HomeTab
 from app.ui.module_management_dialog import ModuleManagementDialog
 
@@ -113,6 +117,7 @@ class MainWindow(QMainWindow):
             on_open_activity=lambda: self.open_module("activity"),
             on_open_workouts=lambda: self.open_module("workouts"),
             on_open_nutrition=lambda: self.open_module("nutrition"),
+            on_export_pdf=self.handle_export_pdf_report,
         )
 
 
@@ -255,3 +260,55 @@ class MainWindow(QMainWindow):
             return tab_factory(step_target=self.settings.step_target)
 
         return tab_factory()
+
+    def handle_export_pdf_report(self) -> None:
+        """Generate a selected-section PDF report from the Home tab."""
+        selection_dialog = ReportSelectionDialog(
+            enabled_module_keys=self.enabled_module_keys,
+            selected_section_keys=self.settings.pdf_report_section_keys,
+            parent=self,
+        )
+
+        if selection_dialog.exec() != selection_dialog.DialogCode.Accepted:
+            return
+
+        selected_section_keys = selection_dialog.selected_section_keys()
+
+        self.settings = replace(
+            self.settings,
+            pdf_report_section_keys=selected_section_keys,
+        )
+        save_settings(self.settings)
+
+        file_path, _ = QFileDialog.getSaveFileName(
+            self,
+            "Save PDF Report",
+            "riglog_health_report.pdf",
+            "PDF Files (*.pdf)",
+        )
+
+        if not file_path:
+            return
+
+        try:
+            result = generate_pdf_report(
+                file_path,
+                section_keys=selected_section_keys,
+                enabled_module_keys=self.enabled_module_keys,
+                step_target=self.settings.step_target,
+            )
+        except Exception as exc:
+            QMessageBox.critical(
+                self,
+                "Export failed",
+                f"Could not export PDF report:\n{exc}",
+            )
+            return
+
+        included_count = len(result.included_sections)
+
+        QMessageBox.information(
+            self,
+            "Export complete",
+            f"PDF report exported successfully with {included_count} section(s).",
+        )
