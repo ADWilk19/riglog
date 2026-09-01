@@ -1317,8 +1317,8 @@ Phase 10A is complete. RigLog now supports module-level configuration at setup a
   * [x] Added report section registry with stable visual/section keys
   * [x] Marked sections with PDF / CSV export capabilities
   * [x] Home export flow filters sections to enabled modules
-  * [ ] Persist user report/export preferences in application settings
-  * [ ] Allow users to choose default report/export content
+  * [x] Persist user report/export preferences in application settings
+  * [x] Allow users to choose default report/export content
   * [ ] Ensure hidden app visuals can still be exportable if the user chooses
 
 * [ ] Add report/export settings tests
