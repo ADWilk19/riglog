@@ -18,6 +18,13 @@ MODULE_KEYS = (
 )
 
 
+ACTIVITY_PDF_SECTION_KEYS = (
+    "activity.summary_metrics",
+    "activity.daily_steps_chart",
+    "activity.weekly_steps_chart",
+    "activity.daily_activity_table",
+)
+
 class FakeHomeTab(QWidget):
     """Lightweight HomeTab replacement for MainWindow tests."""
 
@@ -368,44 +375,104 @@ def test_main_window_passes_export_callback_to_home(qtbot, mocker):
 
 
 def test_main_window_export_pdf_report_generates_selected_report(
+        qtbot,
+        mocker,
+        tmp_path,
+    ):
+        output_path = tmp_path / "report.pdf"
+
+        dialog = mocker.Mock()
+        dialog.DialogCode.Accepted = 1
+        dialog.exec.return_value = 1
+        dialog.selected_section_keys.return_value = (
+            "activity.summary_metrics",
+        )
+
+        dialog_class = mocker.patch(
+            "app.ui.main_window.ReportSelectionDialog",
+            return_value=dialog,
+        )
+
+        get_save_file_name = mocker.patch(
+            "app.ui.main_window.QFileDialog.getSaveFileName",
+            return_value=(str(output_path), "PDF Files (*.pdf)"),
+        )
+
+        generate_pdf_report = mocker.patch(
+            "app.ui.main_window.generate_pdf_report",
+            return_value=mocker.Mock(
+                included_sections=("activity.summary_metrics",),
+            ),
+        )
+
+        information = mocker.patch(
+            "app.ui.main_window.QMessageBox.information",
+        )
+
+
+        save_settings = mocker.patch(
+            "app.ui.main_window.save_settings",
+        )
+
+        window = MainWindow(
+            settings=AppSettings(
+                enabled_modules=("activity",),
+                step_target=8_500,
+            ),
+        )
+        qtbot.addWidget(window)
+
+        window.handle_export_pdf_report()
+
+        dialog_class.assert_called_once_with(
+            enabled_module_keys=("activity",),
+            selected_section_keys=ACTIVITY_PDF_SECTION_KEYS,
+            parent=window,
+        )
+        get_save_file_name.assert_called_once()
+        generate_pdf_report.assert_called_once_with(
+            str(output_path),
+            section_keys=("activity.summary_metrics",),
+            enabled_module_keys=("activity",),
+            step_target=8_500,
+        )
+        information.assert_called_once()
+        save_settings.assert_called_once()
+        saved_settings = save_settings.call_args.args[0]
+        assert saved_settings.pdf_report_section_keys == (
+            "activity.summary_metrics",
+        )
+
+
+def test_main_window_export_pdf_report_uses_saved_section_preferences(
     qtbot,
     mocker,
-    tmp_path,
 ):
-    output_path = tmp_path / "report.pdf"
-
     dialog = mocker.Mock()
     dialog.DialogCode.Accepted = 1
-    dialog.exec.return_value = 1
+    dialog.exec.return_value = dialog.DialogCode.Accepted
     dialog.selected_section_keys.return_value = (
-        "activity.summary_metrics",
+        "activity.daily_activity_table",
     )
 
     dialog_class = mocker.patch(
         "app.ui.main_window.ReportSelectionDialog",
         return_value=dialog,
     )
-
-    get_save_file_name = mocker.patch(
+    mocker.patch(
+        "app.ui.main_window.save_settings",
+    )
+    mocker.patch(
         "app.ui.main_window.QFileDialog.getSaveFileName",
-        return_value=(str(output_path), "PDF Files (*.pdf)"),
-    )
-
-    generate_pdf_report = mocker.patch(
-        "app.ui.main_window.generate_pdf_report",
-        return_value=mocker.Mock(
-            included_sections=("activity.summary_metrics",),
-        ),
-    )
-
-    information = mocker.patch(
-        "app.ui.main_window.QMessageBox.information",
+        return_value=("", ""),
     )
 
     window = MainWindow(
         settings=AppSettings(
             enabled_modules=("activity",),
-            step_target=8_500,
+            pdf_report_section_keys=(
+                "activity.daily_activity_table",
+            ),
         ),
     )
     qtbot.addWidget(window)
@@ -414,13 +481,8 @@ def test_main_window_export_pdf_report_generates_selected_report(
 
     dialog_class.assert_called_once_with(
         enabled_module_keys=("activity",),
+        selected_section_keys=(
+            "activity.daily_activity_table",
+        ),
         parent=window,
     )
-    get_save_file_name.assert_called_once()
-    generate_pdf_report.assert_called_once_with(
-        str(output_path),
-        section_keys=("activity.summary_metrics",),
-        enabled_module_keys=("activity",),
-        step_target=8_500,
-    )
-    information.assert_called_once()

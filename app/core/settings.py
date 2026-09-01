@@ -12,7 +12,10 @@ from app.core.modules import (
     DEFAULT_ENABLED_MODULE_KEYS,
     normalise_enabled_module_keys,
 )
-
+from app.core.report_sections import (
+    get_default_report_section_keys,
+    normalise_report_section_keys,
+)
 
 DEFAULT_STEP_TARGET = 10_000
 
@@ -20,6 +23,7 @@ KNOWN_SETTING_KEYS = {
     "setup_complete",
     "enabled_modules",
     "step_target",
+    "pdf_report_section_keys",
 }
 
 
@@ -30,10 +34,38 @@ class AppSettings:
     setup_complete: bool = True
     enabled_modules: tuple[str, ...] = DEFAULT_ENABLED_MODULE_KEYS
     step_target: int = DEFAULT_STEP_TARGET
+    pdf_report_section_keys: tuple[str, ...] = field(default_factory=tuple)
     extra_settings: dict[str, Any] = field(
         default_factory=dict,
         repr=False,
     )
+
+    def __post_init__(self) -> None:
+        """Normalise settings that depend on the enabled-module list."""
+        self.enabled_modules = normalise_enabled_module_keys(
+            self.enabled_modules
+        )
+
+        default_pdf_section_keys = get_default_report_section_keys(
+            self.enabled_modules,
+            export_kind="pdf",
+        )
+
+        if not self.pdf_report_section_keys:
+            self.pdf_report_section_keys = default_pdf_section_keys
+            return
+
+        normalised_pdf_section_keys = normalise_report_section_keys(
+            self.pdf_report_section_keys,
+            self.enabled_modules,
+            export_kind="pdf",
+        )
+
+        self.pdf_report_section_keys = (
+            normalised_pdf_section_keys
+            if normalised_pdf_section_keys
+            else default_pdf_section_keys
+        )
 
     def to_dict(self) -> dict[str, Any]:
         """Return a JSON-serialisable representation of the settings."""
@@ -43,6 +75,7 @@ class AppSettings:
                 "setup_complete": self.setup_complete,
                 "enabled_modules": list(self.enabled_modules),
                 "step_target": self.step_target,
+                "pdf_report_section_keys": list(self.pdf_report_section_keys),
             }
         )
         return payload
@@ -106,6 +139,25 @@ def _normalise_enabled_modules(
         return default
 
 
+def _normalise_pdf_report_section_keys(
+    value: Any,
+    *,
+    enabled_module_keys: tuple[str, ...],
+    default: tuple[str, ...],
+) -> tuple[str, ...]:
+    """Return valid PDF report-section keys in registry order."""
+    if not isinstance(value, (list, tuple)):
+        return default
+
+    normalised_keys = normalise_report_section_keys(
+        value,
+        enabled_module_keys,
+        export_kind="pdf",
+    )
+
+    return normalised_keys or default
+
+
 def settings_from_mapping(
     payload: Mapping[str, Any],
 ) -> AppSettings:
@@ -118,18 +170,29 @@ def settings_from_mapping(
         if key not in KNOWN_SETTING_KEYS
     }
 
+    enabled_modules = _normalise_enabled_modules(
+    payload.get("enabled_modules"),
+    default=defaults.enabled_modules,
+)
+    default_pdf_section_keys = get_default_report_section_keys(
+        enabled_modules,
+        export_kind="pdf",
+    )
+
     return AppSettings(
         setup_complete=_normalise_setup_complete(
             payload.get("setup_complete"),
             default=defaults.setup_complete,
         ),
-        enabled_modules=_normalise_enabled_modules(
-            payload.get("enabled_modules"),
-            default=defaults.enabled_modules,
-        ),
+        enabled_modules=enabled_modules,
         step_target=_normalise_step_target(
             payload.get("step_target"),
             default=defaults.step_target,
+        ),
+        pdf_report_section_keys=_normalise_pdf_report_section_keys(
+            payload.get("pdf_report_section_keys"),
+            enabled_module_keys=enabled_modules,
+            default=default_pdf_section_keys,
         ),
         extra_settings=extra_settings,
     )

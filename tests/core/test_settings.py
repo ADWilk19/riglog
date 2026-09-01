@@ -5,6 +5,7 @@ import json
 import pytest
 
 from app.core.modules import DEFAULT_ENABLED_MODULE_KEYS
+from app.core.report_sections import get_default_report_section_keys
 from app.core.settings import (
     DEFAULT_STEP_TARGET,
     AppSettings,
@@ -21,6 +22,10 @@ def test_default_settings_preserve_existing_full_app_experience():
     assert settings.setup_complete is True
     assert settings.enabled_modules == DEFAULT_ENABLED_MODULE_KEYS
     assert settings.step_target == DEFAULT_STEP_TARGET
+    assert settings.pdf_report_section_keys == get_default_report_section_keys(
+    DEFAULT_ENABLED_MODULE_KEYS,
+    export_kind="pdf",
+    )
 
 
 def test_missing_settings_file_returns_defaults(tmp_path):
@@ -259,3 +264,53 @@ def test_setup_is_not_required_when_setup_is_complete():
     )
 
     assert should_show_setup(settings) is False
+
+
+def test_pdf_report_section_keys_are_normalised_to_enabled_modules(tmp_path):
+    settings_file = tmp_path / "settings.json"
+    settings_file.write_text(
+        json.dumps(
+            {
+                "enabled_modules": ["nutrition", "activity"],
+                "pdf_report_section_keys": [
+                    "nutrition.summary_metrics",
+                    "glucose.summary_metrics",
+                    "activity.daily_activity_table",
+                    "unknown.section",
+                    "activity.summary_metrics",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings.pdf_report_section_keys == (
+        "activity.summary_metrics",
+        "activity.daily_activity_table",
+        "nutrition.summary_metrics",
+    )
+
+
+def test_invalid_pdf_report_section_keys_fall_back_to_enabled_module_defaults(tmp_path):
+    settings_file = tmp_path / "settings.json"
+    settings_file.write_text(
+        json.dumps(
+            {
+                "enabled_modules": ["activity"],
+                "pdf_report_section_keys": [
+                    "glucose.summary_metrics",
+                    "unknown.section",
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings.pdf_report_section_keys == get_default_report_section_keys(
+        ("activity",),
+        export_kind="pdf",
+    )

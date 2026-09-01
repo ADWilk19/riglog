@@ -1,6 +1,7 @@
 """Main application window and configurable module-tab construction."""
 
 from collections.abc import Callable, Mapping
+from dataclasses import replace
 from pathlib import Path
 from importlib import import_module
 
@@ -264,6 +265,7 @@ class MainWindow(QMainWindow):
         """Generate a selected-section PDF report from the Home tab."""
         selection_dialog = ReportSelectionDialog(
             enabled_module_keys=self.enabled_module_keys,
+            selected_section_keys=self.settings.pdf_report_section_keys,
             parent=self,
         )
 
@@ -271,6 +273,12 @@ class MainWindow(QMainWindow):
             return
 
         selected_section_keys = selection_dialog.selected_section_keys()
+
+        self.settings = replace(
+            self.settings,
+            pdf_report_section_keys=selected_section_keys,
+        )
+        save_settings(self.settings)
 
         file_path, _ = QFileDialog.getSaveFileName(
             self,
