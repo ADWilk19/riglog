@@ -205,6 +205,10 @@ This backlog is organised by architectural layer and implementation priority.
 
 ## 🔗 Phase 4 — Cross-Module Intelligence ✅ COMPLETE
 
+Phase 4 is complete for the original cross-module intelligence scope.
+The unchecked environmental items below are deferred follow-up improvements
+identified after the initial implementation.
+
 ### 🩸 Glucose Import Expansion
 
 * [x] Add Dexcom Clarity CSV import
@@ -431,6 +435,24 @@ This backlog is organised by architectural layer and implementation priority.
     * pollen
     * air pressure
     * weather condition
+
+* [ ] Location-aware temperature/glucose analysis
+  * Current issue:
+    * Weather data exists for multiple configured locations, including `home` and `partner-home`
+    * Hot weather days may exist under `partner-home` while the Glucose tab currently analyses the default `home` location
+  * Add a Temperature vs Glucose location selector
+  * Pass selected `location_label` into the existing environment/glucose service-layer analysis
+  * Refresh the temperature/glucose table and charts when the selected location changes
+  * Future:
+    * Add date-based location overrides for periods spent away from home
+    * Consider automatic inference only if it can be done without overcomplicating the app
+
+* [ ] Automatic weather data catch-up
+  * For each configured Open-Meteo location:
+    * find the latest stored `daily_environment` date
+    * import missing daily rows from the next date through yesterday
+    * preserve duplicate-skipping behaviour
+  * Run catch-up on app startup or via an explicit refresh action
 
 ### Architecture Documentation
 
