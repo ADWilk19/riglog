@@ -1341,9 +1341,9 @@ Phase 10A is complete. RigLog now supports module-level configuration at setup a
   * [x] Home export flow filters sections to enabled modules
   * [x] Persist user report/export preferences in application settings
   * [x] Allow users to choose default report/export content
-  * [ ] Ensure hidden app visuals can still be exportable if the user chooses
+  * [x] Ensure hidden app visuals can still be exportable if the user chooses
 
-* [ ] Add report/export settings tests
+* [x] Add report/export settings tests
   * Non-exportable visuals cannot be selected for CSV/PDF export
   * Missing export settings fall back to default report contents
   * Unknown export keys are ignored safely
