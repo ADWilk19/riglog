@@ -148,7 +148,12 @@ def get_report_sections_for_modules(
     *,
     export_kind: ExportKind = "pdf",
 ) -> tuple[ReportSection, ...]:
-    """Return exportable report sections for enabled modules in registry order."""
+    """"Return exportable report sections for enabled modules in registry order.
+
+        Export availability is intentionally independent of future per-module UI
+        visual visibility settings. A chart or table may be hidden in the app UI
+        while still remaining selectable for export.
+    """
     enabled_keys = set(
         normalise_enabled_module_keys(
             enabled_module_keys,
@@ -169,7 +174,11 @@ def get_default_report_section_keys(
     *,
     export_kind: ExportKind = "pdf",
 ) -> tuple[str, ...]:
-    """Return default selected section keys for enabled modules."""
+    """Return valid selected export section keys in registry order.
+
+    Selection is constrained by enabled modules and export capability, not by
+    whether the corresponding visual is currently shown inside the module UI.
+    """
     return tuple(
         section.key
         for section in get_report_sections_for_modules(

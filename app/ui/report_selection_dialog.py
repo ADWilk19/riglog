@@ -85,7 +85,8 @@ class ReportSelectionDialog(QDialog):
 
         description = QLabel(
             "Select the visuals, tables, and summary sections to include "
-            "in the PDF report. Only enabled modules are shown."
+            "in the PDF report. Only enabled modules are shown, but sections "
+            "do not need to be visible in the app UI to be exportable."
         )
         description.setObjectName("reportSelectionDescription")
         description.setWordWrap(True)
