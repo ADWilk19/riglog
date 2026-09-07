@@ -171,9 +171,9 @@ def settings_from_mapping(
     }
 
     enabled_modules = _normalise_enabled_modules(
-    payload.get("enabled_modules"),
-    default=defaults.enabled_modules,
-)
+        payload.get("enabled_modules"),
+        default=defaults.enabled_modules,
+    )
     default_pdf_section_keys = get_default_report_section_keys(
         enabled_modules,
         export_kind="pdf",

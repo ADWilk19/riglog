@@ -46,6 +46,30 @@ def test_report_selection_dialog_respects_initial_selection(qtbot):
     )
 
 
+def test_report_selection_dialog_keeps_unselected_exportable_sections_available(qtbot):
+    dialog = ReportSelectionDialog(
+        enabled_module_keys=("activity",),
+        selected_section_keys=(
+            "activity.summary_metrics",
+        ),
+    )
+    qtbot.addWidget(dialog)
+
+    keys = set(dialog.section_checkboxes)
+
+    assert "activity.daily_steps_chart" in keys
+    assert "activity.weekly_steps_chart" in keys
+    assert "activity.daily_activity_table" in keys
+
+    assert not dialog.section_checkboxes["activity.daily_steps_chart"].isChecked()
+    assert not dialog.section_checkboxes["activity.weekly_steps_chart"].isChecked()
+    assert not dialog.section_checkboxes["activity.daily_activity_table"].isChecked()
+
+    assert dialog.selected_section_keys() == (
+        "activity.summary_metrics",
+    )
+
+
 def test_report_selection_dialog_ignores_disabled_initial_selection(qtbot):
     dialog = ReportSelectionDialog(
         enabled_module_keys=("activity",),

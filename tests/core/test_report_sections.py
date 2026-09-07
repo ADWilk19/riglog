@@ -61,6 +61,25 @@ def test_report_sections_are_filtered_by_export_kind():
     assert "activity.weekly_steps_chart" not in keys
 
 
+def test_exportable_sections_are_independent_of_ui_visual_visibility():
+    hidden_visual_keys = {
+        "activity.daily_steps_chart",
+        "activity.weekly_steps_chart",
+    }
+
+    sections = get_report_sections_for_modules(
+        ("activity",),
+        export_kind="pdf",
+    )
+
+    keys = {
+        section.key
+        for section in sections
+    }
+
+    assert hidden_visual_keys <= keys
+
+
 def test_default_report_section_keys_follow_enabled_modules():
     keys = get_default_report_section_keys(
         ("glucose", "activity"),

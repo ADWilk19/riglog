@@ -23,8 +23,8 @@ def test_default_settings_preserve_existing_full_app_experience():
     assert settings.enabled_modules == DEFAULT_ENABLED_MODULE_KEYS
     assert settings.step_target == DEFAULT_STEP_TARGET
     assert settings.pdf_report_section_keys == get_default_report_section_keys(
-    DEFAULT_ENABLED_MODULE_KEYS,
-    export_kind="pdf",
+        DEFAULT_ENABLED_MODULE_KEYS,
+        export_kind="pdf",
     )
 
 
