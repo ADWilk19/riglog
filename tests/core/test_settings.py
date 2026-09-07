@@ -293,6 +293,30 @@ def test_pdf_report_section_keys_are_normalised_to_enabled_modules(tmp_path):
     )
 
 
+def test_pdf_report_section_keys_are_saved_in_registry_order(tmp_path):
+    settings_file = tmp_path / "settings.json"
+
+    save_settings(
+        AppSettings(
+            enabled_modules=("activity",),
+            pdf_report_section_keys=(
+                "activity.weekly_steps_chart",
+                "activity.summary_metrics",
+                "activity.daily_steps_chart",
+            ),
+        ),
+        settings_file,
+    )
+
+    payload = json.loads(settings_file.read_text(encoding="utf-8"))
+
+    assert payload["pdf_report_section_keys"] == [
+        "activity.summary_metrics",
+        "activity.daily_steps_chart",
+        "activity.weekly_steps_chart",
+    ]
+
+
 def test_invalid_pdf_report_section_keys_fall_back_to_enabled_module_defaults(tmp_path):
     settings_file = tmp_path / "settings.json"
     settings_file.write_text(
@@ -303,6 +327,25 @@ def test_invalid_pdf_report_section_keys_fall_back_to_enabled_module_defaults(tm
                     "glucose.summary_metrics",
                     "unknown.section",
                 ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    settings = load_settings(settings_file)
+
+    assert settings.pdf_report_section_keys == get_default_report_section_keys(
+        ("activity",),
+        export_kind="pdf",
+    )
+
+
+def test_missing_pdf_report_section_keys_fall_back_to_enabled_module_defaults(tmp_path):
+    settings_file = tmp_path / "settings.json"
+    settings_file.write_text(
+        json.dumps(
+            {
+                "enabled_modules": ["activity"],
             }
         ),
         encoding="utf-8",

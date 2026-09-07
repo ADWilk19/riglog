@@ -123,3 +123,21 @@ def test_normalise_report_section_keys_uses_registry_order():
         "activity.daily_steps_chart",
         "activity.weekly_steps_chart",
     )
+
+
+def test_non_csv_exportable_visuals_cannot_be_selected_for_csv_export():
+    keys = normalise_report_section_keys(
+        (
+            "activity.daily_steps_chart",
+            "activity.weekly_steps_chart",
+            "activity.summary_metrics",
+            "activity.daily_activity_table",
+        ),
+        enabled_module_keys=("activity",),
+        export_kind="csv",
+    )
+
+    assert keys == (
+        "activity.summary_metrics",
+        "activity.daily_activity_table",
+    )

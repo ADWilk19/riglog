@@ -195,7 +195,11 @@ def normalise_report_section_keys(
     *,
     export_kind: ExportKind = "pdf",
 ) -> tuple[str, ...]:
-    """Return valid selected section keys in registry order."""
+    """Return valid selected export section keys in registry order.
+
+    Unknown keys, disabled-module keys, and keys unsupported by the requested
+    export kind are ignored.
+    """
     selected_keys = {
         section_key.strip()
         for section_key in section_keys
