@@ -1334,13 +1334,40 @@ class GlucoseTab(QWidget):
             )
 
         self.intraday_activity_date_filter.currentIndexChanged.connect(
-            self.load_readings
+            self.handle_intraday_activity_date_changed
         )
 
         selector_layout.addWidget(self.intraday_activity_date_filter)
         selector_layout.addStretch()
 
         self.layout.addLayout(selector_layout)
+
+    def handle_intraday_activity_date_changed(self, index: int) -> None:
+        """Refresh only the intraday activity/glucose chart when its date changes."""
+        self._update_intraday_activity_glucose_alignment()
+
+    def _update_intraday_activity_glucose_alignment(self) -> None:
+        """Refresh the intraday activity/glucose alignment chart for the selected date."""
+        selected_date = self.intraday_activity_date_filter.currentData()
+
+        if selected_date is None:
+            alignment_rows = []
+        else:
+            start_datetime = datetime.combine(selected_date, datetime.min.time())
+            end_datetime = (
+                start_datetime
+                + timedelta(days=1)
+                - timedelta(microseconds=1)
+            )
+
+            alignment_rows = get_intraday_activity_glucose_alignment(
+                start_date=start_datetime,
+                end_date=end_datetime,
+                glucose_days=365,
+                bucket_minutes=30,
+            )
+
+        self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
 
     def _build_temperature_glucose_table(self) -> None:
         """Build environmental temperature vs glucose summary table."""
@@ -1452,26 +1479,7 @@ class GlucoseTab(QWidget):
         overlay_rows = get_daily_activity_glucose_overlay(glucose_days=365)
         self.daily_activity_glucose_overlay_chart.plot_overlay(overlay_rows)
 
-        selected_date = self.intraday_activity_date_filter.currentData()
-
-        if selected_date is not None:
-            start_datetime = datetime.combine(selected_date, datetime.min.time())
-            end_datetime = (
-                start_datetime
-                + timedelta(days=1)
-                - timedelta(microseconds=1)
-            )
-
-            alignment_rows = get_intraday_activity_glucose_alignment(
-                start_date=start_datetime,
-                end_date=end_datetime,
-                glucose_days=365,
-                bucket_minutes=30,
-            )
-        else:
-            alignment_rows = []
-
-        self.intraday_activity_glucose_alignment_chart.plot_alignment(alignment_rows)
+        self._update_intraday_activity_glucose_alignment()
 
         temperature_summary_rows = get_temperature_glucose_bucket_summary(
             days=365,
