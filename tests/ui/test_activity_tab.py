@@ -133,3 +133,17 @@ def test_activity_chart_uses_configured_weekly_target(qtbot):
     ]
 
     assert "8,500/day Equivalent" in labels
+
+
+def test_reconnect_configuration_failure_stays_in_dialog(mocker):
+    from app.services.activity.fitbit_exceptions import FitbitAuthError
+    mocker.patch('app.services.activity.fitbit_auth.get_authorization_url',
+                 side_effect=FitbitAuthError('Configure Google Health'))
+    critical = mocker.patch('PySide6.QtWidgets.QMessageBox.critical')
+    browser = mocker.patch('webbrowser.open')
+    tab = mocker.Mock()
+    ActivityTab._reconnect_fitbit(tab)
+    critical.assert_called_once()
+    assert 'Configure Google Health' in critical.call_args.args[2]
+    browser.assert_not_called()
+    tab.handle_refresh_activity.assert_not_called()

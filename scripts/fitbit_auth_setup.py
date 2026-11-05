@@ -9,4 +9,4 @@ print("\nAfter approving, paste the full redirect URL below:\n")
 redirect_url = input("> ").strip()
 
 fetch_and_store_token(redirect_url)
-print("Token saved to data/fitbit_tokens.json")
+print("Google Health connection saved.")

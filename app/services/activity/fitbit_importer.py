@@ -10,13 +10,11 @@ from app.services.activity.fitbit_client import FitbitClient
 
 
 class FitbitImporter:
-    BASE_URL = "https://api.fitbit.com/1/user/-"
-
     def fetch_daily_steps(self, start_date: str, end_date: str) -> pd.DataFrame:
         client = FitbitClient()
         rows = client.get_daily_steps(start_date, end_date)
 
-        df = pd.DataFrame(rows)
+        df = pd.DataFrame(rows, columns=["dateTime", "value"])
         df = df.rename(columns={"dateTime": "activity_date", "value": "steps"})
         df["activity_date"] = pd.to_datetime(df["activity_date"]).dt.date
         df["steps"] = pd.to_numeric(df["steps"], errors="coerce").fillna(0).astype(int)

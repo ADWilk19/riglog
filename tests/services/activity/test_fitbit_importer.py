@@ -146,3 +146,11 @@ def test_import_rolls_back_on_failure(mocker, db_session):
 
     # DB should still be empty (rollback worked)
     assert db_session.query(DailyActivity).count() == 0
+
+
+def test_empty_api_response_produces_empty_frame(mocker):
+    client = mocker.patch('app.services.activity.fitbit_importer.FitbitClient').return_value
+    client.get_daily_steps.return_value = []
+    frame = FitbitImporter().fetch_daily_steps('2026-01-01', '2026-01-01')
+    assert frame.empty
+    assert list(frame.columns) == ['activity_date', 'steps', 'source']

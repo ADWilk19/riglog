@@ -625,25 +625,9 @@ python -m app.main
 
 ## 🔗 Optional: Connect Fitbit
 
-RigLog supports activity tracking via Fitbit. This step is optional — the app runs without it.
+RigLog supports Fitbit activity through the Google Health API. This is optional;
+the app runs without a connection.
 
-### 1. Create a Fitbit App
-
-- Go to https://dev.fitbit.com/apps
-- Create a new application
-- Set the Redirect URI to:
-
-http://127.0.0.1:8080/
-
-### 2. Configure environment variables
-
-Create a `.env` file in the project root:
-
-FITBIT_CLIENT_ID=your_client_id
-FITBIT_REDIRECT_URI=http://127.0.0.1:8080/
-
-### 3. Authenticate in RigLog
-
-- Open the **Activity** tab
-- Click **Connect Fitbit**
-- Complete the OAuth flow
+Fitbit OAuth and its Web API were retired on 2 November 2026. Follow
+[Google Health setup](docs/google-health-setup.md) to configure a Google Desktop
+OAuth client and reconnect. Old Fitbit credentials and tokens cannot be reused.

@@ -5,7 +5,8 @@ matplotlib
 python-dotenv
 requests
 requests-oauthlib
-fitbit
+google-auth>=2.0,<3
+google-auth-oauthlib>=1.2,<2
 reportlab
 pytest
 pytest-mock

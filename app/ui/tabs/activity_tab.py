@@ -962,7 +962,7 @@ class ActivityTab(QWidget):
         message_box.setIcon(QMessageBox.Warning)
         message_box.setWindowTitle("Fitbit connection expired")
         message_box.setText(
-            "Your Fitbit session has expired or been revoked. "
+            "Fitbit now connects through Google Health. "
             "Please reconnect Fitbit to continue syncing activity data."
         )
 
@@ -990,20 +990,19 @@ class ActivityTab(QWidget):
             fetch_and_store_token,
         )
 
-        auth_url = get_authorization_url()
-        webbrowser.open(auth_url)
-
-        redirect_url, ok = QInputDialog.getText(
-            self,
-            "Reconnect Fitbit",
-            "After approving Fitbit access in your browser,\n"
-            "paste the full redirect URL here:",
-        )
-
-        if not ok or not redirect_url.strip():
-            return
-
         try:
+            auth_url = get_authorization_url()
+            webbrowser.open(auth_url)
+
+            redirect_url, ok = QInputDialog.getText(
+                self,
+                "Reconnect Fitbit through Google Health",
+                "Approve Google Health access in your browser.\n"
+                "The local redirect page may not load; paste its full URL here:",
+            )
+            if not ok or not redirect_url.strip():
+                return
+
             fetch_and_store_token(redirect_url.strip())
 
             QMessageBox.information(
